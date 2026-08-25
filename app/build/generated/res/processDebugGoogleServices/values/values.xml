@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gcm_defaultSenderId" translatable="false">1028516460996</string>
+    <string name="google_api_key" translatable="false">AIzaSyBdg0LxTJj4baEtSDqup0pW3fHzU8JkXQ8</string>
+    <string name="google_app_id" translatable="false">1:1028516460996:android:285d57719fe87486eecc91</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBdg0LxTJj4baEtSDqup0pW3fHzU8JkXQ8</string>
+    <string name="google_storage_bucket" translatable="false">loanzo-fdd8a.firebasestorage.app</string>
+    <string name="project_id" translatable="false">loanzo-fdd8a</string>
+</resources>

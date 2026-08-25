@@ -1,0 +1,9 @@
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.auth.AuthViewModel
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.auth.AuthViewModel
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.dashboard.DashboardViewModel
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.dashboard.DashboardViewModel
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.dashboard.FinancialHealthViewModel
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.dashboard.FinancialHealthViewModel
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.loan.LoanViewModel
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.loan.LoanViewModel
+-keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.loan.TranslationViewModel

@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.loanzo.app-mergeDebugResources-3:/values-v23/values-v23.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\hp\\.gradle\\caches\\8.9\\transforms\\1aa5f08630c76b4ccd933fc1dc26f03d\\transformed\\work-runtime-2.10.0\\res\\values-v23\\values-v23.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,121",
+                        "endColumns": "65,62",
+                        "endOffsets": "116,179"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1028516460996",
+    "project_id": "loanzo-fdd8a",
+    "storage_bucket": "loanzo-fdd8a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1028516460996:android:285d57719fe87486eecc91",
+        "android_client_info": {
+          "package_name": "com.loanzo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdg0LxTJj4baEtSDqup0pW3fHzU8JkXQ8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
