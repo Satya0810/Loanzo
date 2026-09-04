@@ -15,6 +15,7 @@ class LoanRepository @Inject constructor(
     private val disbursementDao: DisbursementDao,
     private val repaymentDao: RepaymentDao,
     private val pledgeDao: PledgeDao,
+    private val guarantorDao: GuarantorDao,
     private val auditEventDao: AuditEventDao,
     private val penaltyEngine: PenaltyEngine
 ) {
@@ -53,6 +54,12 @@ class LoanRepository @Inject constructor(
 
     suspend fun getLoanById(loanId: String): LoanEntity? = loanDao.getLoanById(loanId)
     fun observeLoan(loanId: String): Flow<LoanEntity?> = loanDao.observeLoan(loanId)
+
+    suspend fun updateLoanStatus(loanId: String, status: String, actorId: String, description: String = "") {
+        val loan = loanDao.getLoanById(loanId) ?: return
+        val updated = loan.copy(status = status)
+        updateLoan(updated, actorId, description.ifBlank { "Loan status changed to $status" })
+    }
     fun getLoansByBorrower(userId: String): Flow<List<LoanEntity>> = loanDao.getLoansByBorrower(userId)
     fun getLoansByLender(userId: String): Flow<List<LoanEntity>> = loanDao.getLoansByLender(userId)
     fun getAllLoansForUser(userId: String): Flow<List<LoanEntity>> = loanDao.getAllLoansForUser(userId)
@@ -118,7 +125,7 @@ class LoanRepository @Inject constructor(
     }
 
     suspend fun recordRepayment(repayment: RepaymentEntity, actorId: String) {
-        repaymentDao.updateRepayment(repayment)
+        repaymentDao.insertRepayment(repayment)
         // Update loan outstanding
         val loan = loanDao.getLoanById(repayment.loanId)
         if (loan != null) {
@@ -180,6 +187,58 @@ class LoanRepository @Inject constructor(
 
     fun getPledgesByLoan(loanId: String): Flow<List<PledgeEntity>> = pledgeDao.getPledgesByLoan(loanId)
     fun getTotalPledgeValue(loanId: String): Flow<Double?> = pledgeDao.getTotalPledgeValueForLoan(loanId)
+
+    suspend fun updateRepayment(repayment: RepaymentEntity, actorId: String, description: String = "Repayment updated") {
+        repaymentDao.updateRepayment(repayment)
+        auditEventDao.insertEvent(
+            AuditEventEntity(
+                eventId = UUID.randomUUID().toString(),
+                entityType = "REPAYMENT",
+                entityId = repayment.repaymentId,
+                actor = actorId,
+                event = "UPDATED",
+                newState = repayment.status,
+                description = description
+            )
+        )
+    }
+
+    // Guarantor operations
+    suspend fun createGuarantor(guarantor: GuarantorEntity, actorId: String) {
+        guarantorDao.insertGuarantor(guarantor)
+        auditEventDao.insertEvent(
+            AuditEventEntity(
+                eventId = UUID.randomUUID().toString(),
+                entityType = "GUARANTOR",
+                entityId = guarantor.guarantorId,
+                actor = actorId,
+                event = "CREATED",
+                newState = guarantor.consentStatus,
+                description = "Guarantor added: ${guarantor.name} (${guarantor.relationship})"
+            )
+        )
+    }
+
+    suspend fun updateGuarantor(guarantor: GuarantorEntity, actorId: String, eventDescription: String) {
+        guarantorDao.updateGuarantor(guarantor)
+        auditEventDao.insertEvent(
+            AuditEventEntity(
+                eventId = UUID.randomUUID().toString(),
+                entityType = "GUARANTOR",
+                entityId = guarantor.guarantorId,
+                actor = actorId,
+                event = "UPDATED",
+                newState = guarantor.consentStatus,
+                description = eventDescription
+            )
+        )
+    }
+
+    fun getGuarantorsByLoan(loanId: String): Flow<List<GuarantorEntity>> =
+        guarantorDao.getGuarantorsByLoan(loanId)
+
+    suspend fun getGuarantorById(id: String): GuarantorEntity? =
+        guarantorDao.getGuarantorById(id)
 
     // Audit
     fun getAuditTrail(entityType: String, entityId: String): Flow<List<AuditEventEntity>> =

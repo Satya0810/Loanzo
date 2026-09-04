@@ -4,54 +4,84 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.loanzo.app.ui.theme.Gold500
 import com.loanzo.app.ui.theme.Navy900
 import kotlinx.coroutines.launch
 
-data class ChatMessage(
-    val id: String,
-    val text: String,
-    val isMe: Boolean,
-    val translatedText: String? = null,
-    val isTranslating: Boolean = false
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     loanId: String,
     onBack: () -> Unit,
-    viewModel: TranslationViewModel = hiltViewModel()
+    chatViewModel: ChatViewModel = hiltViewModel(),
+    translationViewModel: TranslationViewModel = hiltViewModel()
 ) {
-    var messages by remember { mutableStateOf(listOf(
-        ChatMessage("1", "Hello, please upload the signed document for tranche 1.", isMe = false),
-        ChatMessage("2", "I will upload it by tomorrow morning.", isMe = true)
-    )) }
+    val chatState by chatViewModel.uiState.collectAsState()
+    val translationState by translationViewModel.uiState.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
-    
-    // For demonstration, we'll translate to Hindi by default when requested
+    val listState = rememberLazyListState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // For demonstration, translate to Hindi by default when requested
     val targetLanguage = "hi"
+
+    // Track which message is currently being translated
+    var translatingMessageId by remember { mutableStateOf<String?>(null) }
+
+    // Start the real-time listener
+    LaunchedEffect(loanId) {
+        chatViewModel.loadChat(loanId)
+    }
+
+    // Auto-scroll to the bottom when new messages arrive
+    LaunchedEffect(chatState.messages.size) {
+        if (chatState.messages.isNotEmpty()) {
+            listState.animateScrollToItem(chatState.messages.size - 1)
+        }
+    }
+
+    // Watch for translation results and apply them to the correct message
+    LaunchedEffect(translationState.translatedText) {
+        if (translationState.translatedText.isNotBlank() && !translationState.isLoading && translatingMessageId != null) {
+            chatViewModel.setTranslatedText(translatingMessageId!!, translationState.translatedText)
+            translatingMessageId = null
+        }
+    }
+
+    // Show errors
+    LaunchedEffect(chatState.error) {
+        chatState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            chatViewModel.clearError()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat with Lender") },
+                title = { Text("Chat") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Text("< Back") }
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             BottomAppBar(
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -68,11 +98,7 @@ fun ChatScreen(
                 IconButton(
                     onClick = {
                         if (inputText.isNotBlank()) {
-                            messages = messages + ChatMessage(
-                                id = System.currentTimeMillis().toString(),
-                                text = inputText,
-                                isMe = true
-                            )
+                            chatViewModel.sendMessage(loanId, inputText)
                             inputText = ""
                         }
                     },
@@ -83,55 +109,71 @@ fun ChatScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
-        ) {
-            items(messages) { msg ->
-                ChatBubble(
-                    message = msg,
-                    onTranslate = {
-                        val index = messages.indexOf(msg)
-                        if (index != -1) {
-                            val updated = messages.toMutableList()
-                            updated[index] = msg.copy(isTranslating = true)
-                            messages = updated
-                            
-                            coroutineScope.launch {
-                                // Direct API call to translate this specific message
-                                viewModel.translate(msg.text, targetLanguage)
-                            }
-                        }
-                    }
+        if (chatState.isLoading && chatState.messages.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (chatState.messages.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "No messages yet.\nStart a conversation!",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
             }
-        }
-    }
-    
-    // Watch for translation results in the ViewModel and apply them to the translating message
-    val state by viewModel.uiState.collectAsState()
-    LaunchedEffect(state.translatedText) {
-        if (state.translatedText.isNotBlank() && !state.isLoading) {
-            val translatingIndex = messages.indexOfFirst { it.isTranslating }
-            if (translatingIndex != -1) {
-                val updated = messages.toMutableList()
-                updated[translatingIndex] = updated[translatingIndex].copy(
-                    translatedText = state.translatedText,
-                    isTranslating = false
-                )
-                messages = updated
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 16.dp)
+            ) {
+                items(chatState.messages, key = { it.messageId }) { msg ->
+                    ChatBubble(
+                        message = ChatMessage(
+                            id = msg.messageId,
+                            text = msg.text,
+                            isMe = msg.isMe,
+                            translatedText = msg.translatedText,
+                            isTranslating = msg.isTranslating
+                        ),
+                        senderName = if (!msg.isMe) msg.senderName else null,
+                        onTranslate = {
+                            translatingMessageId = msg.messageId
+                            chatViewModel.setTranslating(msg.messageId)
+                            coroutineScope.launch {
+                                translationViewModel.translate(msg.text, targetLanguage)
+                            }
+                        }
+                    )
+                }
             }
         }
     }
 }
 
+data class ChatMessage(
+    val id: String,
+    val text: String,
+    val isMe: Boolean,
+    val translatedText: String? = null,
+    val isTranslating: Boolean = false
+)
+
 @Composable
 fun ChatBubble(
     message: ChatMessage,
+    senderName: String? = null,
     onTranslate: () -> Unit
 ) {
     val alignment = if (message.isMe) Alignment.CenterEnd else Alignment.CenterStart
@@ -143,6 +185,16 @@ fun ChatBubble(
             modifier = Modifier.fillMaxWidth(0.8f),
             horizontalAlignment = if (message.isMe) Alignment.End else Alignment.Start
         ) {
+            // Show sender name for messages from the other party
+            if (senderName != null) {
+                Text(
+                    text = senderName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 8.dp, bottom = 2.dp)
+                )
+            }
+
             Card(
                 shape = RoundedCornerShape(
                     topStart = 16.dp,
@@ -156,7 +208,7 @@ fun ChatBubble(
                     Text(message.text, color = textColor)
                     
                     if (message.translatedText != null) {
-                        Divider(modifier = Modifier.padding(vertical = 8.dp), color = textColor.copy(alpha = 0.2f))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = textColor.copy(alpha = 0.2f))
                         Text(message.translatedText, color = textColor)
                     }
                 }
@@ -177,3 +229,4 @@ fun ChatBubble(
         }
     }
 }
+

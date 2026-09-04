@@ -34,9 +34,9 @@ import kotlin.math.roundToInt
 fun LoanCalculatorScreen(
     onBack: () -> Unit
 ) {
-    var principal by remember { mutableStateOf(100000f) }
-    var interestRate by remember { mutableStateOf(12f) }
-    var tenureMonths by remember { mutableStateOf(12f) }
+    var principal by remember { androidx.compose.runtime.mutableFloatStateOf(100000f) }
+    var interestRate by remember { androidx.compose.runtime.mutableFloatStateOf(12f) }
+    var tenureMonths by remember { androidx.compose.runtime.mutableFloatStateOf(12f) }
 
     val emi = calculateEMI(principal.toDouble(), interestRate.toDouble(), tenureMonths.toInt())
     val totalPayment = emi * tenureMonths
@@ -142,7 +142,7 @@ fun LoanCalculatorScreen(
                 // Interest Rate Slider
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(stringResource(R.string.interest_rate_p_a), style = MaterialTheme.typography.labelLarge)
-                    Text("${String.format("%.1f", interestRate)}%", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text("${String.format(java.util.Locale.getDefault(), "%.1f", interestRate)}%", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 Slider(
                     value = interestRate,

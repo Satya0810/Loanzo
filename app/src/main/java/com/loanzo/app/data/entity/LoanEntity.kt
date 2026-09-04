@@ -44,12 +44,22 @@ data class LoanEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val closedAt: Long? = null,
     val notes: String = "",
-    val agreementDocumentId: String? = null,
+    // eSign Fields
+    val lenderSignedAt: Long? = null,
+    val borrowerSignedAt: Long? = null,
+    val lenderSignatureUrl: String = "",
+    val borrowerSignatureUrl: String = "",
+    val lenderSelfieUrl: String = "",
+    val borrowerSelfieUrl: String = "",
+    val agreementPdfUrl: String = "",
     val isAgreementSigned: Boolean = false,
-    val agreementUrl: String? = null,
+    
     // Penalty engine fields (Feature 14)
     val penaltyRate: Double = 2.0,
     val penaltyModel: String = "PERCENTAGE", // PERCENTAGE, FLAT, NONE
+    val penaltyGraceDays: Int = 3,
+    val penaltyCapPercent: Double = 100.0,
+    
     // Restructuring / Moratorium fields (Feature 16)
     val originalTenureMonths: Int = 0,
     val moratoriumMonths: Int = 0,

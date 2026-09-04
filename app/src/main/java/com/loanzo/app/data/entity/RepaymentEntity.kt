@@ -30,6 +30,7 @@ data class RepaymentEntity(
     val principalComponent: Double,
     val interestComponent: Double,
     val penalty: Double = 0.0,
+    val penaltyWaived: Boolean = false,
     val timestamp: Long = System.currentTimeMillis(),
     val note: String = ""
 )

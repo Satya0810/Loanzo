@@ -30,6 +30,9 @@ interface RepaymentDao {
     @Query("SELECT SUM(amount) FROM repayments WHERE loanId = :loanId AND status = 'PAID'")
     fun getTotalPaidForLoan(loanId: String): Flow<Double?>
 
+    @Query("SELECT * FROM repayments WHERE loanId IN (SELECT loanId FROM loans WHERE borrowerId = :userId)")
+    fun getAllRepaymentsForBorrower(userId: String): Flow<List<RepaymentEntity>>
+
     @Query("SELECT * FROM repayments WHERE dueDate BETWEEN :startTime AND :endTime AND status = 'SCHEDULED'")
     fun getUpcomingRepayments(startTime: Long, endTime: Long): Flow<List<RepaymentEntity>>
 

@@ -1,1 +1,0 @@
--keep,allowobfuscation,allowshrinking class com.loanzo.app.ui.auth.AuthViewModel

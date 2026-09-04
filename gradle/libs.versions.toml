@@ -19,8 +19,13 @@ firebaseBom = "33.9.0"
 googleServices = "4.4.2"
 androidxBrowser = "1.8.0"
 okhttp = "4.12.0"
+truecaller = "3.3.0"
+biometric = "1.2.0-alpha05"
+playServicesAuth = "21.3.0"
 
 [libraries]
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "androidxBrowser" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
@@ -50,6 +55,11 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-database = { group = "com.google.firebase", name = "firebase-database" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+truecaller-sdk = { group = "com.truecaller.android.sdk", name = "truecaller-sdk", version.ref = "truecaller" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

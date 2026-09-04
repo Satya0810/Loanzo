@@ -34,4 +34,7 @@ object DatabaseModule {
     @Provides fun provideAuditEventDao(db: LoanzoDatabase): AuditEventDao = db.auditEventDao()
     @Provides fun provideGuarantorDao(db: LoanzoDatabase): GuarantorDao = db.guarantorDao()
     @Provides fun provideSyncQueueDao(db: LoanzoDatabase): SyncQueueDao = db.syncQueueDao()
+    @Provides fun provideVerificationDao(db: LoanzoDatabase): VerificationDao = db.verificationDao()
+    @Provides fun provideNotificationDao(db: LoanzoDatabase): NotificationDao = db.notificationDao()
+    @Provides fun provideMarketplaceDao(db: LoanzoDatabase): MarketplaceDao = db.marketplaceDao()
 }

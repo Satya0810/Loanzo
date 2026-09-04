@@ -24,6 +24,7 @@ class SyncWorker(
     @InstallIn(SingletonComponent::class)
     interface SyncWorkerEntryPoint {
         fun syncQueueDao(): SyncQueueDao
+        fun firebaseSyncManager(): com.loanzo.app.data.firebase.FirebaseSyncManager
     }
 
     companion object {
@@ -38,6 +39,7 @@ class SyncWorker(
             SyncWorkerEntryPoint::class.java
         )
         val syncQueueDao = entryPoint.syncQueueDao()
+        val firebaseSyncManager = entryPoint.firebaseSyncManager()
         
         val pendingItems = syncQueueDao.getPendingSyncs()
 
@@ -57,9 +59,8 @@ class SyncWorker(
             syncQueueDao.markAsSyncing(item.syncId)
 
             try {
-                // TODO: Replace with actual API call when backend is ready.
-                // For now, simulate a successful sync.
-                // apiService.sync(item.entityType, item.operation, item.payload)
+                // Sync with Firebase Firestore
+                firebaseSyncManager.syncEntity(item)
                 
                 Log.d(TAG, "Synced ${item.entityType}/${item.entityId} (${item.operation})")
                 syncQueueDao.markAsSynced(item.syncId)

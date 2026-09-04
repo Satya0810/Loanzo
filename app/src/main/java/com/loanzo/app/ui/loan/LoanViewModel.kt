@@ -18,6 +18,13 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
+import com.loanzo.app.data.drive.GoogleDriveManager
+import com.loanzo.app.data.firebase.FirebaseManager
+import com.loanzo.app.util.AgreementGenerator
+import android.graphics.Bitmap
+import android.content.Context
+import java.io.File
+import java.io.FileOutputStream
 
 /** Single item in the generated amortization schedule */
 data class ScheduleItem(
@@ -36,6 +43,7 @@ data class LoanUiState(
     val disbursements: List<DisbursementEntity> = emptyList(),
     val repayments: List<RepaymentEntity> = emptyList(),
     val pledges: List<PledgeEntity> = emptyList(),
+    val guarantors: List<GuarantorEntity> = emptyList(),
     val totalDisbursed: Double = 0.0,
     val totalVerified: Double = 0.0,
     val utilizationPercentage: Float = 0f,
@@ -64,7 +72,8 @@ class LoanViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val payeeDao: PayeeDao,
     private val ruleEngine: RuleEngine,
-    private val leegalityService: LeegalityService
+    private val leegalityService: LeegalityService,
+    private val googleDriveManager: GoogleDriveManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoanUiState())
@@ -76,6 +85,26 @@ class LoanViewModel @Inject constructor(
             val userId = userRepository.getCurrentUserIdSync() ?: return@launch
             loanRepository.getAllLoansForUser(userId).collect { loans ->
                 _uiState.update { it.copy(isLoading = false, loans = loans) }
+            }
+        }
+    }
+
+    fun sendPaymentReminder(context: android.content.Context) {
+        viewModelScope.launch {
+            val loan = _uiState.value.selectedLoan ?: return@launch
+            val nextDue = _uiState.value.nextDueRepayment ?: return@launch
+            val borrower = userRepository.getUserById(loan.borrowerId)
+            
+            if (borrower != null && borrower.fcmToken.isNotBlank()) {
+                val fcmSender = com.loanzo.app.fcm.FcmSender()
+                val success = fcmSender.sendPaymentReminder(context, borrower.fcmToken, nextDue.amount.toString())
+                if (success) {
+                    _uiState.update { it.copy(message = "Reminder sent successfully!") }
+                } else {
+                    _uiState.update { it.copy(message = "Failed to send reminder. Check service account.") }
+                }
+            } else {
+                _uiState.update { it.copy(message = "Borrower has no FCM token registered.") }
             }
         }
     }
@@ -152,6 +181,12 @@ class LoanViewModel @Inject constructor(
                 }
             }
         }
+        // Guarantors
+        viewModelScope.launch {
+            loanRepository.getGuarantorsByLoan(loanId).collect { guarantors ->
+                _uiState.update { it.copy(guarantors = guarantors) }
+            }
+        }
         viewModelScope.launch {
             loanRepository.getAuditTrail("LOAN", loanId).collect { events ->
                 _uiState.update { it.copy(auditTrail = events) }
@@ -159,10 +194,13 @@ class LoanViewModel @Inject constructor(
         }
     }
 
-    /** Generate amortization schedule from loan terms + actual repayment data */
+    /** Generate amortization schedule from loan terms + actual repayment data, accounting for moratorium */
     private fun buildAmortizationSchedule(loan: LoanEntity, repayments: List<RepaymentEntity>): List<ScheduleItem> {
-        val emi = calculateEMI(loan.sanctionedAmount, loan.interestRate, loan.tenureMonths)
-        val dates = generateScheduleDates(loan.createdAt, loan.tenureMonths, loan.repaymentFrequency)
+        val totalMonths = loan.tenureMonths
+        val moratoriumMonths = loan.moratoriumMonths
+        val effectiveTenure = (totalMonths - moratoriumMonths).coerceAtLeast(1)
+        val regularEmi = calculateEMI(loan.sanctionedAmount, loan.interestRate, effectiveTenure)
+        val dates = generateScheduleDates(loan.createdAt, totalMonths, loan.repaymentFrequency)
         val monthlyRate = loan.interestRate / (12 * 100)
         val paidDates = repayments.filter { it.status == "PAID" }.map { it.dueDate }.toSet()
         val now = System.currentTimeMillis()
@@ -170,9 +208,13 @@ class LoanViewModel @Inject constructor(
         var foundUpcoming = false
 
         return dates.mapIndexed { index, date ->
+            val isMoratorium = index < moratoriumMonths
             val interest = remainingPrincipal * monthlyRate
-            val principal = (emi - interest).coerceAtLeast(0.0)
-            remainingPrincipal = (remainingPrincipal - principal).coerceAtLeast(0.0)
+            val principal = if (isMoratorium) 0.0 else (regularEmi - interest).coerceAtLeast(0.0)
+            val installmentAmount = if (isMoratorium) interest else regularEmi
+            if (!isMoratorium) {
+                remainingPrincipal = (remainingPrincipal - principal).coerceAtLeast(0.0)
+            }
 
             // Determine status
             val matchedPaid = repayments.find { it.status == "PAID" && kotlin.math.abs(it.dueDate - date) < 86_400_000L * 7 }
@@ -186,7 +228,7 @@ class LoanViewModel @Inject constructor(
             ScheduleItem(
                 installmentNumber = index + 1,
                 dueDate = date,
-                amount = emi,
+                amount = installmentAmount,
                 principal = principal,
                 interest = interest,
                 status = status
@@ -195,7 +237,7 @@ class LoanViewModel @Inject constructor(
     }
 
     fun createLoan(
-        lenderId: String,
+        counterpartyId: String,
         amount: Double,
         purpose: String,
         loanType: String,
@@ -203,14 +245,30 @@ class LoanViewModel @Inject constructor(
         interestModel: String,
         tenureMonths: Int,
         repaymentFrequency: String,
-        notes: String = ""
+        notes: String = "",
+        penaltyRate: Double = 2.0,
+        penaltyModel: String = "PERCENTAGE",
+        penaltyGraceDays: Int = 3,
+        isGrantMode: Boolean = false
     ) {
         viewModelScope.launch {
-            val borrowerId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val currentUserId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val cleanInput = counterpartyId.trim()
+            val resolvedUser = userRepository.getUserById(cleanInput)
+                ?: userRepository.getUserByUsername(cleanInput.removePrefix("@"))
+                ?: (if (cleanInput.contains("@")) userRepository.getUserByEmail(cleanInput) else null)
+                ?: userRepository.getUserByPhone(cleanInput)
+                ?: userRepository.getUserByPhone("+91$cleanInput")
+                ?: userRepository.getUserByPhone(cleanInput.removePrefix("+91"))
+            val finalCounterpartyId = resolvedUser?.userId ?: cleanInput
+
+            val actualLenderId = if (isGrantMode) currentUserId else finalCounterpartyId
+            val actualBorrowerId = if (isGrantMode) finalCounterpartyId else currentUserId
+
             val loan = LoanEntity(
                 loanId = UUID.randomUUID().toString(),
-                lenderId = lenderId,
-                borrowerId = borrowerId,
+                lenderId = actualLenderId,
+                borrowerId = actualBorrowerId,
                 sanctionedAmount = amount,
                 outstandingAmount = amount,
                 purpose = purpose,
@@ -220,10 +278,14 @@ class LoanViewModel @Inject constructor(
                 tenureMonths = tenureMonths,
                 status = "ACTIVE",
                 repaymentFrequency = repaymentFrequency,
-                notes = notes
+                notes = notes,
+                penaltyRate = penaltyRate,
+                penaltyModel = penaltyModel,
+                penaltyGraceDays = penaltyGraceDays
             )
-            loanRepository.createLoan(loan, borrowerId)
-            _uiState.update { it.copy(loanCreated = true, message = "Loan created successfully") }
+            loanRepository.createLoan(loan, currentUserId)
+            val successMsg = if (isGrantMode) "Loan granted successfully" else "Loan requested successfully"
+            _uiState.update { it.copy(loanCreated = true, message = successMsg) }
         }
     }
 
@@ -408,37 +470,282 @@ class LoanViewModel @Inject constructor(
 
     fun initiateSigning(loanId: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isSigning = true) }
-            val borrowerId = userRepository.getCurrentUserIdSync() ?: return@launch
-            // Need to get UserEntity for the borrower
-            // I'll fetch user logic here (assuming repository has it, actually userRepository might not have a direct sync get user, let's use a flow or just fake the user details for now since we don't have the full UserRepository view, but we can assume getUserById(borrowerId) works or we just pass dummy data if it fails)
-            var borrower = UserEntity(userId = borrowerId, email = "test@loanzo.com", phone = "9999999999", name = "Borrower", role = "BORROWER", kycStatus = "VERIFIED")
-            // In a real app we fetch it: val borrower = userRepository.getUserById(borrowerId) ?: return@launch
+            // No longer using Leegality; just triggering navigation to AgreementSigningScreen
+            // This is handled by the UI when it reads the button click.
+            // We can just keep a dummy method if needed, or remove it.
+        }
+    }
 
+    fun completeSignature(context: Context, loanId: String, signatureBitmap: Bitmap, selfieBitmap: Bitmap, biometricSuccess: Boolean) {
+        if (!biometricSuccess) return
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, message = "Uploading signature...") }
+            val currentUserId = userRepository.getCurrentUserIdSync() ?: return@launch
             val loan = loanRepository.getLoanById(loanId) ?: return@launch
-            val signUrl = leegalityService.createSigningWorkflow(loan, borrower)
-            
-            if (signUrl != null) {
-                _uiState.update { it.copy(isSigning = false, signUrl = signUrl) }
+
+            // Save Bitmaps to temporary files
+            val sigFile = File(context.cacheDir, "sig_${currentUserId}_${System.currentTimeMillis()}.png")
+            FileOutputStream(sigFile).use { signatureBitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+
+            val selfieFile = File(context.cacheDir, "selfie_${currentUserId}_${System.currentTimeMillis()}.png")
+            FileOutputStream(selfieFile).use { selfieBitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+
+            // Upload to Google Drive
+            val sigUri = android.net.Uri.fromFile(sigFile)
+            val selfieUri = android.net.Uri.fromFile(selfieFile)
+            val sigUrl = googleDriveManager.uploadFile(context, sigUri, "SIGNATURE_${loanId}_${currentUserId}.png").getOrNull() ?: ""
+            val selfieUrl = googleDriveManager.uploadFile(context, selfieUri, "SELFIE_${loanId}_${currentUserId}.png").getOrNull() ?: ""
+
+            val now = System.currentTimeMillis()
+            var updatedLoan = loan
+
+            if (currentUserId == loan.lenderId) {
+                updatedLoan = updatedLoan.copy(
+                    lenderSignedAt = now,
+                    lenderSignatureUrl = sigUrl,
+                    lenderSelfieUrl = selfieUrl
+                )
+            } else if (currentUserId == loan.borrowerId) {
+                updatedLoan = updatedLoan.copy(
+                    borrowerSignedAt = now,
+                    borrowerSignatureUrl = sigUrl,
+                    borrowerSelfieUrl = selfieUrl
+                )
+            }
+
+            loanRepository.updateLoan(updatedLoan, currentUserId, "Signed loan agreement")
+
+            // Check if BOTH have signed
+            if (updatedLoan.lenderSignedAt != null && updatedLoan.borrowerSignedAt != null) {
+                _uiState.update { it.copy(message = "Both parties signed! Generating final PDF...") }
+                generateAndUploadAgreement(context, updatedLoan, currentUserId)
             } else {
-                _uiState.update { it.copy(isSigning = false, message = "Failed to generate signing URL. Check API keys.") }
+                _uiState.update { it.copy(isLoading = false, message = "Signature saved! Waiting for the other party to sign.") }
+                loadLoanDetail(loanId)
             }
         }
     }
 
-    fun markAgreementSigned(loanId: String) {
-        viewModelScope.launch {
-            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
-            val loan = loanRepository.getLoanById(loanId) ?: return@launch
-            val updatedLoan = loan.copy(isAgreementSigned = true, agreementDocumentId = java.util.UUID.randomUUID().toString())
-            loanRepository.updateLoan(updatedLoan, userId, "Loan agreement signed digitally")
+    private suspend fun generateAndUploadAgreement(context: Context, loan: LoanEntity, currentUserId: String) {
+        val lender = userRepository.getUserById(loan.lenderId) ?: return
+        val borrower = userRepository.getUserById(loan.borrowerId) ?: return
+        
+        val pdfFile = AgreementGenerator.generateAgreementPdf(context, loan, lender, borrower)
+        
+        if (pdfFile != null) {
+            val pdfUri = android.net.Uri.fromFile(pdfFile)
+            val pdfUrl = googleDriveManager.uploadFile(context, pdfUri, "LOAN_AGREEMENT_${loan.loanId}.pdf").getOrNull()
             
-            _uiState.update { it.copy(message = "Agreement signed successfully!", signUrl = null) }
-            loadLoanDetail(loanId)
+            if (pdfUrl != null) {
+                val finalLoan = loan.copy(
+                    isAgreementSigned = true,
+                    agreementPdfUrl = pdfUrl
+                )
+                loanRepository.updateLoan(finalLoan, currentUserId, "Final Agreement PDF Generated")
+                _uiState.update { it.copy(isLoading = false, message = "Agreement finalized and securely stored!") }
+                loadLoanDetail(loan.loanId)
+            } else {
+                _uiState.update { it.copy(isLoading = false, message = "Failed to upload final PDF.") }
+            }
+        } else {
+            _uiState.update { it.copy(isLoading = false, message = "Failed to generate final PDF.") }
         }
+    }
+
+    fun markAgreementSigned(loanId: String) {
+        // Deprecated, handled by completeSignature
     }
 
     fun clearSignUrl() {
         _uiState.update { it.copy(signUrl = null) }
+    }
+
+    // Export Reports (Feature 13)
+    fun exportLoanSummary(context: android.content.Context) {
+        val loan = _uiState.value.selectedLoan ?: return
+        val repayments = _uiState.value.repayments
+        val file = com.loanzo.app.util.ReportExporter.generateLoanSummaryPdf(context, loan, repayments)
+        if (file != null) {
+            com.loanzo.app.util.ReportExporter.shareFile(context, file, "application/pdf")
+        } else {
+            _uiState.update { it.copy(message = "Failed to generate PDF report") }
+        }
+    }
+
+    fun exportInterestCertificate(context: android.content.Context) {
+        val loan = _uiState.value.selectedLoan ?: return
+        val repayments = _uiState.value.repayments
+        val file = com.loanzo.app.util.ReportExporter.generateInterestCertificatePdf(context, loan, repayments)
+        if (file != null) {
+            com.loanzo.app.util.ReportExporter.shareFile(context, file, "application/pdf")
+        } else {
+            _uiState.update { it.copy(message = "Failed to generate Interest Certificate") }
+        }
+    }
+
+    fun exportRepaymentsCsv(context: android.content.Context) {
+        val loan = _uiState.value.selectedLoan ?: return
+        val repayments = _uiState.value.repayments
+        val file = com.loanzo.app.util.ReportExporter.generateRepaymentCsv(context, loan, repayments)
+        if (file != null) {
+            com.loanzo.app.util.ReportExporter.shareFile(context, file, "text/csv")
+        } else {
+            _uiState.update { it.copy(message = "Failed to generate CSV") }
+        }
+    }
+
+    // Penalty Waiver (Feature 14)
+    fun waivePenalty(repayment: RepaymentEntity) {
+        viewModelScope.launch {
+            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val updated = repayment.copy(penalty = 0.0, penaltyWaived = true)
+            loanRepository.updateRepayment(updated, userId, "Penalty waived for repayment ${repayment.repaymentId}")
+            _uiState.update { it.copy(message = "Penalty waived successfully") }
+        }
+    }
+
+    // Guarantor Support (Feature 15)
+    fun addGuarantor(
+        loanId: String,
+        name: String,
+        phone: String,
+        email: String,
+        panNumber: String,
+        relationship: String
+    ) {
+        viewModelScope.launch {
+            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val guarantor = GuarantorEntity(
+                guarantorId = UUID.randomUUID().toString(),
+                loanId = loanId,
+                name = name,
+                phone = phone,
+                email = email,
+                panNumber = panNumber,
+                relationship = relationship,
+                consentStatus = "PENDING"
+            )
+            loanRepository.createGuarantor(guarantor, userId)
+            _uiState.update { it.copy(message = "Guarantor added") }
+        }
+    }
+
+    fun updateGuarantorConsent(guarantorId: String, status: String) {
+        viewModelScope.launch {
+            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val guarantor = loanRepository.getGuarantorById(guarantorId) ?: return@launch
+            val updated = guarantor.copy(
+                consentStatus = status,
+                consentTimestamp = System.currentTimeMillis()
+            )
+            loanRepository.updateGuarantor(updated, userId, "Guarantor consent updated to $status")
+            _uiState.update { it.copy(message = "Guarantor consent: $status") }
+        }
+    }
+
+    // Loan Restructure / Moratorium (Feature 16)
+    fun restructureLoan(
+        loanId: String,
+        newTenureMonths: Int,
+        moratoriumMonths: Int
+    ) {
+        viewModelScope.launch {
+            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val loan = loanRepository.getLoanById(loanId) ?: return@launch
+            val origTenure = if (loan.originalTenureMonths > 0) loan.originalTenureMonths else loan.tenureMonths
+            val updatedLoan = loan.copy(
+                originalTenureMonths = origTenure,
+                tenureMonths = newTenureMonths,
+                moratoriumMonths = moratoriumMonths,
+                isRestructured = true,
+                restructuredAt = System.currentTimeMillis()
+            )
+            loanRepository.updateLoan(
+                updatedLoan,
+                userId,
+                "Loan restructured: tenure $newTenureMonths mos, moratorium $moratoriumMonths mos"
+            )
+            _uiState.update { it.copy(message = "Loan restructured successfully") }
+            loadLoanDetail(loanId)
+        }
+    }
+
+    // Lifecycle Flow: User Lookup & Transactors
+    fun searchUsers(query: String): Flow<List<UserEntity>> = userRepository.searchUsers(query)
+    fun getAllRegisteredUsers(): Flow<List<UserEntity>> = userRepository.getAllUsers()
+
+    // Lifecycle Flow: Acceptance Gate
+    fun acceptProposal(loanId: String) {
+        viewModelScope.launch {
+            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            loanRepository.updateLoanStatus(loanId, "DRAFT_PENDING_SIGNATURE", userId, "Proposal accepted by counterparty")
+            _uiState.update { it.copy(message = "Proposal accepted! You can now review and sign the agreement.") }
+            loadLoanDetail(loanId)
+        }
+    }
+
+    fun declineProposal(loanId: String) {
+        viewModelScope.launch {
+            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            loanRepository.updateLoanStatus(loanId, "REJECTED", userId, "Proposal declined")
+            _uiState.update { it.copy(message = "Proposal declined.") }
+            loadLoanDetail(loanId)
+        }
+    }
+
+    // Lifecycle Flow: Disbursal Confirmation
+    fun disburseLoan(loanId: String, amount: Double, utr: String, notes: String = "") {
+        viewModelScope.launch {
+            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val disb = DisbursementEntity(
+                disbursementId = UUID.randomUUID().toString(),
+                loanId = loanId,
+                amount = amount,
+                payeeId = null,
+                payeeName = "Borrower",
+                purpose = if (notes.isNotBlank()) notes else "Direct UPI Disbursal",
+                purposeCategory = "OTHER",
+                verificationStatus = "VERIFIED",
+                ruleEngineResult = "AUTO_APPROVED",
+                approvalStatus = "APPROVED",
+                transactionRef = utr,
+                timestamp = System.currentTimeMillis(),
+                lenderNote = "Funds disbursed via UPI (UTR: $utr)"
+            )
+            loanRepository.createDisbursement(disb, userId)
+            loanRepository.updateLoanStatus(loanId, "ACTIVE", userId, "Funds disbursed via UPI (UTR: $utr). Loan activated.")
+            _uiState.update { it.copy(message = "Disbursement recorded! Loan is now ACTIVE.") }
+            loadLoanDetail(loanId)
+        }
+    }
+
+    // Lifecycle Flow: NOC Certificate Generation
+    fun exportNocCertificate(context: android.content.Context, loan: LoanEntity) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val lender = userRepository.getUserById(loan.lenderId) ?: UserEntity(userId = loan.lenderId, name = "Lender", email = "", phone = "", role = "LENDER", kycStatus = "VERIFIED")
+            val borrower = userRepository.getUserById(loan.borrowerId) ?: UserEntity(userId = loan.borrowerId, name = "Borrower", email = "", phone = "", role = "BORROWER", kycStatus = "VERIFIED")
+            val file = com.loanzo.app.util.AgreementGenerator.generateLoanNocCertificate(context, loan, lender, borrower)
+            if (file != null) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    try {
+                        val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, "application/pdf")
+                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(android.content.Intent.createChooser(intent, "Open NOC Certificate").apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        })
+                        _uiState.update { it.copy(message = "NOC Clearance Certificate generated successfully!") }
+                    } catch (_: Exception) {
+                        _uiState.update { it.copy(message = "NOC saved at ${file.absolutePath}") }
+                    }
+                }
+            } else {
+                _uiState.update { it.copy(message = "Failed to generate NOC Certificate.") }
+            }
+        }
     }
 }

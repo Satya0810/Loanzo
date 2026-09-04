@@ -12,7 +12,20 @@
           "package_name": "com.loanzo.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1028516460996-shu08hcpi8p9rbpvg395scdc5buokfve.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.loanzo.app",
+            "certificate_hash": "56c33cec6bc9ed712ea8c008c0766a1f423c7e3d"
+          }
+        },
+        {
+          "client_id": "1028516460996-e11ufotnevs2krggi3jni9qdhnvmjuhl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBdg0LxTJj4baEtSDqup0pW3fHzU8JkXQ8"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1028516460996-e11ufotnevs2krggi3jni9qdhnvmjuhl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

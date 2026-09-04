@@ -70,3 +70,23 @@ val StatusRejected = Red400
 val StatusMismatch = Orange500
 val StatusBlocked = Red500
 val StatusAutoApproved = Emerald500
+
+// Category colors for Pocket-Log style visual tagging
+val CategoryMedical = Color(0xFF06B6D4) // Cyan
+val CategoryMedicalBg = Color(0x1F06B6D4)
+val CategoryEducation = Color(0xFF3B82F6) // Blue
+val CategoryEducationBg = Color(0x1F3B82F6)
+val CategoryBusiness = Color(0xFFF59E0B) // Amber
+val CategoryBusinessBg = Color(0x1FF59E0B)
+val CategoryPersonal = Color(0xFFEC4899) // Pink / Coral
+val CategoryPersonalBg = Color(0x1FEC4899)
+val CategoryHousing = Color(0xFF8B5CF6) // Purple
+val CategoryHousingBg = Color(0x1F8B5CF6)
+val CategoryAgriculture = Color(0xFF10B981) // Emerald
+val CategoryAgricultureBg = Color(0x1F10B981)
+val CategoryOther = Color(0xFF64748B) // Slate
+val CategoryOtherBg = Color(0x1F64748B)
+
+// Standard text colors
+val TextPrimary = Color.White
+val TextSecondary = Gray400

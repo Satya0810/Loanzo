@@ -30,6 +30,12 @@ interface UserDao {
     @Query("SELECT * FROM users")
     fun getAllUsers(): Flow<List<UserEntity>>
 
+    @Query("SELECT * FROM users WHERE username = :username LIMIT 1")
+    suspend fun getUserByUsername(username: String): UserEntity?
+
+    @Query("SELECT * FROM users WHERE name LIKE '%' || :query || '%' OR phone LIKE '%' || :query || '%' OR username LIKE '%' || :query || '%' LIMIT 10")
+    fun searchUsers(query: String): Flow<List<UserEntity>>
+
     @Delete
     suspend fun deleteUser(user: UserEntity)
 }

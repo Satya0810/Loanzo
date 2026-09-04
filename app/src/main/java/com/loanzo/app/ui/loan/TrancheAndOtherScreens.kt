@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.loanzo.app.domain.RuleEvaluation
 import com.loanzo.app.domain.RuleSeverity
 import com.loanzo.app.domain.model.PurposeCategory
@@ -243,7 +244,19 @@ fun MakeRepaymentScreen(
 ) {
     var amount by remember { mutableStateOf("") }
     var transactionRef by remember { mutableStateOf("") }
+    var showQrDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    if (showQrDialog) {
+        val amountToPay = amount.toDoubleOrNull() ?: outstandingAmount
+        UpiQrCodeDialog(
+            payeeName = "Loanzo Repayments",
+            payeeUpiId = "merchant@upi",
+            amount = amountToPay,
+            loanPurpose = "Loan $loanId Repayment",
+            onDismiss = { showQrDialog = false }
+        )
+    }
 
     val upiLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK || result.resultCode == Activity.RESULT_CANCELED) {
@@ -292,7 +305,7 @@ fun MakeRepaymentScreen(
                 Text(stringResource(R.string.outstanding_balance), style = MaterialTheme.typography.labelMedium, color = Gray300)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "₹${String.format("%,.2f", outstandingAmount)}",
+                    "₹${String.format(java.util.Locale.getDefault(), "%,.2f", outstandingAmount)}",
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold,
                     color = if (outstandingAmount > 0) Gold400 else Emerald400
@@ -321,7 +334,7 @@ fun MakeRepaymentScreen(
                     "25%" to outstandingAmount * 0.25
                 ).forEach { (label, value) ->
                     AssistChip(
-                        onClick = { amount = String.format("%.0f", value) },
+                        onClick = { amount = String.format(java.util.Locale.getDefault(), "%.0f", value) },
                         label = { Text(label) },
                         shape = RoundedCornerShape(10.dp)
                     )
@@ -339,30 +352,49 @@ fun MakeRepaymentScreen(
                 shape = RoundedCornerShape(14.dp)
             )
 
-            Button(
-                onClick = { 
-                    val amountToPay = amount.toDoubleOrNull() ?: 0.0
-                    if (amountToPay > 0 && UpiHelper.isUpiAvailable(context)) {
-                        val intent = UpiHelper.createPaymentIntent(
-                            payeeUpiId = "merchant@upi", // Replace with your actual merchant UPI ID
-                            payeeName = "Loanzo Repayments",
-                            amount = amountToPay,
-                            transactionNote = "Repayment for Loan $loanId"
-                        )
-                        upiLauncher.launch(intent)
-                    } else if (amountToPay <= 0) {
-                        Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "No UPI app found on this device", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(Icons.Default.Payment, null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.pay_directly_with_upi_app))
+                Button(
+                    onClick = { 
+                        val amountToPay = amount.toDoubleOrNull() ?: 0.0
+                        if (amountToPay > 0 && UpiHelper.isUpiAvailable(context)) {
+                            val intent = UpiHelper.createPaymentIntent(
+                                payeeUpiId = "merchant@upi",
+                                payeeName = "Loanzo Repayments",
+                                amount = amountToPay,
+                                transactionNote = "Repayment for Loan $loanId"
+                            )
+                            upiLauncher.launch(intent)
+                        } else if (amountToPay <= 0) {
+                            Toast.makeText(context, "Enter a valid amount", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "No UPI app found on this device", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.weight(1f).height(50.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Payment, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(stringResource(R.string.pay_directly_with_upi_app), fontSize = 12.sp, maxLines = 1)
+                }
+
+                OutlinedButton(
+                    onClick = { showQrDialog = true },
+                    modifier = Modifier.weight(1f).height(50.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                ) {
+                    Icon(Icons.Default.QrCodeScanner, null, modifier = Modifier.size(18.dp), tint = Emerald400)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Show QR Code", fontSize = 12.sp, color = Color.White, maxLines = 1)
+                }
             }
 
             Text(
@@ -373,17 +405,15 @@ fun MakeRepaymentScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = { onSubmit(amount.toDoubleOrNull() ?: 0.0, transactionRef) },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Color.White),
-                enabled = amount.isNotBlank() && transactionRef.isNotBlank()
-            ) {
-                Icon(Icons.Default.Payment, null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.record_repayment), fontWeight = FontWeight.Bold)
-            }
+            // Slide to Repay (Cred / Jupiter inspired)
+            SwipeToConfirmButton(
+                text = "Slide to Record Repayment ➔",
+                enabled = amount.isNotBlank() && transactionRef.isNotBlank(),
+                thumbColor = Emerald400,
+                trackColors = listOf(Navy700, Navy800),
+                activeTrackColor = Emerald400.copy(alpha = 0.25f),
+                onConfirm = { onSubmit(amount.toDoubleOrNull() ?: 0.0, transactionRef) }
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
         }

@@ -40,6 +40,17 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources.excludes.add("META-INF/DEPENDENCIES")
+        resources.excludes.add("META-INF/LICENSE")
+        resources.excludes.add("META-INF/LICENSE.txt")
+        resources.excludes.add("META-INF/license.txt")
+        resources.excludes.add("META-INF/NOTICE")
+        resources.excludes.add("META-INF/NOTICE.txt")
+        resources.excludes.add("META-INF/notice.txt")
+        resources.excludes.add("META-INF/ASL2.0")
+        resources.excludes.add("META-INF/*.kotlin_module") 
+    }
 }
 
 dependencies {
@@ -87,12 +98,28 @@ dependencies {
     // Gson
     implementation(libs.gson)
 
-    // Firebase
+    // Firebase & Google Auth
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.database)
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.messaging)
+    implementation(libs.play.services.auth)
+    implementation("com.google.api-client:google-api-client-android:1.33.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0")
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.16.0")
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.16.0")
+    // Biometric Authentication
+    implementation(libs.androidx.biometric)
+
 
     // Networking & Browser for Didit KYC
     implementation(libs.androidx.browser)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+
+    // OTPless
+    implementation("io.github.otpless-tech:otpless-android-sdk:2.1.8")
+
 }

@@ -58,11 +58,11 @@ class RestructuringEngine @Inject constructor() {
     /**
      * Calculate the new EMI after restructuring.
      */
-    fun calculateNewEMI(loan: LoanEntity): Double {
+    fun calculateNewEMI(loan: LoanEntity, remainingTenureMonths: Int = loan.tenureMonths): Double {
         return calculateEMI(
             principal = loan.outstandingAmount,
             annualRate = loan.interestRate,
-            tenureMonths = loan.tenureMonths
+            tenureMonths = remainingTenureMonths.coerceAtLeast(1)
         )
     }
 }

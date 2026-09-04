@@ -4,7 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -25,7 +25,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val authViewModel: AuthViewModel by viewModels()
 
@@ -35,14 +35,35 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleDeepLinkIntent(intent)
+
+        // Truecaller OAuth removed per security audit
+
         setContent {
             val themeMode by userRepository.getThemeMode().collectAsState(initial = "SYSTEM")
+            val appLanguage by userRepository.getAppLanguage().collectAsState(initial = "en")
+
             val isDark = when (themeMode) {
                 "DARK" -> true
                 "LIGHT" -> false
                 else -> isSystemInDarkTheme()
             }
-            CompositionLocalProvider(LocalUserRepository provides userRepository) {
+
+            val currentContext = androidx.compose.ui.platform.LocalContext.current
+            androidx.compose.runtime.LaunchedEffect(appLanguage) {
+                try {
+                    val locale = java.util.Locale(appLanguage)
+                    java.util.Locale.setDefault(locale)
+                    val resources = currentContext.resources
+                    val config = android.content.res.Configuration(resources.configuration)
+                    config.setLocale(locale)
+                    @Suppress("DEPRECATION")
+                    resources.updateConfiguration(config, resources.displayMetrics)
+                } catch (_: Exception) {}
+            }
+
+            CompositionLocalProvider(
+                LocalUserRepository provides userRepository
+            ) {
                 LoanzoTheme(darkTheme = isDark) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
@@ -63,15 +84,26 @@ class MainActivity : ComponentActivity() {
     private fun handleDeepLinkIntent(intent: Intent?) {
         val uri: Uri? = intent?.data
         if (uri != null) {
-            val isCustomScheme = uri.scheme == "loanzo" && uri.host == "kyc-callback"
-            val isHttpsScheme = uri.scheme == "https" && uri.host == "loanzo.app" && (uri.path?.contains("kyc-callback") == true)
+            val isDigiLockerScheme = uri.scheme == "loanzo" && uri.host == "digilocker-callback"
 
-            if (isCustomScheme || isHttpsScheme) {
-                val sessionId = uri.getQueryParameter("session_id") ?: ""
-                val status = uri.getQueryParameter("status") ?: "Approved"
-                authViewModel.handleDiditCallback(sessionId, status)
-                Toast.makeText(this, "Didit KYC status: $status", Toast.LENGTH_SHORT).show()
+            if (isDigiLockerScheme) {
+                android.util.Log.d("MainActivity", "DigiLocker callback URI: $uri")
+                val error = uri.getQueryParameter("error")
+                val code = uri.getQueryParameter("code")
+                    ?: uri.getQueryParameter("session_id")
+                    ?: uri.getQueryParameter("sessionId")
+                    ?: uri.getQueryParameter("status")
+                    ?: "SUCCESS"
+                val returnedSessionId = uri.getQueryParameter("session_id") ?: uri.getQueryParameter("sessionId")
+
+                if (error.isNullOrBlank() || error.equals("null", ignoreCase = true)) {
+                    authViewModel.handleDigiLockerCallback(code, returnedSessionId)
+                    Toast.makeText(this, "DigiLocker Authorization Received. Verifying documents...", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, "DigiLocker Verification Cancelled: $error", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
+
 }

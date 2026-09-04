@@ -34,7 +34,7 @@ object UpiHelper {
             append("upi://pay?")
             append("pa=$payeeUpiId")
             append("&pn=${Uri.encode(payeeName)}")
-            append("&am=${"%.2f".format(amount)}")
+            append("&am=${String.format(java.util.Locale.US, "%.2f", amount)}")
             append("&cu=INR")
             append("&tn=${Uri.encode(transactionNote)}")
             if (transactionRef.isNotBlank()) {
@@ -70,7 +70,7 @@ object UpiHelper {
             append("upi://pay?")
             append("pa=$payeeUpiId")
             append("&pn=${Uri.encode(payeeName)}")
-            append("&am=${"%.2f".format(amount)}")
+            append("&am=${String.format(java.util.Locale.US, "%.2f", amount)}")
             append("&cu=INR")
             append("&tn=${Uri.encode(transactionNote)}")
         }

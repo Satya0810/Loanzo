@@ -36,6 +36,19 @@ interface DisbursementDao {
     @Query("SELECT purposeCategory, SUM(amount) as total FROM disbursements WHERE loanId IN (SELECT loanId FROM loans WHERE borrowerId = :userId) AND approvalStatus = 'APPROVED' GROUP BY purposeCategory")
     fun getCategoryBreakdownForUser(userId: String): Flow<List<CategoryBreakdown>>
 
+    @Query("""
+        SELECT 
+            CAST(strftime('%Y', timestamp / 1000, 'unixepoch') AS TEXT) || '-' || 
+            CAST(strftime('%m', timestamp / 1000, 'unixepoch') AS TEXT) as monthLabel,
+            SUM(amount) as total
+        FROM disbursements 
+        WHERE loanId IN (SELECT loanId FROM loans WHERE borrowerId = :userId) 
+        AND approvalStatus = 'APPROVED'
+        GROUP BY strftime('%Y-%m', timestamp / 1000, 'unixepoch')
+        ORDER BY strftime('%Y-%m', timestamp / 1000, 'unixepoch') ASC
+    """)
+    fun getMonthlySpendingTrend(userId: String): Flow<List<MonthlySpending>>
+
     @Delete
     suspend fun deleteDisbursement(disbursement: DisbursementEntity)
 }

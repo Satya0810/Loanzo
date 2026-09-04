@@ -228,7 +228,8 @@ fun LoanSummaryCard(
     counterpartyName: String,
     date: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    loanType: String = ""
 ) {
     val statusColor = when (status) {
         "ACTIVE" -> StatusVerified
@@ -238,63 +239,131 @@ fun LoanSummaryCard(
         else -> Gray400
     }
 
+    val catStyle = getCategoryStyle(loanType.ifBlank { purpose })
+    val repaidAmount = (amount - outstanding).coerceAtLeast(0.0)
+    val progressRatio = if (amount > 0) (repaidAmount / amount).toFloat() else 0f
+    val progressPercent = (progressRatio * 100).toInt().coerceIn(0, 100)
+
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .border(0.5.dp, GlassBorder, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            containerColor = SurfaceDarkCard.copy(alpha = 0.9f)
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Category Icon Badge (Pocket-Log style)
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(catStyle.bgColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = catStyle.icon,
+                        contentDescription = catStyle.label,
+                        tint = catStyle.iconColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = purpose,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "with $counterpartyName",
+                        text = "with $counterpartyName • $date",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Gray400,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 StatusBadge(text = status, color = statusColor)
             }
-            Spacer(modifier = Modifier.height(12.dp))
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Amount summary row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(stringResource(R.string.sanctioned), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(amount.toInrString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(stringResource(R.string.outstanding), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        outstanding.toInrString(),
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = stringResource(R.string.outstanding),
+                        fontSize = 11.sp,
+                        color = Gray400
+                    )
+                    Text(
+                        text = outstanding.toInrString(),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (outstanding > 0) Gold400 else Emerald400
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = stringResource(R.string.sanctioned),
+                        fontSize = 11.sp,
+                        color = Gray400
+                    )
+                    Text(
+                        text = amount.toInrString(),
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (outstanding > 0) Orange500 else StatusVerified
+                        color = Color.White
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = date,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
+
+            // Visual Repayment Progress Bar (Dunio & Pocket-Log style)
+            if (status == "ACTIVE" || status == "CLOSED") {
+                Spacer(modifier = Modifier.height(10.dp))
+                LoanProgressBar(
+                    progress = progressRatio,
+                    fillColors = listOf(Emerald400, Emerald500),
+                    height = 5
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "${repaidAmount.toInrString()} repaid",
+                        fontSize = 10.5.sp,
+                        color = Gray400
+                    )
+                    Text(
+                        text = "$progressPercent%",
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (progressPercent == 100) Emerald400 else Gray300
+                    )
+                }
+            }
         }
     }
 }

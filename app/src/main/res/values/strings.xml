@@ -53,6 +53,8 @@
     <string name="lender_dashboard">Lender Dashboard</string>
     <string name="portfolio_overview">Portfolio Overview</string>
     <string name="total_lent">Total Lent</string>
+    <string name="tab_lent">Lent</string>
+    <string name="tab_borrowed">Borrowed</string>
     <string name="total">Total</string>
     <string name="active">Active</string>
     <string name="pending">Pending</string>
@@ -134,4 +136,20 @@
     <string name="estimated_value">Estimated Value (₹)</string>
     <string name="weight_grams">Weight (grams)</string>
     <string name="my_loans">My Loans</string>
-</resources>
+    <string name="nav_home">Home</string>
+    <string name="nav_loans">Loans</string>
+    <string name="nav_alerts">Alerts</string>
+    <string name="nav_profile">Profile</string>
+    <string name="kyc_documents">KYC Documents</string>
+    <string name="appearance">Appearance</string>
+    <string name="app_language">App Language</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="pan_card_doc">PAN Card Document</string>
+    <string name="aadhaar_card_doc">Aadhaar Document</string>
+    <string name="no_loans_yet">No loans yet</string>
+    <string name="tap_to_create_first_loan">Tap + to create your first loan</string>
+    <string name="financial_health">Financial Health</string>
+    <string name="alerts_notifications">Alerts &amp; Notifications</string>
+</resources>

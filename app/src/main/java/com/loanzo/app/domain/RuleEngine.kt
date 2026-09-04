@@ -220,7 +220,7 @@ class RuleEngine @Inject constructor() {
     }
 
     private fun formatAmount(amount: Double): String {
-        return String.format("%,.2f", amount)
+        return String.format(java.util.Locale.getDefault(), "%,.2f", amount)
     }
 }
 

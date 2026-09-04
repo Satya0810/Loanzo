@@ -53,8 +53,8 @@ object ReportGenerator {
             "Loan ID" to loan.loanId,
             "Purpose" to loan.purpose,
             "Type" to loan.loanType,
-            "Sanctioned" to "₹${String.format("%,.2f", loan.sanctionedAmount)}",
-            "Outstanding" to "₹${String.format("%,.2f", loan.outstandingAmount)}",
+            "Sanctioned" to "₹${String.format(java.util.Locale.getDefault(), "%,.2f", loan.sanctionedAmount)}",
+            "Outstanding" to "₹${String.format(java.util.Locale.getDefault(), "%,.2f", loan.outstandingAmount)}",
             "Interest" to "${loan.interestRate}% (${loan.interestModel})",
             "Tenure" to "${loan.tenureMonths} months",
             "Status" to loan.status,
@@ -81,7 +81,7 @@ object ReportGenerator {
 
             repayments.take(25).forEach { rep ->
                 if (y > 780f) return@forEach // prevent overflow
-                canvas.drawText("₹${String.format("%,.2f", rep.amount)}", margin, y, bodyPaint)
+                canvas.drawText("₹${String.format(java.util.Locale.getDefault(), "%,.2f", rep.amount)}", margin, y, bodyPaint)
                 canvas.drawText(rep.status, margin + 120f, y, bodyPaint)
                 canvas.drawText(dateFormat.format(Date(rep.dueDate)), margin + 220f, y, bodyPaint)
                 canvas.drawText(if (rep.paidDate != null) dateFormat.format(Date(rep.paidDate)) else "—", margin + 340f, y, bodyPaint)
@@ -127,8 +127,8 @@ object ReportGenerator {
         val items = listOf(
             "Loan ID" to loan.loanId,
             "Loan Type" to loan.loanType,
-            "Total Principal Repaid" to "₹${String.format("%,.2f", totalPrincipal)}",
-            "Total Interest Paid" to "₹${String.format("%,.2f", totalInterest)}",
+            "Total Principal Repaid" to "₹${String.format(java.util.Locale.getDefault(), "%,.2f", totalPrincipal)}",
+            "Total Interest Paid" to "₹${String.format(java.util.Locale.getDefault(), "%,.2f", totalInterest)}",
             "Interest Rate" to "${loan.interestRate}%",
             "Interest Model" to loan.interestModel
         )

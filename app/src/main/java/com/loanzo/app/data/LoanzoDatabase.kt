@@ -15,9 +15,13 @@ import com.loanzo.app.data.entity.*
         PledgeEntity::class,
         AuditEventEntity::class,
         GuarantorEntity::class,
-        SyncQueueEntity::class
+        SyncQueueEntity::class,
+        VerificationEntity::class,
+        NotificationEntity::class,
+        MarketplacePostEntity::class,
+        MarketplaceBidEntity::class
     ],
-    version = 3,
+    version = 11,
     exportSchema = false
 )
 abstract class LoanzoDatabase : RoomDatabase() {
@@ -30,4 +34,7 @@ abstract class LoanzoDatabase : RoomDatabase() {
     abstract fun auditEventDao(): AuditEventDao
     abstract fun guarantorDao(): GuarantorDao
     abstract fun syncQueueDao(): SyncQueueDao
+    abstract fun verificationDao(): VerificationDao
+    abstract fun notificationDao(): NotificationDao
+    abstract fun marketplaceDao(): MarketplaceDao
 }

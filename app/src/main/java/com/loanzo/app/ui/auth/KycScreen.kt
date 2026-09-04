@@ -1,16 +1,17 @@
 package com.loanzo.app.ui.auth
 
-import androidx.compose.ui.res.stringResource
-import com.loanzo.app.R
-
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -21,43 +22,80 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.loanzo.app.R
 import com.loanzo.app.ui.theme.*
+import com.loanzo.app.util.getDisplayProfilePhoto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KycScreen(
     currentStep: Int,
-    isDiditLoading: Boolean = false,
-    diditStatus: String? = null,
-    onStartDiditKyc: () -> Unit = {},
+    user: com.loanzo.app.data.entity.UserEntity?,
+    isDigiLockerLoading: Boolean = false,
+    isUploadingPan: Boolean = false,
+    isUploadingAadhaar: Boolean = false,
+    isUploadingSelfie: Boolean = false,
+    error: String? = null,
+    onClearError: () -> Unit = {},
+    onStartDigiLockerKyc: () -> Unit = {},
+    onQuickSimulate: () -> Unit = {},
     onCompleteStep: (step: Int, data: Map<String, String>) -> Unit,
+    onUploadSelfie: (Bitmap) -> Unit,
+    onUploadDocument: (String, android.net.Uri) -> Unit,
     onFinish: () -> Unit
 ) {
-    var panNumber by remember { mutableStateOf("") }
-    var aadhaarNumber by remember { mutableStateOf("") }
-    var upiId by remember { mutableStateOf("") }
-    var bankAccount by remember { mutableStateOf("") }
-    var currentKycStep by remember { mutableIntStateOf(currentStep.coerceAtLeast(1)) }
+    val context = LocalContext.current
+    var selfieBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    val steps = listOf(
-        KycStepInfo("PAN Verification", Icons.Default.CreditCard, "Enter your PAN card number"),
-        KycStepInfo("Aadhaar KYC", Icons.Default.Badge, "Verify your Aadhaar identity"),
-        KycStepInfo("Selfie + Liveness", Icons.Default.CameraAlt, "Take a selfie for identity match"),
-        KycStepInfo("Bank / UPI ID", Icons.Default.AccountBalance, "Link your payment identity")
-    )
+    LaunchedEffect(error) {
+        error?.let {
+            android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show()
+            onClearError()
+        }
+    }
+
+    var panImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var aadhaarImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+    val panLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> panImageUri = uri }
+    val aadhaarLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> aadhaarImageUri = uri }
+
+    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) {
+            selfieBitmap = bitmap
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            try {
+                takePictureLauncher.launch(null)
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(context, "No camera app available or permission denied.", android.widget.Toast.LENGTH_LONG).show()
+            }
+        } else {
+            android.widget.Toast.makeText(context, "Camera permission is required for selfie verification", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val isDigiLockerDone = user?.aadhaarVerified == true || user?.kycStatus == "VERIFIED" || currentStep >= 5
+    val isSelfieDone = user?.selfieVerified == true
+    val isPanDone = user?.panImageUrl?.isNotBlank() == true
+    val isAadhaarDone = user?.aadhaarImageUrl?.isNotBlank() == true
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Navy900, Navy800)
-                )
-            )
+            .background(Brush.verticalGradient(colors = listOf(Navy900, Navy800)))
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
@@ -70,450 +108,351 @@ fun KycScreen(
             color = Color.White
         )
         Text(
-            text = stringResource(R.string.complete_verification_to_unlock_borrowing_and_lending),
+            text = "Complete your verified credentials to proceed",
             style = MaterialTheme.typography.bodyMedium,
-            color = Gray400,
-            modifier = Modifier.padding(top = 4.dp)
+            color = Gray400
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // DIDIT AI VERIFICATION HERO CARD
+        // 1. DIGILOCKER SECTION (GOVT OF INDIA)
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Navy700.copy(alpha = 0.85f)
-            ),
+            colors = CardDefaults.cardColors(containerColor = Navy700.copy(alpha = 0.9f)),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Emerald400.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.VerifiedUser, null, tint = Emerald400)
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("DigiLocker Official KYC", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Govt of India • MeitY", style = MaterialTheme.typography.labelSmall, color = Emerald400)
+                        }
+                    }
+                    if (isDigiLockerDone) {
+                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald400)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Direct live verification via official UIDAI Aadhaar OTP and Income Tax Department PAN Card records.", style = MaterialTheme.typography.bodySmall, color = Gray300)
+                
+                if (isDigiLockerDone) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Emerald400.copy(alpha = 0.15f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CheckCircle, null, tint = Emerald400, modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("DigiLocker Verified ✓", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400)
+                                Text(
+                                    text = if (!user?.name.isNullOrBlank()) "Linked to: ${user?.name}" else "Aadhaar & PAN matched with Govt Records",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Button(
+                        onClick = onStartDigiLockerKyc,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900),
+                        enabled = !isDigiLockerLoading
+                    ) {
+                        if (isDigiLockerLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Navy900, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Connecting...", fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(Icons.Default.Verified, null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Verify with DigiLocker", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 2. SELFIE UPLOAD CARD
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Navy700.copy(alpha = 0.9f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Gold500.copy(alpha = 0.15f),
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Bolt,
-                                contentDescription = stringResource(R.string.didit),
-                                tint = Gold500,
-                                modifier = Modifier.padding(8.dp)
-                            )
+                        Surface(shape = CircleShape, color = Gold500.copy(alpha = 0.15f), modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.CameraAlt, null, tint = Gold500, modifier = Modifier.padding(8.dp))
                         }
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            stringResource(R.string.fast_track_with_didit_ai),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                        Column {
+                            Text("Selfie Photo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Identity Verification", style = MaterialTheme.typography.labelSmall, color = Gold500)
+                        }
                     }
-
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Emerald400.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            stringResource(R.string.str_30_sec_kyc),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Emerald400,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                    if (isSelfieDone) {
+                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald400)
                     }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    stringResource(R.string.instant_1_click_verification_with_government_id_auto_scan_3d_biometric_liveness_detection_and_real_time_aml_fraud_checks),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Gray300,
-                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight
-                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    KycFeatureChip("🪪 ID Auto-Scan")
-                    KycFeatureChip("👤 3D Liveness")
-                    KycFeatureChip("🛡️ AML Safe")
-                }
+                if (selfieBitmap != null && !isSelfieDone) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            bitmap = selfieBitmap!!.asImageBitmap(),
+                            contentDescription = "Captured Selfie",
+                            modifier = Modifier.size(120.dp).clip(CircleShape).border(2.dp, Emerald400, CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Selfie Captured ✓", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Emerald400)
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Button(
+                            onClick = { onUploadSelfie(selfieBitmap!!) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isUploadingSelfie
+                        ) {
+                            if (isUploadingSelfie) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Navy900, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Uploading...", fontWeight = FontWeight.Bold)
+                            } else {
+                                Icon(Icons.Default.Upload, null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Upload & Save Selfie", fontWeight = FontWeight.Bold)
+                            }
+                        }
 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Button(
-                    onClick = onStartDiditKyc,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold500,
-                        contentColor = Navy900
-                    ),
-                    enabled = !isDiditLoading
-                ) {
-                    if (isDiditLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Navy900,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.launching_didit), fontWeight = FontWeight.Bold)
-                    } else {
-                        Icon(
-                            Icons.Default.VerifiedUser,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            if (diditStatus != null) "Re-verify with Didit ($diditStatus)" else "Verify with Didit AI",
-                            fontWeight = FontWeight.Bold
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        OutlinedButton(
+                            onClick = {
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                    try {
+                                        takePictureLauncher.launch(null)
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "No camera app available.", android.widget.Toast.LENGTH_LONG).show()
+                                    }
+                                } else {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Gray500),
+                            enabled = !isUploadingSelfie
+                        ) {
+                            Icon(Icons.Default.CameraAlt, null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Retake Photo")
+                        }
+                    }
+                } else if (!isSelfieDone) {
+                    OutlinedButton(
+                        onClick = {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                try {
+                                    takePictureLauncher.launch(null)
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "No camera app available.", android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            } else {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(containerColor = Navy600.copy(alpha = 0.5f), contentColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Gray600)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.CameraAlt, null, tint = Gold500, modifier = Modifier.size(36.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Take a Selfie", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    // isSelfieDone is true
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        val avatarModel = user.getDisplayProfilePhoto(context)
+                        if (avatarModel != null) {
+                            coil.compose.AsyncImage(
+                                model = avatarModel,
+                                contentDescription = "Verified Selfie",
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, Emerald400, CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        Text("Selfie Verified & Active as Profile Photo ✓", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Emerald400)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Gray600)
-            Text(
-                stringResource(R.string.or_manual_verification),
-                style = MaterialTheme.typography.labelSmall,
-                color = Gray400,
-                fontWeight = FontWeight.SemiBold
-            )
-            HorizontalDivider(modifier = Modifier.weight(1f), color = Gray600)
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Step progress indicator
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+        // 3. DOCUMENT UPLOAD CARD
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Navy700.copy(alpha = 0.9f)),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            steps.forEachIndexed { index, step ->
-                val stepNum = index + 1
-                val isCompleted = currentKycStep > stepNum
-                val isCurrent = currentKycStep == stepNum
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(1f)
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = when {
-                            isCompleted -> Emerald400
-                            isCurrent -> Gold500
-                            else -> Gray600
-                        },
-                        modifier = Modifier.size(36.dp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = CircleShape, color = Blue500.copy(alpha = 0.15f), modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.UploadFile, null, tint = Blue500, modifier = Modifier.padding(8.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Document Upload (Image)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("PAN and Aadhaar Cards", style = MaterialTheme.typography.labelSmall, color = Blue500)
+                        }
+                    }
+                    if (isPanDone && isAadhaarDone) {
+                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald400)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (isPanDone) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                        Icon(Icons.Default.CheckCircle, null, tint = Emerald400)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("PAN Card Uploaded", color = Emerald400, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { panLauncher.launch("image/*") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (panImageUri != null) Emerald400 else Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (panImageUri != null) Emerald400 else Gray500),
+                        enabled = !isUploadingPan
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            if (isCompleted) {
-                                Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(if (panImageUri != null) Icons.Default.Check else Icons.Default.Image, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (panImageUri != null) "PAN Card Image Selected" else "Select PAN Card Image")
+                    }
+                    if (panImageUri != null) {
+                        Button(
+                            onClick = { onUploadDocument("PAN", panImageUri!!) },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Blue500, contentColor = Color.White),
+                            enabled = !isUploadingPan
+                        ) {
+                            if (isUploadingPan) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Uploading...")
                             } else {
-                                Text(
-                                    "$stepNum",
-                                    color = if (isCurrent) Navy900 else Gray300,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
+                                Text("Upload & Save PAN", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = step.title.split(" ").first(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when {
-                            isCompleted -> Emerald400
-                            isCurrent -> Gold500
-                            else -> Gray500
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (isAadhaarDone) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                        Icon(Icons.Default.CheckCircle, null, tint = Emerald400)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Aadhaar Card Uploaded", color = Emerald400, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { aadhaarLauncher.launch("image/*") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (aadhaarImageUri != null) Emerald400 else Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (aadhaarImageUri != null) Emerald400 else Gray500),
+                        enabled = !isUploadingAadhaar
+                    ) {
+                        Icon(if (aadhaarImageUri != null) Icons.Default.Check else Icons.Default.Image, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (aadhaarImageUri != null) "Aadhaar Card Image Selected" else "Select Aadhaar Card Image")
+                    }
+                    if (aadhaarImageUri != null) {
+                        Button(
+                            onClick = { onUploadDocument("AADHAAR", aadhaarImageUri!!) },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Blue500, contentColor = Color.White),
+                            enabled = !isUploadingAadhaar
+                        ) {
+                            if (isUploadingAadhaar) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Uploading...")
+                            } else {
+                                Text("Upload & Save Aadhaar", fontWeight = FontWeight.Bold)
+                            }
                         }
-                    )
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Step content
-        AnimatedContent(
-            targetState = currentKycStep,
-            transitionSpec = {
-                slideInHorizontally { width -> width } + fadeIn() togetherWith
-                        slideOutHorizontally { width -> -width } + fadeOut()
-            },
-            label = "kyc_step"
-        ) { step ->
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = SurfaceDarkCard.copy(alpha = 0.7f)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(24.dp)) {
-                    when (step) {
-                        1 -> {
-                            KycStepHeader(steps[0])
-                            Spacer(modifier = Modifier.height(20.dp))
-                            OutlinedTextField(
-                                value = panNumber,
-                                onValueChange = { if (it.length <= 10) panNumber = it.uppercase() },
-                                label = { Text(stringResource(R.string.pan_number)) },
-                                placeholder = { Text(stringResource(R.string.abcde1234f)) },
-                                leadingIcon = { Icon(Icons.Default.CreditCard, null) },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = kycTextFieldColors()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                stringResource(R.string.enter_your_10_character_pan_number),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Gray400
-                            )
-                        }
-                        2 -> {
-                            KycStepHeader(steps[1])
-                            Spacer(modifier = Modifier.height(20.dp))
-                            OutlinedTextField(
-                                value = aadhaarNumber,
-                                onValueChange = { if (it.length <= 12 && it.all { c -> c.isDigit() }) aadhaarNumber = it },
-                                label = { Text(stringResource(R.string.aadhaar_number)) },
-                                placeholder = { Text(stringResource(R.string.xxxx_xxxx_xxxx)) },
-                                leadingIcon = { Icon(Icons.Default.Badge, null) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = kycTextFieldColors()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                stringResource(R.string.prototype_enter_any_12_digit_number),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Gray400
-                            )
-                        }
-                        3 -> {
-                            KycStepHeader(steps[2])
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = Navy600.copy(alpha = 0.5f),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(
-                                        Icons.Default.CameraAlt,
-                                        null,
-                                        tint = Gold500,
-                                        modifier = Modifier.size(48.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        stringResource(R.string.tap_to_take_selfie),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = Gray300
-                                    )
-                                    Text(
-                                        stringResource(R.string.prototype_simulated_verification),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Gray500
-                                    )
-                                }
-                            }
-                        }
-                        4 -> {
-                            KycStepHeader(steps[3])
-                            Spacer(modifier = Modifier.height(20.dp))
-                            OutlinedTextField(
-                                value = upiId,
-                                onValueChange = { upiId = it },
-                                label = { Text(stringResource(R.string.upi_id)) },
-                                placeholder = { Text(stringResource(R.string.yourname_upi)) },
-                                leadingIcon = { Icon(Icons.Default.Payment, null) },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = kycTextFieldColors()
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedTextField(
-                                value = bankAccount,
-                                onValueChange = { bankAccount = it },
-                                label = { Text(stringResource(R.string.bank_account_optional)) },
-                                leadingIcon = { Icon(Icons.Default.AccountBalance, null) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = kycTextFieldColors()
-                            )
-                        }
-                        else -> {
-                            // Completion
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = Emerald400.copy(alpha = 0.15f),
-                                    modifier = Modifier.size(80.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.VerifiedUser,
-                                        null,
-                                        tint = Emerald400,
-                                        modifier = Modifier.padding(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    stringResource(R.string.kyc_complete),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Emerald400
-                                )
-                                Text(
-                                    stringResource(R.string.your_profile_is_now_verified),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Gray400
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    val isLastStep = step >= 4
-                    val canProceed = when (step) {
-                        1 -> panNumber.length == 10
-                        2 -> aadhaarNumber.length == 12
-                        3 -> true // Simulated
-                        4 -> upiId.isNotBlank()
-                        else -> true
-                    }
-
-                    Button(
-                        onClick = {
-                            if (step <= 4) {
-                                val data = when (step) {
-                                    1 -> mapOf("pan" to panNumber)
-                                    4 -> mapOf("upiId" to upiId, "bankAccount" to bankAccount)
-                                    else -> emptyMap()
-                                }
-                                onCompleteStep(step, data)
-                                currentKycStep = step + 1
-                            }
-                            if (step >= 5 || (isLastStep && canProceed)) {
-                                if (step >= 5) onFinish()
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (step >= 5) Emerald400 else Gold500,
-                            contentColor = Navy900
-                        ),
-                        enabled = canProceed
-                    ) {
-                        Text(
-                            when {
-                                step >= 5 -> "Go to Dashboard"
-                                isLastStep -> "Complete KYC"
-                                else -> "Continue"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
+        Button(
+            onClick = onFinish,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900),
+            enabled = isDigiLockerDone && isSelfieDone && isPanDone && isAadhaarDone
+        ) {
+            Text("Complete KYC & Go to Dashboard", fontWeight = FontWeight.Bold)
         }
     }
 }
 
-@Composable
-private fun KycStepHeader(step: KycStepInfo) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(step.icon, null, tint = Gold500, modifier = Modifier.size(28.dp))
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(
-                step.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                step.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = Gray400
-            )
-        }
-    }
-}
-
-@Composable
-private fun kycTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Gold500,
-    focusedLabelColor = Gold500,
-    cursorColor = Gold500,
-    unfocusedBorderColor = Gray600,
-    focusedLeadingIconColor = Gold500
-)
-
-private data class KycStepInfo(
-    val title: String,
-    val icon: ImageVector,
-    val description: String
-)
-
-@Composable
-private fun KycFeatureChip(text: String) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = Navy800.copy(alpha = 0.8f)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = Gray300,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-        )
-    }
-}
 
