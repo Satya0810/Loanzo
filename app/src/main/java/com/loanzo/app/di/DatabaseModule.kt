@@ -38,4 +38,8 @@ object DatabaseModule {
     @Provides fun provideNotificationDao(db: LoanzoDatabase): NotificationDao = db.notificationDao()
     @Provides fun provideMarketplaceDao(db: LoanzoDatabase): MarketplaceDao = db.marketplaceDao()
     @Provides fun provideAgentDao(db: LoanzoDatabase): AgentDao = db.agentDao()
+    @Provides fun provideComplaintDao(db: LoanzoDatabase): ComplaintDao = db.complaintDao()
+    @Provides fun provideMediationMeetingDao(db: LoanzoDatabase): MediationMeetingDao = db.mediationMeetingDao()
+    @Provides fun provideCollateralVaultDao(db: LoanzoDatabase): CollateralVaultDao = db.collateralVaultDao()
+    @Provides fun provideNocCertificateDao(db: LoanzoDatabase): NocCertificateDao = db.nocCertificateDao()
 }

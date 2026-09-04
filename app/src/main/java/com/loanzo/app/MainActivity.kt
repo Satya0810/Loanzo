@@ -31,6 +31,7 @@ class MainActivity : FragmentActivity() {
 
     @Inject lateinit var userRepository: UserRepository
     @Inject lateinit var agentRepository: com.loanzo.app.data.repository.AgentRepository
+    @Inject lateinit var adminRepository: com.loanzo.app.data.repository.AdminRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,7 +64,8 @@ class MainActivity : FragmentActivity() {
 
             CompositionLocalProvider(
                 LocalUserRepository provides userRepository,
-                com.loanzo.app.util.LocalAgentRepository provides agentRepository
+                com.loanzo.app.util.LocalAgentRepository provides agentRepository,
+                com.loanzo.app.util.LocalAdminRepository provides adminRepository
             ) {
                 LoanzoTheme(darkTheme = isDark) {
                     Surface(

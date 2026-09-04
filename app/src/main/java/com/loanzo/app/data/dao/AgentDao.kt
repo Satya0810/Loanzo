@@ -40,6 +40,9 @@ interface AgentDao {
     @Update
     suspend fun updateVisit(visit: AgentVisitEntity)
 
+    @Query("SELECT * FROM agent_visits ORDER BY scheduledDate ASC, scheduledTimeSlot ASC")
+    fun getAllVisits(): Flow<List<AgentVisitEntity>>
+
     @Query("SELECT * FROM agent_visits WHERE agentId = :agentId ORDER BY scheduledDate ASC, scheduledTimeSlot ASC")
     fun getVisitsForAgent(agentId: String): Flow<List<AgentVisitEntity>>
 
