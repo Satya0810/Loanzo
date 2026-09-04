@@ -862,13 +862,6 @@ fun MainScaffold(
                             // 1. Home
                             val homeItem = bottomNavItems[0]
                             val homeSelected = currentRoute == homeItem.route
-                            BlinkingNavTooltip(
-                                shouldBlink = shouldBlink && !homeTooltipSeen,
-                                tooltipTitle = "Dashboard",
-                                tooltipBody = "Your financial overview — active loans, health score, and quick actions",
-                                tooltipIcon = Icons.Filled.Home,
-                                onTooltipSeen = { homeTooltipSeen = true }
-                            ) {
                             NavigationBarItem(
                                 selected = homeSelected,
                                 onClick = {
@@ -885,18 +878,10 @@ fun MainScaffold(
                                 label = { Text(homeItem.label, fontWeight = if (homeSelected) FontWeight.Bold else FontWeight.Normal) },
                                 colors = NavigationBarItemDefaults.colors(selectedIconColor = Gold500, selectedTextColor = Gold500, indicatorColor = Gold500.copy(alpha = 0.12f))
                             )
-                            }
 
                             // 2. Loans
                             val loansItem = bottomNavItems[1]
                             val loansSelected = currentRoute == loansItem.route
-                            BlinkingNavTooltip(
-                                shouldBlink = shouldBlink && !loansTooltipSeen,
-                                tooltipTitle = "My Loans",
-                                tooltipBody = "Track all loans you've given or taken, repayments, and documents",
-                                tooltipIcon = Icons.Filled.Receipt,
-                                onTooltipSeen = { loansTooltipSeen = true }
-                            ) {
                             NavigationBarItem(
                                 selected = loansSelected,
                                 onClick = {
@@ -913,16 +898,8 @@ fun MainScaffold(
                                 label = { Text(loansItem.label, fontWeight = if (loansSelected) FontWeight.Bold else FontWeight.Normal) },
                                 colors = NavigationBarItemDefaults.colors(selectedIconColor = Gold500, selectedTextColor = Gold500, indicatorColor = Gold500.copy(alpha = 0.12f))
                             )
-                            }
 
                             // 3. Center Cradle Slot (aligned beneath the floating yellow button)
-                            BlinkingNavTooltip(
-                                shouldBlink = shouldBlink && !fabTooltipSeen,
-                                tooltipTitle = "Quick Post",
-                                tooltipBody = "Post a loan offer, request funds, or start a direct P2P deal",
-                                tooltipIcon = Icons.Filled.Add,
-                                onTooltipSeen = { fabTooltipSeen = true }
-                            ) {
                             NavigationBarItem(
                                 selected = false,
                                 onClick = {
@@ -941,18 +918,10 @@ fun MainScaffold(
                                 },
                                 colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
                             )
-                            }
 
                             // 4. Alerts
                             val notifItem = bottomNavItems[2]
                             val notifSelected = currentRoute == notifItem.route
-                            BlinkingNavTooltip(
-                                shouldBlink = shouldBlink && !alertsTooltipSeen,
-                                tooltipTitle = "Notifications",
-                                tooltipBody = "Stay updated on repayments, approvals, and important deadlines",
-                                tooltipIcon = Icons.Filled.Notifications,
-                                onTooltipSeen = { alertsTooltipSeen = true }
-                            ) {
                             NavigationBarItem(
                                 selected = notifSelected,
                                 onClick = {
@@ -983,18 +952,10 @@ fun MainScaffold(
                                 label = { Text(notifItem.label, fontWeight = if (notifSelected) FontWeight.Bold else FontWeight.Normal) },
                                 colors = NavigationBarItemDefaults.colors(selectedIconColor = Gold500, selectedTextColor = Gold500, indicatorColor = Gold500.copy(alpha = 0.12f))
                             )
-                            }
 
                             // 5. Profile
                             val profileItem = bottomNavItems[3]
                             val profileSelected = currentRoute == profileItem.route
-                            BlinkingNavTooltip(
-                                shouldBlink = shouldBlink && !profileTooltipSeen,
-                                tooltipTitle = "Your Profile",
-                                tooltipBody = "Manage identity, KYC documents, bank details, and app preferences",
-                                tooltipIcon = Icons.Filled.Person,
-                                onTooltipSeen = { profileTooltipSeen = true }
-                            ) {
                             NavigationBarItem(
                                 selected = profileSelected,
                                 onClick = {
@@ -1011,11 +972,10 @@ fun MainScaffold(
                                 label = { Text(profileItem.label, fontWeight = if (profileSelected) FontWeight.Bold else FontWeight.Normal) },
                                 colors = NavigationBarItemDefaults.colors(selectedIconColor = Gold500, selectedTextColor = Gold500, indicatorColor = Gold500.copy(alpha = 0.12f))
                             )
-                            }
                         }
                     }
 
-                    // Round Yellow Center Plus Button wrapped in GuideSpotlight
+                    // Round Yellow Center Plus Button
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
@@ -1026,57 +986,32 @@ fun MainScaffold(
                             .padding(2.5.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        GuideSpotlight(active = !postButtonSeen) {
-                            FloatingActionButton(
-                                onClick = {
-                                    isQuickActionMenuOpen = !isQuickActionMenuOpen
-                                    fabTooltipSeen = true
-                                    if (!postButtonSeen) {
-                                        scope.launch {
-                                            userRepository.markGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_POST_BUTTON_SEEN)
-                                        }
-                                    }
-                                },
-                                shape = CircleShape,
-                                containerColor = Gold500,
-                                contentColor = Navy900,
-                                elevation = FloatingActionButtonDefaults.elevation(
-                                    defaultElevation = 6.dp,
-                                    pressedElevation = 10.dp
-                                ),
-                                modifier = Modifier.size(55.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Post Loan",
-                                    tint = Navy900,
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .rotate(rotationAngle)
-                                )
-                            }
-                        }
-                    }
-                    // Post button first-time guide card
-                    if (!postButtonSeen) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .offset(y = (-90).dp)
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
-                            ContextualGuideCard(
-                                visible = true,
-                                icon = Icons.Default.Add,
-                                title = "Post a Loan",
-                                body = "Tap the gold '+' button to post a lending offer, request funds, or start a direct P2P deal with someone you know.",
-                                onDismiss = {
+                        FloatingActionButton(
+                            onClick = {
+                                isQuickActionMenuOpen = !isQuickActionMenuOpen
+                                fabTooltipSeen = true
+                                if (!postButtonSeen) {
                                     scope.launch {
                                         userRepository.markGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_POST_BUTTON_SEEN)
                                     }
-                                },
-                                autoDismissSeconds = 10
+                                }
+                            },
+                            shape = CircleShape,
+                            containerColor = Gold500,
+                            contentColor = Navy900,
+                            elevation = FloatingActionButtonDefaults.elevation(
+                                defaultElevation = 6.dp,
+                                pressedElevation = 10.dp
+                            ),
+                            modifier = Modifier.size(55.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Quick Action",
+                                tint = Navy900,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .rotate(rotationAngle)
                             )
                         }
                     }
