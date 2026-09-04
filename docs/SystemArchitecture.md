@@ -230,3 +230,29 @@ The complete loan lifecycle follows an unambiguous 6-stage progression:
 
 ### 5.3 Mascot Storyteller ("Loanzo") Architecture
 - **Narrator Pattern**: Living smartphone character "Loanzo" connects all system touchpoints, guiding user comprehension across Borrower, Lender, Agent, and Wholesaler roles in `Loanzo_Unified_Master_Comic_Book.pdf` and `Loanzo_Comic_Reader.html`.
+
+## 6. Certified Field Agent Architecture & Isolated Control Center
+
+### 6.1 Role Partitioning & Security Isolation Gate
+```
+    ┌──────────────────────────────────────────────┐
+    │       User Logs In / Finishes KYC            │
+    └──────────────────────┬───────────────────────┘
+                           │
+                           ▼
+          ┌──────────────────────────────────┐
+          │  role == AGENT && APPROVED?      │
+          └────────┬─────────────────┬───────┘
+              YES  │                 │  NO
+                   ▼                 ▼
+    ┌─────────────────────────┐   ┌─────────────────────────┐
+    │   Routes.AGENT_MAIN     │   │      Routes.MAIN        │
+    │ (Isolated Field Console)│   │(Consumer Scaffold/Feed) │
+    └─────────────────────────┘   └─────────────────────────┘
+```
+- **Strict Role Isolation**: Approved field agents are redirected away from consumer borrowing, lending, and community bidding tabs to guarantee zero conflict of interest and prevent unauthorized access to financial facilities.
+
+### 6.2 Data Model & Relational Schema (Room Database v12)
+- **`AgentApplicationEntity`** (`agent_applications` table): Stores bank-grade empanelment data, experience history, Police Clearance Certificate (PCC) date, police station name, operating radius (5–50 km), transport type, driving license, and status.
+- **`AgentVisitEntity`** (`agent_visits` table): Stores scheduled physical verification visits (`COLLATERAL_VERIFICATION`, `BORROWER_VERIFICATION`, `LENDER_VERIFICATION`), contact details of counterparties, address geotags, payout values, and inspection proof.
+- **`AgentDao` & `AgentRepository`**: Reactive Room DAO emitting continuous `Flow` streams for dynamic dashboard updates, duty/break toggling, and instant inspection completions.

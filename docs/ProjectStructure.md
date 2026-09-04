@@ -5,15 +5,17 @@ Loanzo is organized by feature and layers to ensure a clean, maintainable, and s
 ```text
 com.loanzo.app
 ├── data/                       # Data Layer (Models, Repositories, Data Sources)
-│   ├── entity/                 # Room & Firestore Models (UserEntity, LoanEntity, MarketplacePostEntity, MarketplaceBidEntity)
-│   ├── repository/             # Offline-first repositories (UserRepository, LoanRepository, MarketplaceRepository)
-│   ├── dao/                    # Room Data Access Objects (UserDao, LoanDao, MarketplaceDao, RepaymentDao)
+│   ├── entity/                 # Room & Firestore Models (UserEntity, LoanEntity, AgentApplicationEntity, AgentVisitEntity)
+│   ├── repository/             # Offline-first repositories (UserRepository, LoanRepository, AgentRepository, MarketplaceRepository)
+│   ├── dao/                    # Room Data Access Objects (UserDao, LoanDao, AgentDao, MarketplaceDao, RepaymentDao)
 │   ├── firebase/               # Firebase Managers (Firestore, Storage, Auth wrappers)
 │   ├── drive/                  # Google Drive API Integrations (GoogleDriveManager)
 │   └── digilocker/             # DigiLocker KYC API services
 │
 ├── ui/                         # Presentation Layer (Jetpack Compose UI & ViewModels)
-│   ├── auth/                   # Authentication & Profile (ProfileScreen, KycScreen, AuthViewModel)
+│   ├── auth/                   # Authentication & Profile (ProfileScreen, KycScreen, RoleSelectionScreen, AuthViewModel)
+│   ├── agent/                  # Certified Agent Module (AgentDashboardScreen, AgentApplicationScreen, AgentPendingApprovalScreen, AgentInspectionSheet)
+│   ├── admin/                  # Admin Operations (AppOwnerVerificationScreen)
 │   ├── dashboard/              # Unified Dashboard (DashboardScreens, DashboardViewModel, FinancialHealthScreen, HomeActionSheets)
 │   ├── loan/                   # Loan Lifecycle (LoanScreens, CreateLoanScreen, LoanDetailScreen, ChatScreen)
 │   ├── marketplace/            # Social Marketplace (MarketplaceFeedScreen, CreateMarketplacePostScreen, PostDetailAndBidsSheet, MarketplaceViewModel)

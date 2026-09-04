@@ -65,6 +65,11 @@ This document establishes the **Quality Assurance (QA) and Software Testing Plan
 | **TC-LOAN-06** | Closure | Zero Balance & NOC Certificate | Generates official No Objection Certificate (PDF) with verification seal upon full settlement | ✅ Verified |
 | **TC-MKT-01** | Marketplace | Social Post Filtering & Search | Filters by category chips (`#Education`, `#Medical`) and keywords in real time | ✅ Verified |
 | **TC-MKT-02** | Marketplace | Lenme-Style Bidding & Conversion | Converts accepted bid into an official `LoanEntity` routing directly into eSign flow | ✅ Verified |
+| **TC-AGENT-01**| Field Agent | Post-KYC Role Selection Gate | Directs user to `RoleSelectionScreen`; branches to `MAIN` (Member) or `AGENT_APPLICATION` | ✅ Verified |
+| **TC-AGENT-02**| Field Agent | Bank-Grade Empanelment Form | Validates PCC date, police station, service radius, and DL before submission to Room DB | ✅ Verified |
+| **TC-AGENT-03**| Field Agent | Admin Empanelment Approval | Admin approves application in AppOwnerHub; promotes user to `AGENT` & auto-seeds 3 visits | ✅ Verified |
+| **TC-AGENT-04**| Field Agent | Security Isolation Gate | Approved agents routed to `AGENT_MAIN`; access to consumer borrow/lend tabs strictly blocked | ✅ Verified |
+| **TC-AGENT-05**| Field Agent | In-App Inspection & Payout | Geotags arrival, calculates appraisal, uploads photo proof, and credits daily earnings | ✅ Verified |
 
 ---
 

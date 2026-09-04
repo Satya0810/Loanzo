@@ -9,8 +9,9 @@ Loanzo is a unified Android application where any registered user can act as a L
 
 ## 2. Overall Description
 ### 2.1 User Roles
-- **Unified User**: A single registered entity who can seamlessly switch contexts between viewing loans they have given (Lender perspective) and loans they have taken (Borrower perspective) from a single Unified Dashboard.
-- **Admin / App Owner**: Has elevated privileges for overriding KYC, managing organizational settings, and approving critical platform-level actions.
+- **Unified User**: A single registered consumer who can seamlessly switch contexts between viewing loans they have given (Lender perspective) and loans they have taken (Borrower perspective) from a single Unified Dashboard.
+- **Certified Field Agent**: A specialized verification officer empaneled through an institutional bank-grade application process and approved by the Master Admin. Certified agents conduct physical doorstep verification for collateral, borrowers, and lenders, operate with strict role isolation (no access to consumer lending/borrowing features), toggle duty/break status, and earn per-visit compensation.
+- **Admin / App Owner**: Has elevated privileges for overriding KYC, managing organizational settings, reviewing agent empanelment queues, and approving critical platform-level actions.
 
 ### 2.2 Core Features
 1. **Authentication & Security**
@@ -209,3 +210,23 @@ Loanzo is a unified Android application where any registered user can act as a L
     - **"Loanzo" Living Mascot**: An anthropomorphic modern smartphone mascot featuring expressive eyes, cartoon hands, sneakers, and dynamic chest display reflecting live app states. Loanzo acts as the omniscient narrator breaking the fourth wall to explain technical architecture and regulatory compliance.
     - **Continuous Cinematic Timeline**: An interconnected 8-scene graphic novel seamlessly relaying between Borrower (Rohan & Priya), Field Agent (Vikram Rao), Lender (Aisha Khan), and Wholesaler (Raj Electronics).
     - **Dual Publication Output**: Integrated into both high-resolution PDF publications (`Loanzo_Unified_Master_Comic_Book.pdf`) and an interactive HTML5 web reader (`Loanzo_Comic_Reader.html`) featuring Movie Mode and perspective filters.
+
+22. **Certified Field Agent Empanelment & Isolated Control Center Protocol**
+    - **Post-KYC Multi-Role Partitioning**: Immediately following KYC completion or skip, members encounter an explicit choice (`RoleSelectionScreen`): proceed as a Standard Consumer (Borrower/Lender) or empanel as a Loanzo Certified Field Agent to earn ₹500–₹1,500 per physical visit.
+    - **Bank-Grade Empanelment Application**: A 4-step formal application form (`AgentApplicationScreen`) capturing:
+      - *Verification Experience*: Years in field verification, past financial institutions/agencies (e.g. HDFC, ICICI, SBI), education level.
+      - *Police Verification & PCC Clearance*: Police Clearance Certificate (PCC) issue date, issuing police station, and binding legal declaration of a clean record.
+      - *Operating Territory & Mobility*: Permanent residence, operating city, postal code, adjustable service radius (5 km to 50 km), vehicle type (Bike, Car, Transit), and Driving License Number.
+    - **Master Admin Approval Console**: Integrated into the App Owner Hub (`AppOwnerVerificationScreen`), enabling Master Admin `@satyam_081` to review applications, inspect police clearance certificates, and execute 1-tap empanelment approvals or rejections with custom remarks. Approving an agent promotes their role, marks `agentStatus = APPROVED`, and automatically seeds active doorstep visits.
+    - **Strict Role Isolation Gate**: Field agents are permanently isolated from consumer borrowing, lending, P2P biddings, and community wall cards. On login or app launch, approved agents are dispatched directly to `Routes.AGENT_MAIN`. Any attempt to access consumer routes automatically redirects to the agent console.
+    - **Dedicated Agent Control Center (`AgentDashboardScreen`)**:
+      - *On-Duty / Off-Duty Status*: Interactive switch toggling between `🟢 On Duty` and `☕ On Break / Off Duty`, with an active break timer tracking rest periods.
+      - *Daily Earnings & Performance Meters*: Live counters tracking today's completed visits, scheduled visits, and total earned revenue.
+      - *Categorized Scheduled Visits Feed*: Distinct badges and workflows for 🏷️ Collateral Assaying, 🟢 Borrower Residence & Identity Checks, and 🔵 Lender Physical Verification.
+      - *1-Tap Counterparty Communications & GPS*: Every visit card features direct phone call (`tel:`), direct WhatsApp message (`whatsapp://`), and Google Maps navigation (`geo:`) intents.
+    - **In-App Inspection Engine (`AgentInspectionSheet`)**:
+      - Geotag arrival check-in.
+      - Interactive collateral appraisal calculator with condition grades (Mint, Good, Fair, Poor).
+      - Multi-factor verification checklist (identity, physical documents, address matching).
+      - Live camera photo capture for photographic proof and tamper-evident audit logging.
+      - Automated instant payout crediting upon inspection submission.
