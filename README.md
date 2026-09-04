@@ -12,7 +12,7 @@
 [![Kotlin Version](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Android SDK](https://img.shields.io/badge/Android%20SDK-26%20..%2034-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.09.00-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![Room Database](https://img.shields.io/badge/Room%20DB-v11%20SQLite-00599C.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
+[![Room Database](https://img.shields.io/badge/Room%20DB-v12%20SQLite-00599C.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Dagger Hilt](https://img.shields.io/badge/Dagger%20Hilt-2.51.1-26A69A.svg?style=for-the-badge)](https://dagger.dev/hilt/)
 [![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore%20%7C%20FCM-FFCA28.svg?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
@@ -72,6 +72,12 @@ Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v11,
 ### 7. 🤖 Automated Telegram Admin & 24/7 Assistant Bot
 - Integrated Telegram Assistant Bot (`@Loanzo_bot`) for instantaneous loan status lookups and counterparty notifications.
 - Emergency Dispute & Delinquency Dispatch center sending immediate real-time enforcement alerts to the admin desk.
+
+### 8. 🕵️ Certified Field Agent & Doorstep Verification Network
+- **Post-KYC Role Partitioning**: Choose between **Normal Member** (borrowing & lending) or apply to become a **Loanzo Certified Agent** (earning ₹500 – ₹1,500/visit).
+- **Bank-Grade Empanelment Form**: Captures verification background, Police Clearance Certificate (PCC) verification, operational city & territory radius slider (5 km - 50 km), and vehicle details with a formal legal clean-record declaration.
+- **Master Admin Approval Console**: Direct review queue in the App Owner Hub (`@satyam_081`) with one-tap empanelment approvals, rejections, and automatic visit seeding.
+- **Isolated Field Agent Control Center**: Strict role isolation prevents agent access to consumer borrowing/lending features; provides live on-duty/break toggles with break timers, daily earnings meters, categorized visits feeds (*Collateral Assaying, Borrower Residence, Lender Verification*), direct Call/WhatsApp/Maps navigation, and an in-app appraisal checklist with live photo audit capture.
 
 ---
 
@@ -158,16 +164,18 @@ stateDiagram-v2
 
 ---
 
-## 🗄️ Database Architecture (Room v11)
+## 🗄️ Database Architecture (Room v12)
 
-Loanzo uses an offline-first **Room Database v11** with 11 relational entities ensuring zero data loss even during network disconnections:
+Loanzo uses an offline-first **Room Database v12** with 13 relational entities ensuring zero data loss even during network disconnections:
 
 <details>
-<summary><b>🔍 Expand to View All 11 Core Database Entities</b></summary>
+<summary><b>🔍 Expand to View All 13 Core Database Entities</b></summary>
 
 | Entity | Primary Key | Description |
 | :--- | :--- | :--- |
-| `UserEntity` | `userId` | User profile, role flags (Borrower, Lender, Valuer, Admin), trust score, biometric lock status |
+| `UserEntity` | `userId` | User profile, role flags (Borrower, Lender, Agent, Admin), trust score, agentStatus, onDuty status, earnings |
+| `AgentApplicationEntity` | `applicationId` | Field agent empanelment applications (experience, PCC date, police station, transport, radius, DL number) |
+| `AgentVisitEntity` | `visitId` | Physical verification visits (Collateral, Borrower, Lender), address, GPS coordinates, payout, inspection status |
 | `LoanEntity` | `loanId` | Complete loan contract metadata, interest rate, duration, status, purpose category, and signatures |
 | `RepaymentEntity` | `repaymentId` | Individual EMI schedules, due dates, penalty accruals, payment UTR hashes, and verification receipts |
 | `DisbursementEntity` | `disbursementId` | Tranche milestone definitions, approved amounts, payee UPI IDs, and invoice attachment links |
