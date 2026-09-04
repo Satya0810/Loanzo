@@ -642,14 +642,152 @@ app.get('/api/webhook', handleWhatsAppVerify);
 app.post('/webhook', handleWhatsAppEvents);
 app.post('/api/webhook', handleWhatsAppEvents);
 
-// Root health check
+// Landing Page HTML Template
+const LANDING_PAGE_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loanzo — Decentralized P2P Lending & Microfinance Protocol</title>
+    <meta name="description" content="Loanzo is an institutional-grade peer-to-peer lending and microfinance platform featuring purpose-linked tranche disbursements, automated penalty engines, and DigiLocker verification.">
+    <meta property="og:title" content="Loanzo — P2P Microfinance Protocol">
+    <meta property="og:description" content="Empowering transparent, purpose-bound lending with mathematical rigor, zero-scam architecture, and institutional compliance.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://backend-blond-sigma-66.vercel.app">
+    <style>
+        :root {
+            --bg-dark: #0A0E17;
+            --card-bg: #141B2D;
+            --gold: #F59E0B;
+            --gold-light: #FBBF24;
+            --blue: #3B82F6;
+            --text-main: #F3F4F6;
+            --text-muted: #9CA3AF;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
+        header { padding: 2rem 1.5rem; display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .logo-box { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: inherit; }
+        .logo-badge { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #1E40AF, #3B82F6); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.25rem; color: #FFF; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4); }
+        .logo-text { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(135deg, #F59E0B, #FBBF24); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.95rem; font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--gold-light); }
+        
+        .hero { text-align: center; padding: 4rem 1.5rem 3rem; max-width: 860px; margin: 0 auto; flex: 1; }
+        .pill { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--gold-light); font-size: 0.85rem; padding: 0.35rem 1rem; border-radius: 9999px; margin-bottom: 1.5rem; font-weight: 600; }
+        h1 { font-size: 2.75rem; font-weight: 800; line-height: 1.2; margin-bottom: 1.25rem; letter-spacing: -1px; }
+        h1 span { background: linear-gradient(135deg, #F59E0B, #38BDF8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p.subtitle { font-size: 1.15rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 680px; margin-left: auto; margin-right: auto; }
+        
+        .cta-group { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 3.5rem; }
+        .btn-primary { background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-weight: 700; padding: 0.85rem 1.85rem; border-radius: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 20px rgba(245, 158, 11, 0.35); transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(245, 158, 11, 0.45); }
+        .btn-secondary { background: var(--card-bg); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-main); font-weight: 600; padding: 0.85rem 1.85rem; border-radius: 12px; text-decoration: none; transition: border-color 0.2s; }
+        .btn-secondary:hover { border-color: rgba(255, 255, 255, 0.3); }
+
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; text-align: left; max-width: 1000px; margin: 0 auto 4rem; padding: 0 1.5rem; }
+        .card { background: var(--card-bg); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 1.75rem; transition: border-color 0.2s; }
+        .card:hover { border-color: rgba(245, 158, 11, 0.4); }
+        .card-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+        .card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; color: #FFF; }
+        .card p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
+
+        footer { border-top: 1px solid rgba(255, 255, 255, 0.08); padding: 2rem 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+        .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 1rem; }
+        .footer-links a { color: var(--text-muted); text-decoration: none; }
+        .footer-links a:hover { color: #FFF; }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/" class="logo-box">
+            <div class="logo-badge">L</div>
+            <span class="logo-text">LOANZO</span>
+        </a>
+        <nav class="nav-links">
+            <a href="#features">Features</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="mailto:support@loanzo.app">Contact</a>
+        </nav>
+    </header>
+
+    <main class="hero">
+        <div class="pill">🛡️ Institutional Scam-Free Protocol • Powered by Android</div>
+        <h1>Next-Gen Peer-to-Peer <span>Microfinance Ecosystem</span></h1>
+        <p class="subtitle">Direct, transparent borrowing & lending with purpose-linked merchant disbursements, automated compound penalty caps, and verified biometric DigiLocker contracts.</p>
+        
+        <div class="cta-group">
+            <a href="https://github.com/Satya0810/Loanzo/releases/tag/v1.0.0" class="btn-primary">
+                📲 Download Loanzo App (v1.0.0)
+            </a>
+            <a href="mailto:support@loanzo.app" class="btn-secondary">
+                ✉️ Contact Business Support
+            </a>
+        </div>
+    </main>
+
+    <section id="features" class="features-grid">
+        <div class="card">
+            <div class="card-icon">🎯</div>
+            <h3>Purpose-Bound Tranches</h3>
+            <p>Milestone releases dispatched directly to verified hospital, university, or vendor UPI accounts.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">⚡</div>
+            <h3>Social Marketplace</h3>
+            <p>Borrowers set maximum acceptable APRs, and verified lenders submit competitive bidding offers.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">⚖️</div>
+            <h3>Compound Penalty Engine</h3>
+            <p>Deterministic 3-day grace period with statutory fee caps preventing predatory debt cycles.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">🔐</div>
+            <h3>Encrypted Document Vault</h3>
+            <p>Military-grade AES-256 local encryption with Google Drive cloud sync and DigiLocker biometric e-Sign.</p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-links">
+            <a href="/privacy">Privacy Policy</a>
+            <span>•</span>
+            <a href="/terms">Terms of Service</a>
+            <span>•</span>
+            <a href="mailto:support@loanzo.app">Contact Support</a>
+        </div>
+        <p>© 2026 Loanzo Technologies. All rights reserved.</p>
+    </footer>
+</body>
+</html>`;
+
+// Official Website Root
 app.get('/', (req, res) => {
-    res.json({
-        status: 'online',
-        service: 'Loanzo Cloud Backend',
-        timestamp: new Date().toISOString(),
-        usersCount: usersDb.size
-    });
+    if (req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html')) {
+        return res.json({
+            status: 'online',
+            service: 'Loanzo Cloud Backend',
+            timestamp: new Date().toISOString(),
+            usersCount: usersDb.size
+        });
+    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(LANDING_PAGE_HTML);
+});
+
+// Privacy Policy Page
+app.get('/privacy', (req, res) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Privacy Policy - Loanzo</title><style>body{background:#0A0E17;color:#E5E7EB;font-family:sans-serif;padding:3rem 2rem;max-width:800px;margin:auto;line-height:1.7;}h1{color:#F59E0B;}a{color:#38BDF8;}</style></head><body><a href="/">← Back to Loanzo</a><br><br><h1>Privacy Policy</h1><p>Last updated: September 2026</p><p>Loanzo Technologies ("we", "our", or "us") is dedicated to safeguarding your personal financial information and identity. This policy outlines how user credentials, DigiLocker KYC records, and encrypted document vault entries are managed.</p><h3>1. Data Collection & Purpose</h3><p>We only collect identity details necessary to verify legitimate P2P loan contracts. Document vault records are AES-256 client-side encrypted before cloud synchronization.</p><h3>2. Data Security & Encryption</h3><p>Your biometric data never leaves your device KeyStore. Contact us at <a href="mailto:support@loanzo.app">support@loanzo.app</a> for data deletion requests.</p></body></html>`);
+});
+
+// Terms of Service Page
+app.get('/terms', (req, res) => {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Terms of Service - Loanzo</title><style>body{background:#0A0E17;color:#E5E7EB;font-family:sans-serif;padding:3rem 2rem;max-width:800px;margin:auto;line-height:1.7;}h1{color:#F59E0B;}a{color:#38BDF8;}</style></head><body><a href="/">← Back to Loanzo</a><br><br><h1>Terms of Service</h1><p>Last updated: September 2026</p><p>By using the Loanzo P2P protocol, you agree to statutory peer-to-peer lending guidelines, zero-scam compliance, purpose-bound milestone disbursements, and legally binding e-Sign promissory notes.</p></body></html>`);
 });
 
 const PORT = process.env.PORT || 3000;
