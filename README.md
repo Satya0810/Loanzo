@@ -2,7 +2,7 @@
 
 <img src="app/src/main/res/drawable/app_logo.png" width="140" height="140" alt="Loanzo App Logo" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(212, 175, 55, 0.35);" />
 
-# 💎 LOANZO
+# LOANZO
 ### **Next-Generation Decentralized Peer-to-Peer (P2P) Microfinance & Social Lending Protocol**
 
 *Empowering transparent, purpose-bound lending with mathematical rigor, zero-scam architecture, and institutional compliance.*
@@ -348,6 +348,6 @@ Developed with precision and passion by **Satyam Kumar** and the Loanzo Engineer
 
 **🌟 If you find this project informative or valuable, please consider giving it a star on GitHub! 🌟**
 
-[Back to Top ↑](#-loanzo)
+[Back to Top ↑](#loanzo)
 
 </div>
