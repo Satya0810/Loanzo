@@ -792,21 +792,13 @@ fun MainScaffold(
     val activeTourStep by userRepository.getActiveTourStep()
         .collectAsStateWithLifecycle(initialValue = 0)
 
-    // Per-nav-item tooltip tracking
-    var homeTooltipSeen by rememberSaveable { mutableStateOf(false) }
-    var loansTooltipSeen by rememberSaveable { mutableStateOf(false) }
-    var fabTooltipSeen by rememberSaveable { mutableStateOf(false) }
-    var alertsTooltipSeen by rememberSaveable { mutableStateOf(false) }
-    var profileTooltipSeen by rememberSaveable { mutableStateOf(false) }
-
-    // Mark all nav tooltips seen when all individual ones are done
-    LaunchedEffect(homeTooltipSeen, loansTooltipSeen, fabTooltipSeen, alertsTooltipSeen, profileTooltipSeen) {
-        if (homeTooltipSeen && loansTooltipSeen && fabTooltipSeen && alertsTooltipSeen && profileTooltipSeen) {
-            scope.launch { userRepository.setNavTooltipsSeen() }
-        }
+    // Back navigation handling for modal quick action menu and guided tour overlay
+    androidx.activity.compose.BackHandler(enabled = isQuickActionMenuOpen) {
+        isQuickActionMenuOpen = false
     }
-
-    val shouldBlink = !navTooltipsSeen
+    androidx.activity.compose.BackHandler(enabled = activeTourId != null) {
+        scope.launch { userRepository.clearActiveTour() }
+    }
     // ────────────────────────────────────────────────────────────────────────
 
     val rotationAngle by animateFloatAsState(
@@ -872,7 +864,6 @@ fun MainScaffold(
                                             restoreState = true
                                         }
                                     }
-                                    homeTooltipSeen = true
                                 },
                                 icon = { Icon(if (homeSelected) homeItem.selectedIcon else homeItem.unselectedIcon, contentDescription = homeItem.label) },
                                 label = { Text(homeItem.label, fontWeight = if (homeSelected) FontWeight.Bold else FontWeight.Normal) },
@@ -892,7 +883,6 @@ fun MainScaffold(
                                             restoreState = true
                                         }
                                     }
-                                    loansTooltipSeen = true
                                 },
                                 icon = { Icon(if (loansSelected) loansItem.selectedIcon else loansItem.unselectedIcon, contentDescription = loansItem.label) },
                                 label = { Text(loansItem.label, fontWeight = if (loansSelected) FontWeight.Bold else FontWeight.Normal) },
@@ -904,7 +894,6 @@ fun MainScaffold(
                                 selected = false,
                                 onClick = {
                                     isQuickActionMenuOpen = !isQuickActionMenuOpen
-                                    fabTooltipSeen = true
                                 },
                                 enabled = true,
                                 icon = { Spacer(modifier = Modifier.size(24.dp)) },
@@ -932,7 +921,6 @@ fun MainScaffold(
                                             restoreState = true
                                         }
                                     }
-                                    alertsTooltipSeen = true
                                 },
                                 icon = {
                                     if (unreadCount > 0) {
@@ -966,7 +954,6 @@ fun MainScaffold(
                                             restoreState = true
                                         }
                                     }
-                                    profileTooltipSeen = true
                                 },
                                 icon = { Icon(if (profileSelected) profileItem.selectedIcon else profileItem.unselectedIcon, contentDescription = profileItem.label) },
                                 label = { Text(profileItem.label, fontWeight = if (profileSelected) FontWeight.Bold else FontWeight.Normal) },
@@ -989,7 +976,6 @@ fun MainScaffold(
                         FloatingActionButton(
                             onClick = {
                                 isQuickActionMenuOpen = !isQuickActionMenuOpen
-                                fabTooltipSeen = true
                                 if (!postButtonSeen) {
                                     scope.launch {
                                         userRepository.markGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_POST_BUTTON_SEEN)

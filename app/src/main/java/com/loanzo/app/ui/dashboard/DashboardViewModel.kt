@@ -40,7 +40,11 @@ class DashboardViewModel @Inject constructor(
 
     fun loadDashboard() {
         viewModelScope.launch {
-            userRepository.getCurrentUserId().filterNotNull().collectLatest { userId ->
+            userRepository.getCurrentUserId().collectLatest { userId ->
+                if (userId.isNullOrBlank()) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    return@collectLatest
+                }
 
                 // Observe UserEntity continuously
                 launch {

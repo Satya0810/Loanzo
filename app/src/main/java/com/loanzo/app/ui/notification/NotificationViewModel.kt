@@ -51,7 +51,11 @@ class NotificationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val userId = userRepository.getCurrentUserIdSync()
+            if (userId.isNullOrBlank()) {
+                _uiState.update { it.copy(isLoading = false, notifications = emptyList(), rawNotifications = emptyList()) }
+                return@launch
+            }
 
             // Scan for new deadline notifications
             notificationRepository.scanAndGenerateDeadlineNotifications(userId)

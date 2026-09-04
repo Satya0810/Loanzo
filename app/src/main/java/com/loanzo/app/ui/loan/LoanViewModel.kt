@@ -82,7 +82,11 @@ class LoanViewModel @Inject constructor(
     fun loadLoans() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
+            val userId = userRepository.getCurrentUserIdSync()
+            if (userId.isNullOrBlank()) {
+                _uiState.update { it.copy(isLoading = false, loans = emptyList()) }
+                return@launch
+            }
             loanRepository.getAllLoansForUser(userId).collect { loans ->
                 _uiState.update { it.copy(isLoading = false, loans = loans) }
             }

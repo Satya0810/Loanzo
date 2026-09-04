@@ -6,5 +6,9 @@
         <item name="android:navigationBarColor">@color/navy_900</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
+        <!-- Android 12+ System Splash Screen API -->
+        <item name="android:windowSplashScreenBackground">@color/navy_900</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/app_logo</item>
+        <item name="android:windowSplashScreenAnimationDuration">400</item>
     </style>
 </resources>
