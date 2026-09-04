@@ -31,14 +31,20 @@ import com.loanzo.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+import com.loanzo.app.data.entity.AgentApplicationEntity
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppOwnerVerificationScreen(
     verifications: List<VerificationEntity>,
+    agentApplications: List<AgentApplicationEntity> = emptyList(),
     onApproveVerification: (token: String, phone: String) -> Unit,
     onManualVerify: (String) -> Unit,
+    onApproveAgentApplication: (String) -> Unit = {},
+    onRejectAgentApplication: (String, String) -> Unit = { _, _ -> },
     onNavigateBack: () -> Unit
 ) {
+    var activeHubTab by remember { mutableIntStateOf(0) } // 0: SMS/Tokens, 1: Agent Empanelment
     var searchQuery by remember { mutableStateOf("") }
     var manualTokenInput by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") } // ALL, PENDING, VERIFIED
@@ -89,6 +95,10 @@ fun AppOwnerVerificationScreen(
     val pendingCount = verifications.count { it.status == "PENDING" }
     val verifiedCount = verifications.count { it.status == "VERIFIED" }
 
+    val pendingAgentsCount = remember(agentApplications) {
+        agentApplications.count { it.status == "PENDING" }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -116,225 +126,451 @@ fun AppOwnerVerificationScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                // Live Verification Listener Status Card
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = CircleShape,
-                                color = Emerald400.copy(alpha = 0.2f),
-                                modifier = Modifier.size(42.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Sensors, contentDescription = null, tint = Emerald400, modifier = Modifier.size(24.dp))
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Live Verification Listener", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-                                Text("Active • Auto-verifies tokens", color = Emerald400, fontSize = 12.sp)
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Emerald400.copy(alpha = 0.12f),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(Icons.Default.Sms, null, tint = Emerald400, modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("SMS", color = Emerald400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Emerald400.copy(alpha = 0.12f),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(Icons.AutoMirrored.Filled.Message, null, tint = Emerald400, modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("WhatsApp", color = Emerald400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Emerald400.copy(alpha = 0.12f),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(Icons.Default.Notifications, null, tint = Emerald400, modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Firestore", color = Emerald400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
+            // Master Tabs: Verification Tokens vs Agent Empanelment
+            PrimaryTabRow(
+                selectedTabIndex = activeHubTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = Gold500
+            ) {
+                Tab(
+                    selected = activeHubTab == 0,
+                    onClick = { activeHubTab = 0 },
+                    text = {
+                        Text(
+                            text = "SMS/Tokens ($pendingCount)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
-                }
-            }
-
-            // Stats row
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Pending Requests", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                            Text("$pendingCount", fontWeight = FontWeight.Bold, color = Gold500, fontSize = 20.sp)
-                        }
+                )
+                Tab(
+                    selected = activeHubTab == 1,
+                    onClick = { activeHubTab = 1 },
+                    text = {
+                        Text(
+                            text = "Agent Applications ($pendingAgentsCount)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Total Verified", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                            Text("$verifiedCount", fontWeight = FontWeight.Bold, color = Emerald400, fontSize = 20.sp)
-                        }
-                    }
-                }
-            }
-
-            // Quick Manual Approve Box
-            item {
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Manual Token / Phone Verification", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = manualTokenInput,
-                                onValueChange = { manualTokenInput = it },
-                                placeholder = { Text("Enter 6-digit Code or Phone") },
-                                singleLine = true,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(10.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Gold500,
-                                    cursorColor = Gold500,
-                                    unfocusedBorderColor = Gray600
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = {
-                                    if (manualTokenInput.isNotBlank()) {
-                                        onManualVerify(manualTokenInput.trim())
-                                        manualTokenInput = ""
-                                    }
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
-                                enabled = manualTokenInput.isNotBlank()
-                            ) {
-                                Text("Verify", fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Search and Filters
-            item {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Gray400) },
-                    placeholder = { Text("Search phone number or token...") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Gold500,
-                        cursorColor = Gold500,
-                        unfocusedBorderColor = Gray600
-                    )
                 )
             }
 
-            item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = selectedFilter == "ALL",
-                        onClick = { selectedFilter = "ALL" },
-                        label = { Text("All (${verifications.size})") }
-                    )
-                    FilterChip(
-                        selected = selectedFilter == "PENDING",
-                        onClick = { selectedFilter = "PENDING" },
-                        label = { Text("Pending ($pendingCount)") }
-                    )
-                    FilterChip(
-                        selected = selectedFilter == "VERIFIED",
-                        onClick = { selectedFilter = "VERIFIED" },
-                        label = { Text("Verified ($verifiedCount)") }
-                    )
-                }
-            }
+            if (activeHubTab == 0) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        // Live Verification Listener Status Card
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Emerald400.copy(alpha = 0.2f),
+                                        modifier = Modifier.size(42.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Sensors, contentDescription = null, tint = Emerald400, modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Live Verification Listener", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                                        Text("Active • Auto-verifies tokens", color = Emerald400, fontSize = 12.sp)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Emerald400.copy(alpha = 0.12f),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(Icons.Default.Sms, null, tint = Emerald400, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("SMS", color = Emerald400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Emerald400.copy(alpha = 0.12f),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(Icons.AutoMirrored.Filled.Message, null, tint = Emerald400, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("WhatsApp", color = Emerald400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Emerald400.copy(alpha = 0.12f),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(Icons.Default.Notifications, null, tint = Emerald400, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Firestore", color = Emerald400, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
-            if (filteredList.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No verification requests found.", color = Gray400, fontSize = 14.sp)
+                    // Stats row
+                    item {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Pending Requests", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                    Text("$pendingCount", fontWeight = FontWeight.Bold, color = Gold500, fontSize = 20.sp)
+                                }
+                            }
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Total Verified", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                    Text("$verifiedCount", fontWeight = FontWeight.Bold, color = Emerald400, fontSize = 20.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    // Quick Manual Approve Box
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text("Manual Token / Phone Verification", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    OutlinedTextField(
+                                        value = manualTokenInput,
+                                        onValueChange = { manualTokenInput = it },
+                                        placeholder = { Text("Enter 6-digit Code or Phone") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = Gold500,
+                                            cursorColor = Gold500,
+                                            unfocusedBorderColor = Gray600
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = {
+                                            if (manualTokenInput.isNotBlank()) {
+                                                onManualVerify(manualTokenInput.trim())
+                                                manualTokenInput = ""
+                                            }
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                        enabled = manualTokenInput.isNotBlank()
+                                    ) {
+                                        Text("Verify", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Search and Filters
+                    item {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            leadingIcon = { Icon(Icons.Default.Search, null, tint = Gray400) },
+                            placeholder = { Text("Search phone number or token...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Gold500,
+                                cursorColor = Gold500,
+                                unfocusedBorderColor = Gray600
+                            )
+                        )
+                    }
+
+                    item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(
+                                selected = selectedFilter == "ALL",
+                                onClick = { selectedFilter = "ALL" },
+                                label = { Text("All (${verifications.size})") }
+                            )
+                            FilterChip(
+                                selected = selectedFilter == "PENDING",
+                                onClick = { selectedFilter = "PENDING" },
+                                label = { Text("Pending ($pendingCount)") }
+                            )
+                            FilterChip(
+                                selected = selectedFilter == "VERIFIED",
+                                onClick = { selectedFilter = "VERIFIED" },
+                                label = { Text("Verified ($verifiedCount)") }
+                            )
+                        }
+                    }
+
+                    if (filteredList.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(40.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("No verification requests found.", color = Gray400, fontSize = 14.sp)
+                            }
+                        }
+                    } else {
+                        items(filteredList, key = { it.token }) { item ->
+                            VerificationItemCard(
+                                item = item,
+                                onApprove = { onApproveVerification(item.token, item.phone) }
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(20.dp))
                     }
                 }
             } else {
-                items(filteredList, key = { it.token }) { item ->
-                    VerificationItemCard(
-                        item = item,
-                        onApprove = { onApproveVerification(item.token, item.phone) }
+                // Tab 1: Agent Applications Empanelment Queue
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Agent Empanelment Queue (${agentApplications.size})",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Review bank-grade experience, police clearance certificates, and service territories.",
+                            fontSize = 12.sp,
+                            color = Gray400
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+
+                    if (agentApplications.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(40.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("No agent applications received yet.", color = Gray400, fontSize = 14.sp)
+                            }
+                        }
+                    } else {
+                        items(agentApplications, key = { it.applicationId }) { app ->
+                            AgentApplicationCard(
+                                app = app,
+                                onApprove = { onApproveAgentApplication(app.applicationId) },
+                                onReject = { remarks -> onRejectAgentApplication(app.applicationId, remarks) }
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgentApplicationCard(
+    app: AgentApplicationEntity,
+    onApprove: () -> Unit,
+    onReject: (String) -> Unit
+) {
+    val isApproved = app.status == "APPROVED"
+    val isPending = app.status == "PENDING"
+    val isRejected = app.status == "REJECTED"
+
+    val statusColor = when {
+        isApproved -> Emerald400
+        isRejected -> Color(0xFFEF4444)
+        else -> Gold500
+    }
+
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isApproved) Emerald400.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = app.applicantName,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        text = "${app.applicantPhone} • ${app.priorDomain}",
+                        fontSize = 12.sp,
+                        color = Gray400,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = statusColor.copy(alpha = 0.2f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = app.status,
+                        color = statusColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF0F141C))
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Police Clearance: ${app.policeVerificationNumber} (${app.policeStation})",
+                    fontSize = 11.sp,
+                    color = Color(0xFFD1D5DB)
+                )
+                Text(
+                    text = "Territory: ${app.permanentAddress}, ${app.operatingCity} (${app.serviceRadiusKm} km radius)",
+                    fontSize = 11.sp,
+                    color = Color(0xFFD1D5DB)
+                )
+                Text(
+                    text = "Transport: ${app.vehicleType} ${if (app.drivingLicenseNumber.isNotBlank()) "• DL: ${app.drivingLicenseNumber}" else ""}",
+                    fontSize = 11.sp,
+                    color = Color(0xFFD1D5DB)
+                )
+            }
+
+            if (isPending) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { onReject("Background checks or PCC requirements not met.") },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444))
+                    ) {
+                        Text("Reject", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = onApprove,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1.6f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900)
+                    ) {
+                        Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Approve Empanelment",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
+            } else if (isApproved) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Verified, null, tint = Emerald400, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Certified & Empaneled Field Officer", fontSize = 11.sp, color = Emerald400, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }

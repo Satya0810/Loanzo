@@ -32,5 +32,8 @@ data class UserEntity(
     val dateOfBirth: String = "",
     val address: String = "",
     val fcmToken: String = "",
+    val agentStatus: String = "NOT_APPLIED", // NOT_APPLIED, PENDING, APPROVED, REJECTED
+    val isOnDuty: Boolean = true,
+    val totalAgentEarnings: Double = 0.0,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.animation.core.*
+import com.loanzo.app.ui.agent.*
 import com.loanzo.app.util.toDateString
 
 // Route definitions
@@ -67,6 +68,12 @@ object Routes {
     const val PROFILE = "profile"
     const val PAYMENT_SUCCESS = "payment_success"
     const val NOTIFICATIONS = "notifications"
+
+    // Agent Routes
+    const val ROLE_SELECTION = "role_selection"
+    const val AGENT_APPLICATION = "agent_application"
+    const val AGENT_PENDING_APPROVAL = "agent_pending_approval"
+    const val AGENT_MAIN = "agent_main"
 
     // Feature Routes
     const val FINANCIAL_HEALTH = "financial_health"
@@ -143,10 +150,21 @@ fun LoanzoNavGraph(
         // Session Gate / Branded Splash
         composable(Routes.SPLASH) {
             SplashScreen()
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
 
             LaunchedEffect(authState.isSessionChecking, authState.isLoggedIn) {
                 if (!authState.isSessionChecking) {
-                    val destination = if (authState.isLoggedIn) Routes.MAIN else Routes.LOGIN
+                    val destination = if (authState.isLoggedIn) {
+                        val activeUserId = authState.currentUserId
+                        val user = if (!activeUserId.isNullOrBlank()) userRepository.getUserById(activeUserId) else null
+                        if (user?.role == "AGENT") {
+                            if (user.agentStatus == "APPROVED") Routes.AGENT_MAIN else Routes.AGENT_PENDING_APPROVAL
+                        } else {
+                            Routes.MAIN
+                        }
+                    } else {
+                        Routes.LOGIN
+                    }
                     navController.navigate(destination) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                         launchSingleTop = true
@@ -306,9 +324,17 @@ fun LoanzoNavGraph(
                 )
             }
 
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
             LaunchedEffect(authState.isLoggedIn) {
                 if (authState.isLoggedIn) {
-                    navController.navigate(Routes.MAIN) {
+                    val activeUserId = authState.currentUserId
+                    val user = if (!activeUserId.isNullOrBlank()) userRepository.getUserById(activeUserId) else null
+                    val destination = if (user?.role == "AGENT") {
+                        if (user.agentStatus == "APPROVED") Routes.AGENT_MAIN else Routes.AGENT_PENDING_APPROVAL
+                    } else {
+                        Routes.MAIN
+                    }
+                    navController.navigate(destination) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
@@ -392,25 +418,35 @@ fun LoanzoNavGraph(
                 onUploadSelfie = { bmp -> authViewModel.uploadLivenessSelfie(context, bmp) },
                 onUploadDocument = { type, uri -> authViewModel.uploadSingleKycDocument(context, type, uri) },
                 onSkip = {
-                    navController.navigate(Routes.MAIN) {
+                    navController.navigate(Routes.ROLE_SELECTION) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
                 onFinish = {
-                    navController.navigate(Routes.MAIN) {
+                    navController.navigate(Routes.ROLE_SELECTION) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
             )
         }
 
-        // Main scaffold with bottom nav
+        // Main scaffold with bottom nav (Strictly for Normal Members: Borrowers & Lenders)
         composable(Routes.MAIN) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
             LaunchedEffect(authState.isLoggedIn) {
                 if (!authState.isLoggedIn) {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                         launchSingleTop = true
+                    }
+                } else {
+                    val activeUserId = authState.currentUserId
+                    val user = if (!activeUserId.isNullOrBlank()) userRepository.getUserById(activeUserId) else null
+                    if (user?.role == "AGENT" && user.agentStatus == "APPROVED") {
+                        navController.navigate(Routes.AGENT_MAIN) {
+                            popUpTo(Routes.MAIN) { inclusive = true }
+                            launchSingleTop = true
+                        }
                     }
                 }
             }
@@ -418,6 +454,122 @@ fun LoanzoNavGraph(
             MainScaffold(
                 navController = navController,
                 authViewModel = authViewModel
+            )
+        }
+
+        // --- Agent Role Workflows ---
+        composable(Routes.ROLE_SELECTION) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val user by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            RoleSelectionScreen(
+                userName = user?.name ?: "",
+                onSelectNormalMember = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onSelectAgent = {
+                    navController.navigate(Routes.AGENT_APPLICATION)
+                }
+            )
+        }
+
+        composable(Routes.AGENT_APPLICATION) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val user by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            AgentApplicationScreen(
+                userId = activeUserId,
+                userName = user?.name ?: "",
+                userPhone = user?.phone ?: "",
+                userEmail = user?.email ?: "",
+                onNavigateBack = { navController.popBackStack() },
+                onSubmitSuccess = {
+                    navController.navigate(Routes.AGENT_PENDING_APPROVAL) {
+                        popUpTo(Routes.ROLE_SELECTION) { inclusive = true }
+                    }
+                },
+                onSubmitApplication = { app ->
+                    agentRepository.submitApplication(app)
+                }
+            )
+        }
+
+        composable(Routes.AGENT_PENDING_APPROVAL) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val application by (if (activeUserId.isNotBlank()) agentRepository.getApplication(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            AgentPendingApprovalScreen(
+                application = application,
+                onEnterAgentDashboard = {
+                    navController.navigate(Routes.AGENT_MAIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onReapply = {
+                    navController.navigate(Routes.AGENT_APPLICATION)
+                },
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.AGENT_MAIN) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val user by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+            val visits by (if (activeUserId.isNotBlank()) agentRepository.getVisitsForAgent(activeUserId) else kotlinx.coroutines.flow.flowOf(emptyList())).collectAsStateWithLifecycle(initialValue = emptyList())
+            val scope = rememberCoroutineScope()
+
+            LaunchedEffect(user?.role, user?.agentStatus) {
+                if (user != null && (user?.role != "AGENT" || user?.agentStatus != "APPROVED")) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            }
+
+            AgentDashboardScreen(
+                user = user,
+                visits = visits,
+                onToggleDutyStatus = { isOnDuty ->
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        agentRepository.setDutyStatus(activeUserId, isOnDuty)
+                    }
+                },
+                onCompleteVisit = { visitId, remarks, collateralOk, borrowerOk, lenderOk, proof ->
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        agentRepository.completeVisit(
+                            visitId = visitId,
+                            agentRemarks = remarks,
+                            isCollateralAuthentic = collateralOk,
+                            isBorrowerIdentityVerified = borrowerOk,
+                            isLenderIdentityVerified = lenderOk,
+                            proofPhotoUris = proof
+                        )
+                    }
+                },
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -707,8 +859,13 @@ fun LoanzoNavGraph(
                     }
             }
 
+            val agentApplications by database.agentDao().getAllApplications()
+                .collectAsStateWithLifecycle(initialValue = emptyList())
+            val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+
             com.loanzo.app.ui.admin.AppOwnerVerificationScreen(
                 verifications = verifications,
+                agentApplications = agentApplications,
                 onApproveVerification = { token, phone ->
                     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                         database.verificationDao().markAsVerified(token = token, phone = phone)
@@ -735,6 +892,16 @@ fun LoanzoNavGraph(
                                     .update("status", "VERIFIED")
                             } catch (_: Exception) {}
                         }
+                    }
+                },
+                onApproveAgentApplication = { appId ->
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        agentRepository.approveApplication(appId)
+                    }
+                },
+                onRejectAgentApplication = { appId, remarks ->
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        agentRepository.rejectApplication(appId, remarks)
                     }
                 },
                 onNavigateBack = { navController.popBackStack() }
@@ -1220,6 +1387,15 @@ fun MainScaffold(
                     isUploadingAadhaar = authState.isUploadingAadhaar,
                     uploadMessage = authState.error,
                     onClearUploadMessage = { authViewModel.clearError() },
+                    onNavigateToAgent = {
+                        if (user?.role == "AGENT" && user?.agentStatus == "APPROVED") {
+                            navController.navigate(Routes.AGENT_MAIN)
+                        } else if (user?.role == "AGENT" && user?.agentStatus == "PENDING") {
+                            navController.navigate(Routes.AGENT_PENDING_APPROVAL)
+                        } else {
+                            navController.navigate(Routes.ROLE_SELECTION)
+                        }
+                    },
                     themeMode = themeMode,
                     onSetThemeMode = { mode -> scope.launch { userRepository.setThemeMode(mode) } },
                     onLogout = {

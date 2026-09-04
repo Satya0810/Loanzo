@@ -19,9 +19,11 @@ import com.loanzo.app.data.entity.*
         VerificationEntity::class,
         NotificationEntity::class,
         MarketplacePostEntity::class,
-        MarketplaceBidEntity::class
+        MarketplaceBidEntity::class,
+        AgentApplicationEntity::class,
+        AgentVisitEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class LoanzoDatabase : RoomDatabase() {
@@ -37,4 +39,5 @@ abstract class LoanzoDatabase : RoomDatabase() {
     abstract fun verificationDao(): VerificationDao
     abstract fun notificationDao(): NotificationDao
     abstract fun marketplaceDao(): MarketplaceDao
+    abstract fun agentDao(): AgentDao
 }

@@ -30,6 +30,7 @@ class MainActivity : FragmentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
 
     @Inject lateinit var userRepository: UserRepository
+    @Inject lateinit var agentRepository: com.loanzo.app.data.repository.AgentRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,7 +62,8 @@ class MainActivity : FragmentActivity() {
             }
 
             CompositionLocalProvider(
-                LocalUserRepository provides userRepository
+                LocalUserRepository provides userRepository,
+                com.loanzo.app.util.LocalAgentRepository provides agentRepository
             ) {
                 LoanzoTheme(darkTheme = isDark) {
                     Surface(

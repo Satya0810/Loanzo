@@ -90,6 +90,7 @@ fun ProfileScreen(
     isUploadingAadhaar: Boolean = false,
     uploadMessage: String? = null,
     onClearUploadMessage: () -> Unit = {},
+    onNavigateToAgent: () -> Unit = {},
     onLogout: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -325,6 +326,79 @@ fun ProfileScreen(
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
+
+                        // Loanzo Field Agent Program Tile
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(18.dp))
+                                .clickable { onNavigateToAgent() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Gold500.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(44.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Security, contentDescription = null, tint = Gold500, modifier = Modifier.size(24.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "Field Agent Program",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        val agentBadge = when (user.agentStatus) {
+                                            "APPROVED" -> "CERTIFIED ✓"
+                                            "PENDING" -> "IN REVIEW"
+                                            else -> "EARN ₹1500"
+                                        }
+                                        val badgeTint = when (user.agentStatus) {
+                                            "APPROVED" -> Emerald400
+                                            "PENDING" -> Gold500
+                                            else -> Color(0xFF38BDF8)
+                                        }
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = badgeTint.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = agentBadge,
+                                                color = badgeTint,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = when (user.agentStatus) {
+                                            "APPROVED" -> "Certified Officer • Open Agent Console"
+                                            "PENDING" -> "Under background check • Check status"
+                                            else -> "Empanel as verification officer & earn per visit"
+                                        },
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Gray400, modifier = Modifier.size(18.dp))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
 
                         // ================= GROUP 1: IDENTITY & LEGAL =================
                         ProfileSectionHeader(title = "IDENTITY & CREDENTIALS")

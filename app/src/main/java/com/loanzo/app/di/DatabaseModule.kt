@@ -37,4 +37,5 @@ object DatabaseModule {
     @Provides fun provideVerificationDao(db: LoanzoDatabase): VerificationDao = db.verificationDao()
     @Provides fun provideNotificationDao(db: LoanzoDatabase): NotificationDao = db.notificationDao()
     @Provides fun provideMarketplaceDao(db: LoanzoDatabase): MarketplaceDao = db.marketplaceDao()
+    @Provides fun provideAgentDao(db: LoanzoDatabase): AgentDao = db.agentDao()
 }
