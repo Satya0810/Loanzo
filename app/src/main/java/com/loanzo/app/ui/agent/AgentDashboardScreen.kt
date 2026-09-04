@@ -199,7 +199,10 @@ fun AgentDashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                modifier = Modifier.weight(1f, fill = false),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .size(10.dp)
@@ -208,14 +211,17 @@ fun AgentDashboardScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (isOnDuty) "Status: ON DUTY (Receiving Dispatches)" else "Status: ON BREAK / OFF DUTY",
+                                    text = if (isOnDuty) "Status: ON DUTY (Active)" else "Status: ON BREAK / OFF",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isOnDuty) emeraldAccent else Color(0xFFF97316),
                                     maxLines = 1,
-                                    softWrap = false
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
+
+                            Spacer(modifier = Modifier.width(8.dp))
 
                             Button(
                                 onClick = { onToggleDutyStatus(!isOnDuty) },
@@ -399,22 +405,38 @@ fun AgentDashboardScreen(
                             }
                         },
                         onCallBorrower = {
-                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${visit.borrowerPhone}"))
-                            context.startActivity(intent)
+                            try {
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${visit.borrowerPhone}"))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                android.widget.Toast.makeText(context, "Unable to launch dialer", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         },
                         onWhatsAppBorrower = {
-                            val cleanNumber = visit.borrowerPhone.replace("+", "").replace(" ", "")
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber&text=Hello%20${visit.borrowerName},%20I%20am%20the%20Loanzo%20Verification%20Officer%20scheduled%20for%20your%20loan%20verification."))
-                            context.startActivity(intent)
+                            try {
+                                val cleanNumber = visit.borrowerPhone.replace("+", "").replace(" ", "")
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber&text=Hello%20${visit.borrowerName},%20I%20am%20the%20Loanzo%20Verification%20Officer%20scheduled%20for%20your%20loan%20verification."))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                android.widget.Toast.makeText(context, "WhatsApp is not installed on this device", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         },
                         onCallLender = {
-                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${visit.lenderPhone}"))
-                            context.startActivity(intent)
+                            try {
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${visit.lenderPhone}"))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                android.widget.Toast.makeText(context, "Unable to launch dialer", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         },
                         onWhatsAppLender = {
-                            val cleanNumber = visit.lenderPhone.replace("+", "").replace(" ", "")
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber&text=Hello%20${visit.lenderName},%20I%20am%20the%20Loanzo%20Verification%20Officer%20scheduled%20for%20your%20loan%20verification."))
-                            context.startActivity(intent)
+                            try {
+                                val cleanNumber = visit.lenderPhone.replace("+", "").replace(" ", "")
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber&text=Hello%20${visit.lenderName},%20I%20am%20the%20Loanzo%20Verification%20Officer%20scheduled%20for%20your%20loan%20verification."))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                android.widget.Toast.makeText(context, "WhatsApp is not installed on this device", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         },
                         onStartInspection = {
                             activeInspectionVisit = visit

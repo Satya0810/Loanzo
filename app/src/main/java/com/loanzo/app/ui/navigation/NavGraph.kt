@@ -537,7 +537,8 @@ fun LoanzoNavGraph(
             val scope = rememberCoroutineScope()
 
             LaunchedEffect(user?.role, user?.agentStatus) {
-                if (user != null && (user?.role != "AGENT" || user?.agentStatus != "APPROVED")) {
+                val isSuper = com.loanzo.app.util.VerificationManager.isAppOwner(user)
+                if (user != null && !isSuper && (user?.role != "AGENT" || user?.agentStatus != "APPROVED")) {
                     navController.navigate(Routes.MAIN) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -565,23 +566,19 @@ fun LoanzoNavGraph(
                     }
                 },
                 onSwitchToConsumer = {
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        user?.let { userRepository.updateUser(it.copy(role = "USER")) }
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            navController.navigate(Routes.MAIN) {
-                                popUpTo(0) { inclusive = true }
-                            }
+                    val isSuper = com.loanzo.app.util.VerificationManager.isAppOwner(user)
+                    if (!isSuper) {
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            user?.let { userRepository.updateUser(it.copy(role = "USER")) }
                         }
+                    }
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 onSwitchToAdmin = {
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        user?.let { userRepository.updateUser(it.copy(role = "ADMIN")) }
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            navController.navigate(Routes.APP_OWNER_HUB) {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        }
+                    navController.navigate(Routes.APP_OWNER_HUB) {
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 onLogout = {

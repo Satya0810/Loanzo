@@ -218,7 +218,9 @@ fun AppOwnerVerificationScreen(
                     )
                     1 -> DocumentKycTab(
                         agentApplications = agentApplications,
-                        onInspect = { data -> inspectingDoc = data }
+                        onInspect = { data -> inspectingDoc = data },
+                        onApproveAgent = onApproveAgentApplication,
+                        onRejectAgent = onRejectAgentApplication
                     )
                     2 -> DispatchTab(
                         unassignedVisits = unassignedVisits,
@@ -429,12 +431,16 @@ private fun AgentsTab(
 
     val filteredAgents = remember(agents, searchQuery, selectedFilter) {
         agents.filter { agent ->
-            val matchesSearch = agent.permanentAddress.contains(searchQuery, ignoreCase = true) ||
+            val matchesSearch = agent.applicantName.contains(searchQuery, ignoreCase = true) ||
+                    agent.applicantPhone.contains(searchQuery, ignoreCase = true) ||
+                    agent.permanentAddress.contains(searchQuery, ignoreCase = true) ||
                     agent.operatingCity.contains(searchQuery, ignoreCase = true) ||
-                    agent.policeVerificationNumber.contains(searchQuery, ignoreCase = true)
+                    agent.policeVerificationNumber.contains(searchQuery, ignoreCase = true) ||
+                    agent.drivingLicenseNumber.contains(searchQuery, ignoreCase = true)
             val matchesFilter = when (selectedFilter) {
                 "PENDING" -> agent.status == "PENDING"
                 "APPROVED" -> agent.status == "APPROVED"
+                "SUSPENDED" -> agent.status == "SUSPENDED"
                 else -> true
             }
             matchesSearch && matchesFilter
@@ -445,7 +451,7 @@ private fun AgentsTab(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = { Text("Search by City, Address, PCC #...", color = Gray500, fontSize = 12.sp) },
+            placeholder = { Text("Search by Name, City, PCC #, Phone...", color = Gray500, fontSize = 12.sp) },
             leadingIcon = { Icon(Icons.Default.Search, null, tint = Gray400) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(10.dp),
@@ -463,6 +469,7 @@ private fun AgentsTab(
             FilterChipItem("All Agents (${agents.size})", selectedFilter == "ALL") { selectedFilter = "ALL" }
             FilterChipItem("Pending (${agents.count { it.status == "PENDING" }})", selectedFilter == "PENDING") { selectedFilter = "PENDING" }
             FilterChipItem("Empaneled (${agents.count { it.status == "APPROVED" }})", selectedFilter == "APPROVED") { selectedFilter = "APPROVED" }
+            FilterChipItem("Suspended (${agents.count { it.status == "SUSPENDED" }})", selectedFilter == "SUSPENDED") { selectedFilter = "SUSPENDED" }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -479,15 +486,25 @@ private fun AgentsTab(
                         onApprove = { onApprove(agent.applicationId) },
                         onReject = { reason -> onReject(agent.applicationId, reason) },
                         onInspectDoc = { onInspectDoc(agent) },
+                        onSuspend = { onSuspend(agent.applicationId) },
+                        onReactivate = { onReactivate(agent.applicationId) },
                         onCall = {
-                            val cleanPhone = agent.applicantPhone.ifBlank { "+917061559039" }
-                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanPhone"))
-                            context.startActivity(intent)
+                            try {
+                                val cleanPhone = agent.applicantPhone.ifBlank { "+917061559039" }
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanPhone"))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Unable to launch phone dialer", Toast.LENGTH_SHORT).show()
+                            }
                         },
                         onWhatsApp = {
-                            val cleanPhone = agent.applicantPhone.filter { it.isDigit() }.ifBlank { "917061559039" }
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$cleanPhone"))
-                            context.startActivity(intent)
+                            try {
+                                val cleanPhone = agent.applicantPhone.filter { it.isDigit() }.ifBlank { "917061559039" }
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$cleanPhone"))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "WhatsApp is not installed on this device", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
                 }
@@ -502,16 +519,19 @@ private fun AgentRosterCard(
     onApprove: () -> Unit,
     onReject: (String) -> Unit,
     onInspectDoc: () -> Unit,
+    onSuspend: () -> Unit,
+    onReactivate: () -> Unit,
     onCall: () -> Unit,
     onWhatsApp: () -> Unit
 ) {
     val isPending = agent.status == "PENDING"
     val isApproved = agent.status == "APPROVED"
+    val isSuspended = agent.status == "SUSPENDED"
 
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-        border = BorderStroke(1.dp, if (isApproved) Emerald400.copy(alpha = 0.4f) else Color(0xFF1E293B)),
+        border = BorderStroke(1.dp, if (isApproved) Emerald400.copy(alpha = 0.4f) else if (isSuspended) Color(0xFFEF4444).copy(alpha = 0.4f) else Color(0xFF1E293B)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -523,11 +543,11 @@ private fun AgentRosterCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = if (isApproved) Emerald400.copy(alpha = 0.2f) else Gold500.copy(alpha = 0.2f),
+                        color = if (isApproved) Emerald400.copy(alpha = 0.2f) else if (isSuspended) Color(0xFFEF4444).copy(alpha = 0.2f) else Gold500.copy(alpha = 0.2f),
                         modifier = Modifier.size(36.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Badge, null, tint = if (isApproved) Emerald400 else Gold500, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Badge, null, tint = if (isApproved) Emerald400 else if (isSuspended) Color(0xFFEF4444) else Gold500, modifier = Modifier.size(18.dp))
                         }
                     }
                     Spacer(modifier = Modifier.width(8.dp))
@@ -550,11 +570,11 @@ private fun AgentRosterCard(
 
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = if (isApproved) Emerald400.copy(alpha = 0.2f) else Gold500.copy(alpha = 0.2f)
+                    color = if (isApproved) Emerald400.copy(alpha = 0.2f) else if (isSuspended) Color(0xFFEF4444).copy(alpha = 0.2f) else Gold500.copy(alpha = 0.2f)
                 ) {
                     Text(
                         text = agent.status,
-                        color = if (isApproved) Emerald400 else Gold500,
+                        color = if (isApproved) Emerald400 else if (isSuspended) Color(0xFFEF4444) else Gold500,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
@@ -633,6 +653,29 @@ private fun AgentRosterCard(
                         Text("Empanel Officer", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
+            } else if (isApproved) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onSuspend,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFF97316)),
+                    border = BorderStroke(1.dp, Color(0xFFF97316).copy(alpha = 0.6f))
+                ) {
+                    Text("Suspend Field Agent", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                }
+            } else if (isSuspended) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onReactivate,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Navy900)
+                ) {
+                    Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Reactivate Field Agent", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                }
             }
         }
     }
@@ -642,7 +685,9 @@ private fun AgentRosterCard(
 @Composable
 private fun DocumentKycTab(
     agentApplications: List<AgentApplicationEntity>,
-    onInspect: (DocumentInspectionData) -> Unit
+    onInspect: (DocumentInspectionData) -> Unit,
+    onApproveAgent: (String) -> Unit,
+    onRejectAgent: (String, String) -> Unit
 ) {
     val sampleUserKyc = remember {
         listOf(
@@ -736,8 +781,8 @@ private fun DocumentKycTab(
                                     documentNumber = agent.policeVerificationNumber,
                                     issuingAuthority = agent.policeStation,
                                     photoUri = agent.policeDocUri,
-                                    onApprove = {},
-                                    onReject = {}
+                                    onApprove = { onApproveAgent(agent.applicationId) },
+                                    onReject = { reason -> onRejectAgent(agent.applicationId, reason) }
                                 )
                             )
                         },

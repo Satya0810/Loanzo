@@ -33,7 +33,7 @@
 
 **Loanzo** is an enterprise-grade Android microfinance platform engineered to bridge the gap between credit-worthy borrowers and private retail lenders. By combining **direct peer-to-peer social bidding (Lenme style)**, **purpose-bound merchant disbursements**, **physical collateral assaying**, **DigiLocker biometric e-Sign**, and an **automated Telegram & FCM alert desk**, Loanzo completely eliminates fraudulent loan scams, predatory interest traps, and unmonitored fund diversion.
 
-Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v11, Kotlin Coroutines & Flow)**, Loanzo provides offline-first resiliency, military-grade client-side encryption, and seamless cloud synchronization with both Google Drive and Firebase.
+Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12, Kotlin Coroutines & Flow)**, Loanzo provides offline-first resiliency, military-grade client-side encryption, and seamless cloud synchronization with both Google Drive and Firebase.
 
 ---
 
@@ -118,7 +118,7 @@ graph TD
     end
 
     subgraph Data Layer
-        C1[Loanzo Database - Room v11 SQLite]
+        C1[Loanzo Database - Room v12 SQLite]
         C2[11 Data Access Objects - DAOs]
         C3[Encrypted DataStore Preferences]
         C4[Offline-First Repositories]
