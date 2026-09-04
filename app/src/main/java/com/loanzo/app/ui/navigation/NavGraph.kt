@@ -1112,7 +1112,8 @@ fun MainScaffold(
                     },
                     onNavigateToLoansTab = { innerNavController.navigate(Routes.LOANS) },
                     onNavigateToChat = { loanId -> navController.navigate(Routes.chat(loanId)) },
-                    onNavigateToKyc = { navController.navigate(Routes.KYC) }
+                    onNavigateToKyc = { navController.navigate(Routes.KYC) },
+                    onPushDemoData = { authViewModel.pushDemoData() }
                 )
             }
 

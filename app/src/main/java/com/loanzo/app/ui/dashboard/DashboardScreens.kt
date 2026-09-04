@@ -65,16 +65,27 @@ fun DashboardScreen(
     onNavigateToApproval: (String) -> Unit = {},
     onNavigateToLoansTab: () -> Unit = {},
     onNavigateToChat: (String) -> Unit = {},
-    onNavigateToKyc: () -> Unit = {}
+    onNavigateToKyc: () -> Unit = {},
+    onPushDemoData: () -> Unit = {}
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
     var showChatSheet by remember { mutableStateOf(false) }
     var showReportSheet by remember { mutableStateOf(false) }
+    var showAcademySimulator by remember { mutableStateOf(false) }
     var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
 
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
     val dashboardGuideSeen by userRepository.isGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_DASHBOARD_SEEN)
         .collectAsStateWithLifecycle(initialValue = true)
+    val questCommunityDone by userRepository.isQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_COMMUNITY_EXPLORED)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val questCalculatorDone by userRepository.isQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_CALCULATOR_TRIED)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val questKycDone = state.user?.kycStatus == "VERIFIED"
+    val questDemoDone by userRepository.isQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_DEMO_SEEDED)
+        .collectAsStateWithLifecycle(initialValue = false)
+    val questDismissed by userRepository.isQuestCardDismissed()
+        .collectAsStateWithLifecycle(initialValue = false)
     val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -130,21 +141,38 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                        Box {
-                            IconButton(
-                                onClick = { isMenuExpanded = true },
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = BrandAmberGold.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.4f)),
+                                modifier = Modifier.clickable { showAcademySimulator = true }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "More Options",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("✨", fontSize = 12.sp)
+                                    Text("Academy", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
                             }
+
+                            Box {
+                                IconButton(
+                                    onClick = { isMenuExpanded = true },
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More Options",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
 
                             DropdownMenu(
                                 expanded = isMenuExpanded,
@@ -270,14 +298,88 @@ fun DashboardScreen(
                                         }
                                     }
                                 )
+
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+
+                                // Option 4: Academy & Live Simulator
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                text = "Loanzo Academy",
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                fontSize = 14.sp
+                                            )
+                                            Text(
+                                                text = "Interactive tutorials & simulators",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = BrandAmberGold,
+                                                fontSize = 11.sp
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        isMenuExpanded = false
+                                        showAcademySimulator = true
+                                    },
+                                    leadingIcon = {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = BrandAmberGold.copy(alpha = 0.15f),
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text("🎓", fontSize = 16.sp)
+                                            }
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
                 }
             }
         }
+    }
 
-
+        // Gamified Getting Started Quest Card
+        if (!questDismissed) {
+            item {
+                InteractiveGettingStartedQuestCard(
+                    isCommunityDone = questCommunityDone,
+                    isCalculatorDone = questCalculatorDone,
+                    isKycDone = questKycDone,
+                    isDemoDone = questDemoDone,
+                    onExploreCommunity = {
+                        scope.launch {
+                            userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_COMMUNITY_EXPLORED)
+                        }
+                    },
+                    onOpenCalculator = {
+                        scope.launch {
+                            userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_CALCULATOR_TRIED)
+                        }
+                        showAcademySimulator = true
+                    },
+                    onVerifyKyc = {
+                        onNavigateToKyc()
+                    },
+                    onSeedDemo = {
+                        scope.launch {
+                            userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_DEMO_SEEDED)
+                        }
+                        onPushDemoData()
+                    },
+                    onDismiss = {
+                        scope.launch {
+                            userRepository.dismissQuestCard()
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
 
         // Unified Financial Portfolio Card on Home (Executive Obsidian Dark Hero Box matching Live Loan Simulator)
         item {
@@ -907,6 +1009,17 @@ fun DashboardScreen(
                 autoDismissSeconds = 8
             )
         }
+    }
+
+    // Hands-on Interactive Academy Simulator Sheet
+    if (showAcademySimulator) {
+        LoanzoAcademySimulatorSheet(
+            onDismiss = { showAcademySimulator = false },
+            onNavigateToCreateLoan = {
+                showAcademySimulator = false
+                onNavigateToCreateLoan()
+            }
+        )
     }
     }
 }

@@ -51,6 +51,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import com.loanzo.app.ui.components.ContextualGuideCard
 import com.loanzo.app.ui.components.AppTours
+import com.loanzo.app.ui.components.LoanzoAcademySimulatorSheet
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -104,6 +108,7 @@ fun ProfileScreen(
         .collectAsStateWithLifecycle(initialValue = true)
     val scope = rememberCoroutineScope()
     var isGuideMeExpanded by remember { mutableStateOf(false) }
+    var showAcademySheet by remember { mutableStateOf(false) }
     val guideChevronRotation by animateFloatAsState(
         targetValue = if (isGuideMeExpanded) 180f else 0f,
         label = "guide_chevron"
@@ -565,6 +570,49 @@ fun ProfileScreen(
                                             modifier = Modifier.padding(bottom = 8.dp)
                                         )
 
+                                         // 1. Featured Loanzo Academy Live Simulator Card
+                                        Surface(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .clickable { showAcademySheet = true },
+                                            color = BrandAmberGold.copy(alpha = 0.12f),
+                                            border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.4f))
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(14.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(48.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .border(1.dp, BrandAmberGold.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                                ) {
+                                                    Image(
+                                                        painter = painterResource(R.drawable.guide_hero_shield),
+                                                        contentDescription = "Academy",
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.width(14.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Text("Loanzo Academy", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Surface(shape = CircleShape, color = BrandAmberGold.copy(alpha = 0.2f)) {
+                                                            Text("LIVE", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 9.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                        }
+                                                    }
+                                                    Text("Interactive Loan & EMI calculations simulator", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                }
+                                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = BrandAmberGold, modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(12.dp))
+
                                         AppTours.all.forEachIndexed { index, tour ->
                                             Row(
                                                 modifier = Modifier
@@ -579,19 +627,18 @@ fun ProfileScreen(
                                                     .padding(vertical = 10.dp, horizontal = 8.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Surface(
-                                                    shape = CircleShape,
-                                                    color = Gold500.copy(alpha = 0.1f),
-                                                    modifier = Modifier.size(32.dp)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(44.dp)
+                                                        .clip(RoundedCornerShape(10.dp))
+                                                        .border(1.dp, BrandAmberGold.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
                                                 ) {
-                                                    Box(contentAlignment = Alignment.Center) {
-                                                        Icon(
-                                                            imageVector = tour.icon,
-                                                            contentDescription = null,
-                                                            tint = Gold500,
-                                                            modifier = Modifier.size(16.dp)
-                                                        )
-                                                    }
+                                                    Image(
+                                                        painter = painterResource(tour.coverImageRes),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.Crop
+                                                    )
                                                 }
                                                 Spacer(modifier = Modifier.width(12.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
@@ -602,9 +649,11 @@ fun ProfileScreen(
                                                         color = MaterialTheme.colorScheme.onSurface
                                                     )
                                                     Text(
-                                                        text = "${tour.steps.size} steps • Tap to start tour",
+                                                        text = tour.subtitle,
                                                         style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                                     )
                                                 }
                                                 Icon(
@@ -668,6 +717,11 @@ fun ProfileScreen(
                                 autoDismissSeconds = 8
                             )
                         }
+                    }
+                    if (showAcademySheet) {
+                        LoanzoAcademySimulatorSheet(
+                            onDismiss = { showAcademySheet = false }
+                        )
                     }
                     }
                 }

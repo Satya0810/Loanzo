@@ -43,6 +43,13 @@ class UserRepository @Inject constructor(
         val NAV_TOOLTIPS_SEEN            = booleanPreferencesKey("nav_tooltips_seen")
         val ACTIVE_TOUR_ID               = stringPreferencesKey("active_tour_id")
         val ACTIVE_TOUR_STEP             = intPreferencesKey("active_tour_step")
+
+        // ─── Quest System keys ─────────────────────────────────────────────────
+        val QUEST_COMMUNITY_EXPLORED     = booleanPreferencesKey("quest_community_explored")
+        val QUEST_CALCULATOR_TRIED       = booleanPreferencesKey("quest_calculator_tried")
+        val QUEST_KYC_CHECKED           = booleanPreferencesKey("quest_kyc_checked")
+        val QUEST_DEMO_SEEDED           = booleanPreferencesKey("quest_demo_seeded")
+        val QUEST_CARD_DISMISSED        = booleanPreferencesKey("quest_card_dismissed")
     }
 
     suspend fun saveBiometricEnrollment(userId: String, enabled: Boolean) {
@@ -172,5 +179,20 @@ class UserRepository @Inject constructor(
             prefs.remove(ACTIVE_TOUR_ID)
             prefs.remove(ACTIVE_TOUR_STEP)
         }
+    }
+
+    // ─── Quest System Helpers ──────────────────────────────────────────────
+    fun isQuestStepDone(key: Preferences.Key<Boolean>): Flow<Boolean> =
+        context.dataStore.data.map { it[key] ?: false }
+
+    suspend fun markQuestStepDone(key: Preferences.Key<Boolean>) {
+        context.dataStore.edit { prefs -> prefs[key] = true }
+    }
+
+    fun isQuestCardDismissed(): Flow<Boolean> =
+        context.dataStore.data.map { it[QUEST_CARD_DISMISSED] ?: false }
+
+    suspend fun dismissQuestCard() {
+        context.dataStore.edit { prefs -> prefs[QUEST_CARD_DISMISSED] = true }
     }
 }
