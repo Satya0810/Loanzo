@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -166,7 +167,10 @@ fun KycScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
@@ -177,12 +181,13 @@ fun KycScreen(
                             Icon(Icons.Default.VerifiedUser, null, tint = Emerald400)
                         }
                         Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text("DigiLocker Official KYC", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            Text("Govt of India • MeitY", style = MaterialTheme.typography.labelSmall, color = Emerald500)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("DigiLocker Official KYC", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                            Text("Govt of India • MeitY", style = MaterialTheme.typography.labelSmall, color = Emerald500, maxLines = 1, softWrap = false)
                         }
                     }
                     if (isDigiLockerDone) {
+                        Spacer(modifier = Modifier.width(8.dp))
                         Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald500)
                     }
                 }
@@ -203,12 +208,15 @@ fun KycScreen(
                         ) {
                             Icon(Icons.Default.CheckCircle, null, tint = Emerald500, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("DigiLocker Verified ✓", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald500)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("DigiLocker Verified ✓", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald500, maxLines = 1, softWrap = false)
                                 Text(
                                     text = if (!user?.name.isNullOrBlank()) "Linked to: ${user?.name}" else "Aadhaar & PAN matched with Govt Records",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }

@@ -36,6 +36,7 @@ import com.loanzo.app.util.toRelativeTime
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.lazy.LazyRow
@@ -107,7 +108,10 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Image(
                                 painter = painterResource(id = R.drawable.app_logo),
                                 contentDescription = "Loanzo",
@@ -116,7 +120,7 @@ fun DashboardScreen(
                                     .clip(RoundedCornerShape(12.dp))
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 val dateStr = remember {
                                     java.text.SimpleDateFormat("EEEE, d MMMM", java.util.Locale.getDefault()).format(java.util.Date())
                                 }
@@ -125,22 +129,32 @@ fun DashboardScreen(
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    letterSpacing = 1.sp
+                                    letterSpacing = 0.5.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "Hello, ${state.user?.name?.split(" ")?.firstOrNull() ?: "User"} 👋",
-                                    style = MaterialTheme.typography.headlineMedium,
+                                    style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onBackground
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = "Welcome to Loanzo",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
@@ -154,7 +168,7 @@ fun DashboardScreen(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Text("✨", fontSize = 12.sp)
-                                    Text("Academy", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text("Academy", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
                                 }
                             }
 
@@ -495,29 +509,32 @@ fun DashboardScreen(
                 // 3. Bottom 3-Column Breakdown (Lent, Borrowed, Net)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Emerald400))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Total Lent", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(Emerald400))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Total Lent", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
-                        Text(state.totalLentDisbursed.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(state.totalLentDisbursed.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     }
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(modifier = Modifier.weight(1.1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(GoldCoinRich))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Total Borrowed", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(GoldCoinRich))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Total Borrowed", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
-                        Text(state.totalBorrowedDisbursed.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinRich)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(state.totalBorrowedDisbursed.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinRich, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     }
 
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("Outstanding Net", style = MaterialTheme.typography.labelSmall, color = Gray400)
-                        Text((state.totalLentOutstanding - state.totalBorrowedOutstanding).toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                        Text("Outstanding Net", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text((state.totalLentOutstanding - state.totalBorrowedOutstanding).toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     }
                 }
 

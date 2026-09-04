@@ -519,7 +519,9 @@ fun ProfileScreen(
                                                 text = "Guide Me 🧭",
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                softWrap = false
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Surface(
@@ -531,6 +533,8 @@ fun ProfileScreen(
                                                     color = Gold500,
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.Bold,
+                                                    maxLines = 1,
+                                                    softWrap = false,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                 )
                                             }
@@ -599,10 +603,10 @@ fun ProfileScreen(
                                                 Spacer(modifier = Modifier.width(14.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                                        Text("Loanzo Academy", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                                                        Text("Loanzo Academy", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, maxLines = 1, softWrap = false)
                                                         Spacer(modifier = Modifier.width(6.dp))
                                                         Surface(shape = CircleShape, color = BrandAmberGold.copy(alpha = 0.2f)) {
-                                                            Text("LIVE", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 9.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                            Text("LIVE", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 9.sp, maxLines = 1, softWrap = false, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                                         }
                                                     }
                                                     Text("Interactive Loan & EMI calculations simulator", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1713,8 +1717,8 @@ private fun ProfileActionRow(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1)
+            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
         if (statusBadge != null) {
             Surface(
@@ -1722,7 +1726,7 @@ private fun ProfileActionRow(
                 color = badgeColor.copy(alpha = 0.15f),
                 modifier = Modifier.padding(end = 8.dp)
             ) {
-                Text(statusBadge, color = badgeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
+                Text(statusBadge, color = badgeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
             }
         }
         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
@@ -1893,12 +1897,31 @@ private fun ProfileMetricChip(
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
             Spacer(modifier = Modifier.height(2.dp))
-            Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = color, fontSize = 12.sp)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = color,
+                fontSize = 11.5.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
         }
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.loanzo.app.data.entity.*
@@ -280,29 +281,32 @@ fun CreateLoanScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Emerald400))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Principal", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                                Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(Emerald400))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Principal", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                             }
-                            Text(principalNum.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(principalNum.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
 
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(modifier = Modifier.weight(1.1f), horizontalAlignment = Alignment.CenterHorizontally) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(GoldCoinRich))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Total Interest", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                                Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(GoldCoinRich))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Total Interest", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                             }
-                            Text(totalInterest.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinAmber)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(totalInterest.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinAmber, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
 
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Total Payable", style = MaterialTheme.typography.labelSmall, color = Gray400)
-                            Text(totalPayment.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                        Column(modifier = Modifier.weight(1.1f), horizontalAlignment = Alignment.End) {
+                            Text("Total Payable", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(totalPayment.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }

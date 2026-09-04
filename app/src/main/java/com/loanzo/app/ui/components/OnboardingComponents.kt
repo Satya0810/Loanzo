@@ -35,6 +35,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -332,6 +333,8 @@ fun WelcomeOnboardingCarousel(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 1.2.sp,
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp)
                             )
                         }
@@ -419,7 +422,9 @@ fun WelcomeOnboardingCarousel(
                             Text(
                                 text = if (isLastPage) "Explore Loanzo Now" else "Next Step",
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 16.sp
+                                fontSize = 16.sp,
+                                maxLines = 1,
+                                softWrap = false
                             )
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
@@ -678,6 +683,7 @@ fun InteractiveGettingStartedQuestCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -694,20 +700,28 @@ fun InteractiveGettingStartedQuestCard(
                         )
                     }
 
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = if (completedCount == 4) "Quest Complete! Pioneer Unlocked" else "Get Started with Loanzo",
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
-                            fontSize = 15.sp
+                            fontSize = 14.5.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "$completedCount of 4 steps completed (${(progress * 100).toInt()}%)",
                             color = Gray400,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(6.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { isExpanded = !isExpanded }, modifier = Modifier.size(28.dp)) {
@@ -800,20 +814,28 @@ private fun QuestStepItem(
                 tint = if (isCompleted) Emerald400 else Gray500,
                 modifier = Modifier.size(20.dp)
             )
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
-                    color = if (isCompleted) Gray400 else Color.White
+                    color = if (isCompleted) Gray400 else Color.White,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = subtitle,
                     fontSize = 11.sp,
-                    color = Gray400
+                    color = Gray400,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
+
+        Spacer(modifier = Modifier.width(10.dp))
 
         if (!isCompleted) {
             Button(
@@ -823,7 +845,7 @@ private fun QuestStepItem(
                 colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color(0xFF0F172A)),
                 modifier = Modifier.height(32.dp)
             ) {
-                Text(actionLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(actionLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
             }
         } else {
             Surface(
@@ -835,6 +857,8 @@ private fun QuestStepItem(
                     color = Emerald400,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
@@ -997,25 +1021,26 @@ fun LoanzoAcademySimulatorSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text("Monthly EMI", color = Gray400, fontSize = 12.sp)
-                            Text("₹${emi.roundToInt()}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Monthly EMI", color = Gray400, fontSize = 12.sp, maxLines = 1, softWrap = false)
+                            Text("₹${emi.roundToInt()}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false)
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Surface(shape = CircleShape, color = BrandAmberGold.copy(alpha = 0.2f)) {
-                            Text("Live Calculated", color = BrandAmberGold, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+                            Text("Live Calculated", color = BrandAmberGold, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
                         }
                     }
 
                     HorizontalDivider(color = Color.White.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 12.dp))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column {
-                            Text("Total Interest", color = Gray400, fontSize = 11.sp)
-                            Text("₹${totalInterest.roundToInt()}", color = BrandAmberGold, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Total Interest", color = Gray400, fontSize = 11.sp, maxLines = 1, softWrap = false)
+                            Text("₹${totalInterest.roundToInt()}", color = BrandAmberGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Total Payable", color = Gray400, fontSize = 11.sp)
-                            Text("₹${totalPayable.roundToInt()}", color = Emerald400, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                            Text("Total Payable", color = Gray400, fontSize = 11.sp, maxLines = 1, softWrap = false)
+                            Text("₹${totalPayable.roundToInt()}", color = Emerald400, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         }
                     }
                 }
@@ -1035,7 +1060,7 @@ fun LoanzoAcademySimulatorSheet(
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
-                Text("Start Real Loan with These Terms ➔", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Start Real Loan with These Terms ➔", fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, softWrap = false)
             }
         }
     }
@@ -1352,7 +1377,7 @@ fun GuidedTourOverlay(
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color(0xFF0F172A))
                         ) {
-                            Text(if (isLast) "Finish ✓" else "Next ➔", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(if (isLast) "Finish ✓" else "Next ➔", fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
                         }
                     }
                 }
