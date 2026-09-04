@@ -589,6 +589,59 @@ app.post('/api/telegram/notify', async (req, res) => {
     res.json({ success: true, delivered: count });
 });
 
+// ==========================================
+// 6. Meta WhatsApp Business Cloud API Webhook
+// ==========================================
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'loanzo_verify_token_2026';
+
+const handleWhatsAppVerify = (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    console.log(`[WhatsApp Webhook Verify] mode=${mode}, token=${token}`);
+
+    if (mode && token) {
+        if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
+            console.log('[WhatsApp Webhook Verify] Verification SUCCESS');
+            return res.status(200).send(challenge);
+        } else {
+            console.warn('[WhatsApp Webhook Verify] Token mismatch!');
+            return res.sendStatus(403);
+        }
+    }
+    res.sendStatus(400);
+};
+
+const handleWhatsAppEvents = (req, res) => {
+    try {
+        const body = req.body;
+        console.log('[WhatsApp Event]:', JSON.stringify(body, null, 2));
+
+        if (body.object) {
+            if (body.entry &&
+                body.entry[0].changes &&
+                body.entry[0].changes[0].value.messages &&
+                body.entry[0].changes[0].value.messages[0]) {
+                const message = body.entry[0].changes[0].value.messages[0];
+                const from = message.from;
+                const text = message.text ? message.text.body : '';
+                console.log(`[WhatsApp Inbound Message] From: ${from}, Text: "${text}"`);
+            }
+            return res.status(200).send('EVENT_RECEIVED');
+        }
+        res.sendStatus(404);
+    } catch (err) {
+        console.error('[WhatsApp Webhook Error]:', err);
+        res.sendStatus(500);
+    }
+};
+
+app.get('/webhook', handleWhatsAppVerify);
+app.get('/api/webhook', handleWhatsAppVerify);
+app.post('/webhook', handleWhatsAppEvents);
+app.post('/api/webhook', handleWhatsAppEvents);
+
 // Root health check
 app.get('/', (req, res) => {
     res.json({
