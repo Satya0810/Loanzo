@@ -37,12 +37,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.loanzo.app.R
 import com.loanzo.app.data.entity.UserEntity
 import com.loanzo.app.ui.components.GlassCard
+import com.loanzo.app.ui.components.LoanzoAvatar
 import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.BiometricAuthManager
 import com.loanzo.app.util.getDisplayProfilePhoto
@@ -134,8 +136,32 @@ fun ProfileScreen(
         return
     }
 
-    val isOwner = remember(user.phone) {
-        com.loanzo.app.util.VerificationManager.isAppOwner(user.phone)
+    val isOwner = remember(user.phone, user.username, user.role) {
+        com.loanzo.app.util.VerificationManager.isAppOwner(user)
+    }
+
+    val profilePhotoPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val targetFile = java.io.File(context.filesDir, "profile_${user.userId}.jpg")
+                    targetFile.outputStream().use { output ->
+                        inputStream?.copyTo(output)
+                    }
+                    val localPhotoUri = "file://${targetFile.absolutePath}"
+                    val updatedUser = user.copy(profilePhotoUri = localPhotoUri)
+                    userRepository.updateUser(updatedUser)
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(context, "Profile photo updated successfully!", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(context, "Failed to save photo: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
     }
 
     val panPdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -210,53 +236,27 @@ fun ProfileScreen(
                                 modifier = Modifier.padding(18.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                val avatarModel = user.getDisplayProfilePhoto(context)
-                                Box(contentAlignment = Alignment.BottomEnd) {
-                                    if (avatarModel != null) {
-                                        coil.compose.AsyncImage(
-                                            model = avatarModel,
-                                            contentDescription = "Profile Photo",
-                                            modifier = Modifier
-                                                .size(86.dp)
-                                                .clip(CircleShape)
-                                                .border(2.5.dp, MaterialTheme.colorScheme.primary, CircleShape),
-                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                        )
-                                    } else {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                            modifier = Modifier
-                                                .size(86.dp)
-                                                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                                        ) {
-                                            Icon(
-                                                if (isOwner) Icons.Default.AdminPanelSettings else Icons.Default.Person,
-                                                null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(20.dp)
-                                            )
-                                        }
-                                    }
+                                LoanzoAvatar(
+                                    user = user,
+                                    size = 94.dp,
+                                    showVerifiedBadge = true,
+                                    showEditBadge = true,
+                                    borderColor = if (isOwner) Gold500 else MaterialTheme.colorScheme.primary,
+                                    borderWidth = 2.5.dp,
+                                    onClick = { profilePhotoPickerLauncher.launch("image/*") },
+                                    onEditClick = { profilePhotoPickerLauncher.launch("image/*") }
+                                )
 
-                                    // Verified Check Badge
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = if (user.kycStatus == "VERIFIED") Emerald500 else Gold500,
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = "Verified",
-                                            tint = Color.White,
-                                            modifier = Modifier.padding(3.dp)
-                                        )
-                                    }
-                                }
+                                Spacer(modifier = Modifier.height(6.dp))
 
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Tap to change photo",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 10.sp
+                                )
+
+                                Spacer(modifier = Modifier.height(10.dp))
 
                                 Text(
                                     text = user.name.ifBlank { "Loanzo Member" },
@@ -325,7 +325,175 @@ fun ProfileScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        // ==========================================
+                        // 👑 MASTER ROLE SWITCHER (Exclusive for App Owner / @satyam0810)
+                        // ==========================================
+                        if (isOwner) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.5.dp, Gold500.copy(alpha = 0.7f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("👑", fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Super Admin Role Switcher",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = Gold400,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = Gold500.copy(alpha = 0.15f),
+                                            border = BorderStroke(0.5.dp, Gold500.copy(alpha = 0.4f))
+                                        ) {
+                                            Text(
+                                                text = "@${user.username.ifBlank { "satyam0810" }}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Gold400,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Switch active view instantly between Consumer Member, Certified Field Agent, and Master Admin console.",
+                                        fontSize = 12.sp,
+                                        color = Gray400,
+                                        lineHeight = 16.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    // 3 Segmented Role Chips
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        val currentRole = user.role.uppercase()
+                                        val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+
+                                        // 1. Normal User
+                                        val isNormalSelected = currentRole == "USER" || currentRole == "BORROWER" || currentRole == "LENDER"
+                                        Surface(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable {
+                                                    if (!isNormalSelected) {
+                                                        scope.launch {
+                                                            userRepository.updateUser(user.copy(role = "USER"))
+                                                            Toast.makeText(context, "Switched to Normal Member role", Toast.LENGTH_SHORT).show()
+                                                            onBack()
+                                                        }
+                                                    }
+                                                },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (isNormalSelected) Gold500 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            border = BorderStroke(1.dp, if (isNormalSelected) Gold500 else MaterialTheme.colorScheme.outlineVariant)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(vertical = 10.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text("👤", fontSize = 16.sp)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = "Member",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isNormalSelected) DarkNavy else MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                    softWrap = false
+                                                )
+                                            }
+                                        }
+
+                                        // 2. Field Agent
+                                        val isAgentSelected = currentRole == "AGENT"
+                                        Surface(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable {
+                                                    scope.launch {
+                                                        agentRepository.seedSampleVisits(user.userId)
+                                                        userRepository.updateUser(user.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true))
+                                                        Toast.makeText(context, "Switched to Certified Field Agent", Toast.LENGTH_SHORT).show()
+                                                        onNavigateToAgent()
+                                                    }
+                                                },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (isAgentSelected) Emerald500 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            border = BorderStroke(1.dp, if (isAgentSelected) Emerald500 else MaterialTheme.colorScheme.outlineVariant)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(vertical = 10.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text("🕵️", fontSize = 16.sp)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = "Agent",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isAgentSelected) DarkNavy else MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                    softWrap = false
+                                                )
+                                            }
+                                        }
+
+                                        // 3. Master Admin
+                                        val isAdminSelected = currentRole == "ADMIN"
+                                        Surface(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable {
+                                                    scope.launch {
+                                                        userRepository.updateUser(user.copy(role = "ADMIN"))
+                                                        Toast.makeText(context, "Switched to Master Admin", Toast.LENGTH_SHORT).show()
+                                                        onNavigateToAdminHub()
+                                                    }
+                                                },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (isAdminSelected) Color(0xFF6366F1) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            border = BorderStroke(1.dp, if (isAdminSelected) Color(0xFF6366F1) else MaterialTheme.colorScheme.outlineVariant)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(vertical = 10.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Text("🛡️", fontSize = 16.sp)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = "Admin",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isAdminSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                    softWrap = false
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
 
                         // Loanzo Field Agent Program Tile
                         Card(

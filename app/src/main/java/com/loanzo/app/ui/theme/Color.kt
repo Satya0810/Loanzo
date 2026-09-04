@@ -31,6 +31,7 @@ val TextSlateMuted = Color(0xFF64748B) // Slate 500 for captions and meta
 
 // Primary palette — Deep Matte Slate & Obsidian (Dark Mode)
 val Navy900 = Color(0xFF0B0F19) // Deep Matte Slate (Replaces harsh cyber #0A1628)
+val DarkNavy = Color(0xFF0B0F19) // High-contrast midnight navy
 val Navy800 = Color(0xFF111827) // Elevated Slate Surface
 val Navy700 = Color(0xFF1E293B) // Card Border / Deep Element
 val Navy600 = Color(0xFF334155) // Slate Muted

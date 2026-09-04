@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loanzo.app.data.entity.AgentVisitEntity
 import com.loanzo.app.data.entity.UserEntity
+import com.loanzo.app.ui.components.LoanzoAvatar
+import com.loanzo.app.util.isSuperAdmin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,9 +48,13 @@ fun AgentDashboardScreen(
         isLenderVerified: Boolean,
         photoProof: String
     ) -> Unit,
+    onSwitchToConsumer: () -> Unit = {},
+    onSwitchToAdmin: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
+    val isSuperAdmin = user.isSuperAdmin()
+    var showRoleSwitchDialog by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf("ALL") }
     var activeInspectionVisit by remember { mutableStateOf<AgentVisitEntity?>(null) }
     var showPayoutSuccessDialog by remember { mutableStateOf<Double?>(null) }
@@ -97,20 +103,13 @@ fun AgentDashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(Brush.linearGradient(listOf(Color(0xFFD97706), goldAccent))),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Security,
-                                    contentDescription = null,
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                            LoanzoAvatar(
+                                user = user,
+                                size = 44.dp,
+                                showVerifiedBadge = true,
+                                borderColor = goldAccent,
+                                borderWidth = 2.dp
+                            )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Surface(
@@ -141,13 +140,43 @@ fun AgentDashboardScreen(
                             }
                         }
 
-                        // Logout action
-                        IconButton(onClick = onLogout) {
-                            Icon(
-                                imageVector = Icons.Default.Logout,
-                                contentDescription = "Sign Out",
-                                tint = Color(0xFF8B949E)
-                            )
+                        // Top right actions: Super Admin Role Switcher + Logout
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isSuperAdmin) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = goldAccent.copy(alpha = 0.18f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, goldAccent.copy(alpha = 0.5f)),
+                                    modifier = Modifier
+                                        .clickable { showRoleSwitchDialog = true }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text("👑", fontSize = 12.sp)
+                                        Text(
+                                            text = "Role",
+                                            color = goldAccent,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+
+                            // Logout action
+                            IconButton(onClick = onLogout) {
+                                Icon(
+                                    imageVector = Icons.Default.Logout,
+                                    contentDescription = "Sign Out",
+                                    tint = Color(0xFF8B949E)
+                                )
+                            }
                         }
                     }
 
@@ -472,6 +501,111 @@ fun AgentDashboardScreen(
                         color = Color.Black,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        )
+    }
+
+    // 👑 Super Admin Role Switcher Dialog
+    if (showRoleSwitchDialog) {
+        AlertDialog(
+            onDismissRequest = { showRoleSwitchDialog = false },
+            containerColor = Color(0xFF161B22),
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("👑", fontSize = 18.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Master Role Switcher",
+                        color = goldAccent,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Hello @${user?.username?.ifBlank { "satyam0810" } ?: "satyam0810"}, switch your operational view instantly:",
+                        color = Color(0xFFD1D5DB),
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Option 1: Switch to Consumer Member Dashboard
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF21262D),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF30363D)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showRoleSwitchDialog = false
+                                onSwitchToConsumer()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("👤", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Normal Member Dashboard",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = "P2P loans, wallet, marketplace feed",
+                                    color = Color(0xFF8B949E),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Option 2: Switch to Master Admin Hub
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF21262D),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF30363D)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showRoleSwitchDialog = false
+                                onSwitchToAdmin()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🛡️", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Master Admin Hub",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = "Empanelment approvals & verification tokens",
+                                    color = Color(0xFF8B949E),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showRoleSwitchDialog = false }) {
+                    Text("Stay as Agent", color = goldAccent)
                 }
             }
         )

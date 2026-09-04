@@ -3,6 +3,7 @@ package com.loanzo.app.ui.marketplace
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -338,19 +339,32 @@ fun SocialPostCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(accentColor.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isLenderOffer) Icons.Default.VolunteerActivism else Icons.Default.AccountBalanceWallet,
-                        contentDescription = null,
-                        tint = accentColor,
-                        modifier = Modifier.size(24.dp)
+                val authorPhoto = post.authorAvatarUrl.ifBlank { null }
+                if (authorPhoto != null) {
+                    coil.compose.AsyncImage(
+                        model = authorPhoto,
+                        contentDescription = post.authorName,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, accentColor.copy(alpha = 0.5f), CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(accentColor.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isLenderOffer) Icons.Default.VolunteerActivism else Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))

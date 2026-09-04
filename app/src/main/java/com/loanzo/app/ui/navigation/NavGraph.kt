@@ -564,6 +564,26 @@ fun LoanzoNavGraph(
                         )
                     }
                 },
+                onSwitchToConsumer = {
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        user?.let { userRepository.updateUser(it.copy(role = "USER")) }
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            navController.navigate(Routes.MAIN) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    }
+                },
+                onSwitchToAdmin = {
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        user?.let { userRepository.updateUser(it.copy(role = "ADMIN")) }
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            navController.navigate(Routes.APP_OWNER_HUB) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    }
+                },
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Routes.LOGIN) {

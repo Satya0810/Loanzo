@@ -136,6 +136,8 @@ class AgentRepository @Inject constructor(
         }
     }
 
+    suspend fun seedSampleVisits(agentId: String) = seedSampleVisitsForAgent(agentId)
+
     suspend fun seedSampleVisitsForAgent(agentId: String) {
         val sampleVisits = listOf(
             AgentVisitEntity(

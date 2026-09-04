@@ -146,7 +146,30 @@ fun com.loanzo.app.data.entity.UserEntity?.getDisplayProfilePhoto(context: andro
         return this.profilePhotoUri
     }
 
-    return null
+    // 5. Smart Fallback Initials / UI-Avatar (Guarantees profile pictures are NEVER absent)
+    val displayName = this.name.ifBlank { this.username.ifBlank { "User" } }
+    val encoded = try {
+        java.net.URLEncoder.encode(displayName, "UTF-8")
+    } catch (e: Exception) {
+        "User"
+    }
+    return "https://ui-avatars.com/api/?name=$encoded&background=0A1628&color=D4AF37&bold=true&size=256&length=2"
+}
+
+fun com.loanzo.app.data.entity.UserEntity?.getInitials(): String {
+    if (this == null) return "U"
+    val displayName = this.name.ifBlank { this.username.ifBlank { "User" } }
+    val parts = displayName.trim().split(" ").filter { it.isNotBlank() }
+    return when {
+        parts.size >= 2 -> "${parts[0].first().uppercaseChar()}${parts[1].first().uppercaseChar()}"
+        parts.size == 1 && parts[0].isNotEmpty() -> parts[0].take(2).uppercase()
+        else -> "U"
+    }
+}
+
+fun com.loanzo.app.data.entity.UserEntity?.isSuperAdmin(): Boolean {
+    if (this == null) return false
+    return com.loanzo.app.util.VerificationManager.isAppOwner(this)
 }
 
 /**

@@ -112,12 +112,13 @@ fun DashboardScreen(
                             modifier = Modifier.weight(1f),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.app_logo),
-                                contentDescription = "Loanzo",
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(RoundedCornerShape(12.dp))
+                            LoanzoAvatar(
+                                user = state.user,
+                                size = 48.dp,
+                                showVerifiedBadge = true,
+                                borderColor = BrandAmberGold,
+                                borderWidth = 2.dp,
+                                onClick = onNavigateToProfile
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {

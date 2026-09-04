@@ -12,12 +12,20 @@ class VerificationManager @Inject constructor(
     private val verificationDao: VerificationDao
 ) {
     companion object {
-        const val APP_OWNER_PHONE = "+910000000000" // Temporarily removed per user request
+        const val APP_OWNER_PHONE = "+917061559039"
         const val OTP_LENGTH = 6
 
-        fun isAppOwner(phone: String?): Boolean {
+        fun isAppOwner(phone: String?, username: String? = null): Boolean {
+            val u = username?.trim()?.lowercase() ?: ""
+            if (u == "satyam0810" || u == "satyam_081" || u == "satyam") return true
             if (phone == null) return false
-            return phone.trim() == APP_OWNER_PHONE
+            val cleanPhone = phone.trim().removePrefix("+91").trim()
+            return cleanPhone == "7061559039" || cleanPhone == "0000000000" || phone.trim() == APP_OWNER_PHONE
+        }
+
+        fun isAppOwner(user: com.loanzo.app.data.entity.UserEntity?): Boolean {
+            if (user == null) return false
+            return isAppOwner(user.phone, user.username) || user.role == "ADMIN"
         }
 
         fun generateSecureToken(): String {
