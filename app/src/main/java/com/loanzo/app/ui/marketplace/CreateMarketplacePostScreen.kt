@@ -30,6 +30,8 @@ import com.loanzo.app.ui.theme.*
 @Composable
 fun CreateMarketplacePostScreen(
     initialMode: String = "OFFER_TO_LEND",
+    isKycCompleted: Boolean = true,
+    onNavigateToKyc: () -> Unit = {},
     onPublish: (
         title: String,
         description: String,
@@ -68,7 +70,7 @@ fun CreateMarketplacePostScreen(
                     Text(
                         text = if (isLenderOffer) "Publish Lending Offer" else "Post Loan Request",
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 navigationIcon = {
@@ -76,14 +78,14 @@ fun CreateMarketplacePostScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Navy900
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -187,7 +189,7 @@ fun CreateMarketplacePostScreen(
             Text(
                 "Target Interest Rate: ${String.format("%.1f", interestRate)}% p.a.",
                 fontSize = 13.sp,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             )
             Slider(
@@ -207,7 +209,7 @@ fun CreateMarketplacePostScreen(
             Text(
                 "Tenure Duration (Months)",
                 fontSize = 13.sp,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -280,6 +282,10 @@ fun CreateMarketplacePostScreen(
             // Publish Button
             Button(
                 onClick = {
+                    if (!isKycCompleted) {
+                        onNavigateToKyc()
+                        return@Button
+                    }
                     val min = minAmountText.toDoubleOrNull() ?: 25000.0
                     val max = maxAmountText.toDoubleOrNull() ?: 50000.0
                     onPublish(
@@ -295,16 +301,19 @@ fun CreateMarketplacePostScreen(
                         collateralOffered
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Navy900),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (!isKycCompleted) Red400 else accentColor,
+                    contentColor = if (!isKycCompleted) Color.White else Navy900
+                ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(if (!isKycCompleted) Icons.Default.Lock else Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isLenderOffer) "Publish Lending Offer to Wall ➔" else "Broadcast Loan Request ➔",
+                    text = if (!isKycCompleted) "Complete KYC to Post ➔" else if (isLenderOffer) "Publish Lending Offer to Wall ➔" else "Broadcast Loan Request ➔",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )

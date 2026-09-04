@@ -67,7 +67,7 @@ fun NotificationScreen(
                             text = "Activity & Alerts",
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         if (state.unreadCount > 0) {
                             Text(
@@ -147,12 +147,12 @@ fun NotificationScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = SurfaceDarkElevated,
-                    unfocusedContainerColor = SurfaceDarkElevated,
-                    focusedBorderColor = Gold500.copy(alpha = 0.6f),
-                    unfocusedBorderColor = GlassBorder,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -369,7 +369,7 @@ fun NotificationScreen(
                             text = if (state.activeFilterCount > 0) "No matching notifications" else "You're all caught up!",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
@@ -535,7 +535,7 @@ fun UrgentActionHeroCard(
                 text = notification.title.replace(Regex("[⏰⚡🔔⚠️📜]"), "").trim(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -543,7 +543,7 @@ fun UrgentActionHeroCard(
             Text(
                 text = notification.message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Gray300,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -555,7 +555,7 @@ fun UrgentActionHeroCard(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Red400,
-                    contentColor = Navy900
+                    contentColor = Color.White
                 ),
                 modifier = Modifier.fillMaxWidth().height(42.dp)
             ) {
@@ -581,16 +581,16 @@ fun NotificationCard(
     val timeAgo = getRelativeTime(notification.timestamp)
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead) SurfaceDarkCard.copy(alpha = 0.55f) else SurfaceDarkElevated
+            containerColor = if (notification.isRead) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface
         ),
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 width = if (!notification.isRead) 1.dp else 0.5.dp,
-                color = if (!notification.isRead) iconTint.copy(alpha = 0.35f) else GlassBorder,
-                shape = RoundedCornerShape(20.dp)
+                color = if (!notification.isRead) iconTint.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(16.dp)
             )
             .clickable { onRead(); onAction() }
     ) {
@@ -643,12 +643,12 @@ fun NotificationCard(
                             val shortId = notification.relatedLoanId.take(8)
                             Surface(
                                 shape = CircleShape,
-                                color = Gold500.copy(alpha = 0.12f),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                                 modifier = Modifier.clickable { onTagClick("#$shortId") }
                             ) {
                                 Text(
                                     text = "#$shortId",
-                                    color = Gold500,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -662,7 +662,7 @@ fun NotificationCard(
                         Text(
                             text = timeAgo,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Gray400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (!notification.isRead) {
                             Spacer(modifier = Modifier.width(6.dp))
@@ -682,7 +682,7 @@ fun NotificationCard(
                     text = notification.title.replace(Regex("[⏰⚡🔔⚠️📜]"), "").trim(),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = if (notification.isRead) FontWeight.SemiBold else FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -692,7 +692,7 @@ fun NotificationCard(
                 Text(
                     text = notification.message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (notification.isRead) Gray400 else Gray300,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 17.sp

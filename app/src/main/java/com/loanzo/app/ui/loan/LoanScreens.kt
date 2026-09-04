@@ -5,6 +5,7 @@ import com.loanzo.app.R
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,6 +50,8 @@ import kotlin.math.roundToInt
 @Composable
 fun CreateLoanScreen(
     isGrantMode: Boolean = false,
+    isKycCompleted: Boolean = true,
+    onNavigateToKyc: () -> Unit = {},
     onCreateLoan: (counterpartyId: String, amount: Double, purpose: String, loanType: String,
                    interestRate: Double, interestModel: String, tenureMonths: Int,
                    repaymentFrequency: String, notes: String,
@@ -134,6 +137,50 @@ fun CreateLoanScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            if (!isKycCompleted) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Red400.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Red400.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Red400,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "KYC Verification Required",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Red400
+                            )
+                            Text(
+                                "You must complete identity verification before taking, borrowing, or granting loans.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = onNavigateToKyc,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Red400, contentColor = Color.White),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Verify", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
             // 1. DYNAMIC LIVE CALCULATOR PREVIEW CARD
             GradientCard(
                 gradientColors = listOf(Navy700, Navy900),
@@ -148,10 +195,10 @@ fun CreateLoanScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = CircleShape,
-                                color = Gold500.copy(alpha = 0.2f),
+                                color = GoldCoinRich.copy(alpha = 0.2f),
                                 modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Default.Calculate, null, tint = Gold500, modifier = Modifier.padding(8.dp))
+                                Icon(Icons.Default.Calculate, null, tint = GoldCoinRich, modifier = Modifier.padding(8.dp))
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
@@ -195,7 +242,7 @@ fun CreateLoanScreen(
                                 installmentAmount.toInrString(),
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Gold400
+                                color = GoldCoinBright
                             )
                         }
 
@@ -216,7 +263,7 @@ fun CreateLoanScreen(
                                     style = Stroke(width = 16f, cap = StrokeCap.Round)
                                 )
                                 drawArc(
-                                    color = Orange400,
+                                    color = GoldCoinRich,
                                     startAngle = -90f + principalAngle,
                                     sweepAngle = interestAngle,
                                     useCenter = false,
@@ -246,11 +293,11 @@ fun CreateLoanScreen(
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Orange400))
+                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(GoldCoinRich))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Total Interest", style = MaterialTheme.typography.labelSmall, color = Gray400)
                             }
-                            Text(totalInterest.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Orange400)
+                            Text(totalInterest.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinAmber)
                         }
 
                         Column(horizontalAlignment = Alignment.End) {
@@ -285,11 +332,13 @@ fun CreateLoanScreen(
                     androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(registeredUsers.take(6)) { user ->
                             FilterChip(
-                                selected = false,
+                                selected = counterpartyUserId == user.userId,
                                 onClick = { counterpartyUserId = user.userId },
-                                leadingIcon = { Icon(Icons.Default.AccountCircle, null, tint = Gold500, modifier = Modifier.size(16.dp)) },
-                                label = { Text(user.name.split(" ").firstOrNull() ?: user.phone) },
-                                shape = RoundedCornerShape(10.dp)
+                                leadingIcon = { Icon(Icons.Default.AccountCircle, null, tint = if (counterpartyUserId == user.userId) GoldCoinAmber else GoldCoinRich, modifier = Modifier.size(16.dp)) },
+                                label = { Text(user.name.split(" ").firstOrNull() ?: user.phone, fontWeight = if (counterpartyUserId == user.userId) FontWeight.Bold else FontWeight.Normal) },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = goldFilterChipColors(),
+                                border = goldFilterChipBorder(counterpartyUserId == user.userId)
                             )
                         }
                     }
@@ -372,8 +421,10 @@ fun CreateLoanScreen(
                         FilterChip(
                             selected = selectedLoanType == type,
                             onClick = { selectedLoanType = type },
-                            label = { Text(type.replace("_", " ")) },
-                            shape = RoundedCornerShape(10.dp)
+                            label = { Text(type.replace("_", " "), fontWeight = if (selectedLoanType == type) FontWeight.Bold else FontWeight.Normal) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = goldFilterChipColors(),
+                            border = goldFilterChipBorder(selectedLoanType == type)
                         )
                     }
                 }
@@ -633,6 +684,10 @@ fun CreateLoanScreen(
             // 7. SUBMIT BUTTON
             Button(
                 onClick = {
+                    if (!isKycCompleted) {
+                        onNavigateToKyc()
+                        return@Button
+                    }
                     onCreateLoan(
                         counterpartyUserId,
                         principalNum,
@@ -653,15 +708,17 @@ fun CreateLoanScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isGrantMode) Gold500 else Emerald400,
-                    contentColor = Navy900
+                    containerColor = if (!isKycCompleted) Red400 else (if (isGrantMode) Gold500 else Emerald400),
+                    contentColor = if (!isKycCompleted) Color.White else Navy900
                 ),
-                enabled = principalNum > 0 && purpose.isNotBlank() && counterpartyUserId.isNotBlank()
+                enabled = !isKycCompleted || (principalNum > 0 && purpose.isNotBlank() && counterpartyUserId.isNotBlank())
             ) {
-                Icon(if (isGrantMode) Icons.Default.Upload else Icons.Default.Send, null, modifier = Modifier.size(20.dp))
+                Icon(if (!isKycCompleted) Icons.Default.Lock else (if (isGrantMode) Icons.Default.Upload else Icons.Default.Send), null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    if (isGrantMode) {
+                    if (!isKycCompleted) {
+                        "Complete KYC to ${if (isGrantMode) "Grant" else "Request"} Loan"
+                    } else if (isGrantMode) {
                         if (principalNum > 0) "Grant ${principalNum.toInrString()} Loan" else "Grant Loan"
                     } else {
                         if (principalNum > 0) "Request ${principalNum.toInrString()} Loan" else "Request Loan"
@@ -756,10 +813,8 @@ fun LoanDetailScreen(
                 item {
                     Card(
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = Gold500.copy(alpha = 0.12f)),
-                        border = CardDefaults.outlinedCardBorder().copy(
-                            brush = Brush.linearGradient(listOf(Gold500.copy(alpha = 0.5f), GlassBorder))
-                        ),
+                        colors = CardDefaults.cardColors(containerColor = Gold500.copy(alpha = 0.08f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Gold500.copy(alpha = 0.35f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -770,14 +825,14 @@ fun LoanDetailScreen(
                                     "Pending Mutual Acceptance",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 "Review the proposed loan terms. Once accepted, both parties proceed to sign the binding legal agreement.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Gray300
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(14.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -812,10 +867,8 @@ fun LoanDetailScreen(
                 item {
                     Card(
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = Emerald400.copy(alpha = 0.15f)),
-                        border = CardDefaults.outlinedCardBorder().copy(
-                            brush = Brush.linearGradient(listOf(Emerald400.copy(alpha = 0.5f), GlassBorder))
-                        ),
+                        colors = CardDefaults.cardColors(containerColor = Emerald400.copy(alpha = 0.08f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.35f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -826,14 +879,14 @@ fun LoanDetailScreen(
                                     "Agreement Signed — Ready to Disburse",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 "Both parties have completed biometric & digital eSignatures. Transfer ${loan.sanctionedAmount.toInrString()} to borrower via UPI to activate loan.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Gray300
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
@@ -900,7 +953,7 @@ fun LoanDetailScreen(
             if (nextDue != null) {
                 item {
                     val isOverdue = state.daysUntilNextDue < 0
-                    val gradientColors = if (isOverdue) listOf(Red500, Red400) else listOf(Navy600, Navy700)
+                    val gradientColors = if (isOverdue) listOf(Red500, Red400) else listOf(Navy700, Navy900)
                     GradientCard(gradientColors = gradientColors) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -909,7 +962,7 @@ fun LoanDetailScreen(
                         ) {
                             Column {
                                 Text(
-                                    if (isOverdue) " Payment Overdue" else " Next Payment Due",
+                                    if (isOverdue) "Payment Overdue" else "Next Payment Due",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (isOverdue) Color.White.copy(alpha = 0.8f) else Gray300
                                 )
@@ -918,12 +971,12 @@ fun LoanDetailScreen(
                                     nextDue.amount.toInrString(),
                                     style = MaterialTheme.typography.displaySmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = if (isOverdue) Color.White else GoldCoinBright
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    if (isOverdue) "Overdue by ${-state.daysUntilNextDue} days  Due ${nextDue.dueDate.toDateString()}"
-                                    else "Due in ${state.daysUntilNextDue} days  ${nextDue.dueDate.toDateString()}",
+                                    if (isOverdue) "Overdue by ${-state.daysUntilNextDue} days • Due ${nextDue.dueDate.toDateString()}"
+                                    else "Due in ${state.daysUntilNextDue} days • ${nextDue.dueDate.toDateString()}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.7f)
                                 )
@@ -932,8 +985,8 @@ fun LoanDetailScreen(
                                 onClick = if (isLender) onSendReminder else onMakeRepayment,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isOverdue) Color.White else Gold500,
-                                    contentColor = if (isOverdue) Red500 else Navy900
+                                    containerColor = if (isOverdue) Color.White else GoldCoinRich,
+                                    contentColor = if (isOverdue) Red500 else Color.White
                                 )
                             ) {
                                 Icon(
@@ -958,7 +1011,7 @@ fun LoanDetailScreen(
                 val repaidRatio = if (loan.sanctionedAmount > 0) (state.totalPaid / loan.sanctionedAmount).toFloat() else 0f
                 val progressPercent = (repaidRatio * 100).toInt().coerceIn(0, 100)
 
-                GradientCard(gradientColors = listOf(Navy600, Navy700)) {
+                GradientCard(gradientColors = listOf(Navy700, Navy900)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -993,13 +1046,13 @@ fun LoanDetailScreen(
                                         "ACTIVE" -> Emerald400
                                         "CLOSED" -> Gray400
                                         "DEFAULTED" -> Red400
-                                        else -> Gold500
+                                        else -> GoldCoinRich
                                     })
                                     if (loan.isRestructured) {
-                                        StatusBadge(text = "RESTRUCTURED", color = Gold500)
+                                        StatusBadge(text = "RESTRUCTURED", color = GoldCoinRich)
                                     }
                                     if (loan.moratoriumMonths > 0) {
-                                        StatusBadge(text = "MORATORIUM: ${loan.moratoriumMonths}M", color = Orange400)
+                                        StatusBadge(text = "MORATORIUM: ${loan.moratoriumMonths}M", color = GoldCoinAmber)
                                     }
                                 }
                             }
@@ -1010,7 +1063,7 @@ fun LoanDetailScreen(
                                 loan.sanctionedAmount.toInrString(),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = GoldCoinBright
                             )
                         }
                     }
@@ -1048,12 +1101,12 @@ fun LoanDetailScreen(
                         Column {
                             Text(stringResource(R.string.disbursed), style = MaterialTheme.typography.labelSmall, color = Gray400)
                             Text(state.totalDisbursed.toInrString(), style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold, color = Gold400)
+                                fontWeight = FontWeight.SemiBold, color = GoldCoinBright)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(stringResource(R.string.outstanding), style = MaterialTheme.typography.labelSmall, color = Gray400)
                             Text(loan.outstandingAmount.toInrString(), style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold, color = if (loan.outstandingAmount > 0) Orange400 else Emerald400)
+                                fontWeight = FontWeight.SemiBold, color = if (loan.outstandingAmount > 0) GoldCoinAmber else Emerald400)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text(stringResource(R.string.repaid), style = MaterialTheme.typography.labelSmall, color = Gray400)
@@ -1070,8 +1123,9 @@ fun LoanDetailScreen(
                     Card(
                         onClick = { showPrepaymentSheet = true },
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.35f)),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -1097,7 +1151,7 @@ fun LoanDetailScreen(
                                         "Prepayment Simulator",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Surface(
@@ -1116,7 +1170,7 @@ fun LoanDetailScreen(
                                 Text(
                                     "Simulate lump sum or EMI boost to slash interest & tenure",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Gray400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Icon(

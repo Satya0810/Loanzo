@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -70,7 +71,7 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Navy900, Navy700, Navy900)))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -96,22 +97,24 @@ fun LoginScreen(
                 text = stringResource(R.string.loanzo),
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold,
-                color = Gold500,
+                color = MaterialTheme.colorScheme.onBackground,
                 letterSpacing = 4.sp
             )
             Text(
                 text = stringResource(R.string.verified_loan_utilization),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Gray300,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp)
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Login Card
+            // Login Card (Clean white surface with crisp hairline border & shadow)
             Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard.copy(alpha = 0.85f)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(22.dp)) {
@@ -119,19 +122,20 @@ fun LoginScreen(
                         text = "Welcome Back",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Sign in to your account",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Gray400,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
                     )
 
                     AnimatedVisibility(visible = error != null) {
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = Red400.copy(alpha = 0.15f),
+                            color = Red400.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, Red400.copy(alpha = 0.3f)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 12.dp)
@@ -163,11 +167,14 @@ fun LoginScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Gold500,
-                                focusedLabelColor = Gold500,
-                                cursorColor = Gold500,
-                                unfocusedBorderColor = Gray600,
-                                focusedLeadingIconColor = Gold500
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             )
                         )
 
@@ -180,8 +187,8 @@ fun LoginScreen(
                                 .height(52.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Gold500,
-                                contentColor = Navy900
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             enabled = userId.isNotBlank()
                         ) {
@@ -198,15 +205,13 @@ fun LoginScreen(
                                     .fillMaxWidth()
                                     .height(50.dp),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500),
-                                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                                    brush = Brush.horizontalGradient(listOf(Gold500, Emerald400))
-                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 enabled = !isLoading
                             ) {
-                                Icon(Icons.Default.Fingerprint, null, tint = Gold500, modifier = Modifier.size(22.dp))
+                                Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Text("Sign in with Biometrics", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text("Sign in with Biometrics", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                             }
                         }
                     } else {
@@ -216,13 +221,13 @@ fun LoginScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(text = userId, color = Gold500, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            Text(text = userId, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                             TextButton(onClick = { 
                                 loginStep = 1
                                 password = ""
                                 onResetUserIdVerification()
                             }) {
-                                Text("Edit", color = Gray400)
+                                Text("Edit", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
 
@@ -243,18 +248,21 @@ fun LoginScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Gold500,
-                                focusedLabelColor = Gold500,
-                                cursorColor = Gold500,
-                                unfocusedBorderColor = Gray600,
-                                focusedLeadingIconColor = Gold500
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                             )
                         )
                         
                         // Forgot Password link
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                             TextButton(onClick = onNavigateToForgotPassword) {
-                                Text("Forgot Password?", color = Gold500)
+                                Text("Forgot Password?", color = MaterialTheme.colorScheme.primary)
                             }
                         }
 
@@ -267,13 +275,13 @@ fun LoginScreen(
                                 .height(52.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Gold500,
-                                contentColor = Navy900
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             enabled = password.isNotBlank() && !isLoading
                         ) {
                             if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Navy900, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                             } else {
                                 Text("Sign In", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
@@ -288,15 +296,13 @@ fun LoginScreen(
                                     .fillMaxWidth()
                                     .height(50.dp),
                                 shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500),
-                                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                                    brush = Brush.horizontalGradient(listOf(Gold500, Emerald400))
-                                ),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 enabled = !isLoading
                             ) {
-                                Icon(Icons.Default.Fingerprint, null, tint = Gold500, modifier = Modifier.size(22.dp))
+                                Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Text("Sign in with Biometrics", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text("Sign in with Biometrics", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                             }
                         }
 
@@ -308,17 +314,8 @@ fun LoginScreen(
                                 .fillMaxWidth()
                                 .height(50.dp),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                                brush = Brush.horizontalGradient(
-                                    listOf(
-                                        Color(0xFF4285F4),
-                                        Color(0xFF34A853),
-                                        Color(0xFFFBBC05),
-                                        Color(0xFFEA4335)
-                                    )
-                                )
-                            ),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             enabled = !isLoading
                         ) {
                             Icon(
@@ -328,7 +325,7 @@ fun LoginScreen(
                                 modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text("Continue with Google", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("Continue with Google", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         }
                     }
                 }
@@ -342,13 +339,13 @@ fun LoginScreen(
             ) {
                 Text(
                     stringResource(R.string.don_t_have_an_account),
-                    color = Gray400,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 TextButton(onClick = onNavigateToRegister) {
                     Text(
                         stringResource(R.string.register),
-                        color = Gold500,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -394,10 +391,6 @@ fun RegisterScreen(
     var enableBiometrics by rememberSaveable { mutableStateOf(true) }
     var isBiometricEnrolled by rememberSaveable { mutableStateOf(false) }
 
-    // Outbound Message Verification State
-    var hasInitiatedMessage by rememberSaveable { mutableStateOf(false) }
-    var showPhoneVerificationBox by rememberSaveable { mutableStateOf(false) }
-    
     var countryCode by rememberSaveable { mutableStateOf("+91") }
     var expandedCountryCode by rememberSaveable { mutableStateOf(false) }
     
@@ -419,7 +412,7 @@ fun RegisterScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Navy900, Navy700, Navy900)))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -444,13 +437,13 @@ fun RegisterScreen(
                 text = stringResource(R.string.loanzo),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
-                color = Gold500,
+                color = MaterialTheme.colorScheme.onBackground,
                 letterSpacing = 3.sp
             )
             Text(
                 text = stringResource(R.string.create_account),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Gray400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -463,7 +456,7 @@ fun RegisterScreen(
             ) {
                 StepBadge(number = "1", label = "Details & 2FA", isActive = step == 1, isCompleted = step > 1)
                 Spacer(modifier = Modifier.width(16.dp))
-                HorizontalDivider(modifier = Modifier.width(32.dp), color = if (step > 1) Gold500 else Gray600)
+                HorizontalDivider(modifier = Modifier.width(32.dp), color = if (step > 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.width(16.dp))
                 StepBadge(number = "2", label = "Security", isActive = step == 2, isCompleted = false)
             }
@@ -474,7 +467,8 @@ fun RegisterScreen(
             AnimatedVisibility(visible = error != null) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (error?.contains("verified", ignoreCase = true) == true) Emerald400.copy(alpha = 0.15f) else Red400.copy(alpha = 0.15f),
+                    color = if (error?.contains("verified", ignoreCase = true) == true) Emerald400.copy(alpha = 0.12f) else Red400.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, if (error?.contains("verified", ignoreCase = true) == true) Emerald400.copy(alpha = 0.3f) else Red400.copy(alpha = 0.3f)),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 ) {
                     Text(
@@ -486,10 +480,12 @@ fun RegisterScreen(
                 }
             }
 
-            // FORM CARD
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = SurfaceDark,
+            // FORM CARD (Crisp white surface with hairline border & shadow)
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -560,22 +556,22 @@ fun RegisterScreen(
                                 shape = RoundedCornerShape(14.dp),
                                 enabled = !effectivelyEmailVerified && !isCheckingEmailVerification,
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = if (effectivelyEmailVerified) Emerald400 else Gold500,
-                                    focusedLabelColor = Gold500,
-                                    cursorColor = Gold500,
-                                    unfocusedBorderColor = Gray600
+                                    focusedBorderColor = if (effectivelyEmailVerified) Emerald400 else MaterialTheme.colorScheme.primary,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    cursorColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                                 )
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             if (isCheckingEmailVerification) {
-                                CircularProgressIndicator(modifier = Modifier.size(28.dp), color = Gold500, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
                             } else if (!effectivelyEmailVerified) {
                                 Button(
                                     onClick = {
                                         onSendEmailVerification(email.trim())
                                     },
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                    colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color.White),
                                     enabled = email.isNotBlank() && email.contains("@")
                                 ) {
                                     Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(16.dp))
@@ -593,7 +589,13 @@ fun RegisterScreen(
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
                                 value = phone,
-                                onValueChange = { phone = it; onClearError(); hasInitiatedMessage = false; showPhoneVerificationBox = false },
+                                onValueChange = { 
+                                    phone = it
+                                    onClearError()
+                                    if (isPhoneVerified) {
+                                        onSetPhoneVerified(false)
+                                    }
+                                },
                                 label = { Text("Phone Number") },
                                 leadingIcon = { 
                                     Box {
@@ -628,130 +630,34 @@ fun RegisterScreen(
                                 shape = RoundedCornerShape(14.dp),
                                 enabled = !effectivelyPhoneVerified && !isCheckingPhoneVerification,
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = if (effectivelyPhoneVerified) Emerald400 else Gold500,
-                                    focusedLabelColor = Gold500,
-                                    cursorColor = Gold500,
-                                    unfocusedBorderColor = Gray600
+                                    focusedBorderColor = if (effectivelyPhoneVerified) Emerald400 else MaterialTheme.colorScheme.primary,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    cursorColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                                 )
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             if (isCheckingPhoneVerification) {
-                                CircularProgressIndicator(modifier = Modifier.size(28.dp), color = Gold500, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
                             } else if (!effectivelyPhoneVerified) {
                                 Button(
-                                    onClick = { showPhoneVerificationBox = true },
+                                    onClick = { 
+                                        onSetPhoneVerified(true) 
+                                    },
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
-                                    enabled = phone.isNotBlank() && phone.length >= 10 && !showPhoneVerificationBox
+                                    colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color.White),
+                                    enabled = phone.isNotBlank() && phone.trim().length >= 10
                                 ) {
                                     Icon(Icons.Default.VerifiedUser, null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("Verify", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             } else {
-                                Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = Emerald400, modifier = Modifier.size(28.dp))
-                            }
-                        }
-
-                        // Phone Verification Box (Outbound SMS / WhatsApp)
-                        if (showPhoneVerificationBox && !effectivelyPhoneVerified) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = SurfaceDarkCard,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Gold500.copy(alpha = 0.4f)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
-                                    Text(
-                                        text = "Verify Phone Number",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = "Send a quick verification message from your SIM or WhatsApp:",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Gray400,
-                                        modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
-                                    )
-
-                                    Row(modifier = Modifier.fillMaxWidth()) {
-                                        // Button 1: Send SMS from SIM
-                                        Button(
-                                            onClick = {
-                                                val token = com.loanzo.app.util.VerificationManager.generateSecureToken()
-                                                val msg = "Loanzo-Verification-Token: $token for $phone"
-                                                try {
-                                                    val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
-                                                        data = Uri.parse("smsto:+910000000000")
-                                                        putExtra("sms_body", msg)
-                                                    }
-                                                    context.startActivity(smsIntent)
-                                                } catch (_: Exception) {}
-                                                hasInitiatedMessage = true
-                                                onInitiatePhoneVerification(countryCode + phone.trim(), token, username)
-                                            },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
-                                            modifier = Modifier.weight(1f),
-                                            enabled = phone.isNotBlank() && phone.length >= 10 && !isCheckingPhoneVerification
-                                        ) {
-                                            Icon(Icons.Default.Sms, null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Send SMS", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                        }
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        // Button 2: Send WhatsApp Message
-                                        Button(
-                                            onClick = {
-                                                val token = com.loanzo.app.util.VerificationManager.generateSecureToken()
-                                                val msg = "Loanzo-Verification-Token: $token for $phone"
-                                                try {
-                                                    val url = "https://api.whatsapp.com/send?phone=+910000000000&text=" + Uri.encode(msg)
-                                                    val waIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                    context.startActivity(waIntent)
-                                                } catch (_: Exception) {}
-                                                hasInitiatedMessage = true
-                                                onInitiatePhoneVerification(countryCode + phone.trim(), token, username)
-                                            },
-                                            shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900),
-                                            modifier = Modifier.weight(1f),
-                                            enabled = phone.isNotBlank() && phone.length >= 10 && !isCheckingPhoneVerification
-                                        ) {
-                                            Icon(Icons.AutoMirrored.Filled.Message, null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("WhatsApp", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
-
-                                    // Automatic polling listener UI
-                                    if (isCheckingPhoneVerification) {
-                                        var timeLeft by rememberSaveable { mutableIntStateOf(60) }
-                                        LaunchedEffect(isCheckingPhoneVerification) {
-                                            if (isCheckingPhoneVerification) {
-                                                timeLeft = 60
-                                                while (timeLeft > 0) {
-                                                    kotlinx.coroutines.delay(1000)
-                                                    timeLeft--
-                                                }
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.Center,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Gold500, strokeWidth = 2.dp)
-                                            Spacer(modifier = Modifier.width(12.dp))
-                                            Text("Listening for Admin verification... ${timeLeft}s", color = Gray400, fontSize = 13.sp)
-                                        }
-                                    }
+                                IconButton(
+                                    onClick = { onSetPhoneVerified(false) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = "Verified - Tap to edit", tint = Emerald400, modifier = Modifier.size(28.dp))
                                 }
                             }
                         }
@@ -762,11 +668,11 @@ fun RegisterScreen(
                             onClick = { step = 2 },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             enabled = name.isNotBlank() && effectivelyEmailVerified && effectivelyPhoneVerified && !isLoading
                         ) {
                             if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Navy900, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                             } else {
                                 Text("Continue to Security Setup", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             }
@@ -831,12 +737,12 @@ fun RegisterScreen(
                         }
 
                         if (isBiometricSupported) {
-                            Surface(
+                            Card(
                                 shape = RoundedCornerShape(14.dp),
-                                color = SurfaceDarkCard,
-                                border = androidx.compose.foundation.BorderStroke(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                                border = BorderStroke(
                                     1.dp,
-                                    if (isBiometricEnrolled) Emerald400.copy(alpha = 0.6f) else Gold500.copy(alpha = 0.3f)
+                                    if (isBiometricEnrolled) Emerald400.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant
                                 ),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -853,20 +759,20 @@ fun RegisterScreen(
                                             Icon(
                                                 Icons.Default.Fingerprint,
                                                 contentDescription = null,
-                                                tint = if (isBiometricEnrolled) Emerald400 else Gold500,
+                                                tint = if (isBiometricEnrolled) Emerald400 else MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(28.dp)
                                             )
                                             Spacer(modifier = Modifier.width(10.dp))
                                             Column {
                                                 Text(
                                                     "Register Biometrics",
-                                                    color = Color.White,
+                                                    color = MaterialTheme.colorScheme.onSurface,
                                                     fontWeight = FontWeight.Bold,
                                                     fontSize = 14.sp
                                                 )
                                                 Text(
                                                     if (isBiometricEnrolled) "Biometrics Verified ✓ (Ready for 1-Touch Sign In)" else "Enable fingerprint or face unlock",
-                                                    color = if (isBiometricEnrolled) Emerald400 else Gray400,
+                                                    color = if (isBiometricEnrolled) Emerald400 else MaterialTheme.colorScheme.onSurfaceVariant,
                                                     fontSize = 11.sp
                                                 )
                                             }
@@ -877,18 +783,14 @@ fun RegisterScreen(
                                             onCheckedChange = { checked ->
                                                 enableBiometrics = checked
                                                 if (!checked) isBiometricEnrolled = false
-                                            },
-                                            colors = SwitchDefaults.colors(
-                                                checkedThumbColor = Navy900,
-                                                checkedTrackColor = Gold500
-                                            )
+                                            }
                                         )
                                     }
 
                                     if (enableBiometrics && !isBiometricEnrolled) {
                                         Spacer(modifier = Modifier.height(10.dp))
                                         val fragmentActivity = com.loanzo.app.util.BiometricAuthManager.getActivity(context)
-                                        Button(
+                                        OutlinedButton(
                                             onClick = {
                                                 fragmentActivity?.let { fa ->
                                                     com.loanzo.app.util.BiometricAuthManager.authenticate(
@@ -899,19 +801,18 @@ fun RegisterScreen(
                                                             isBiometricEnrolled = true
                                                             onClearError()
                                                         },
-                                                        onError = { err ->
-                                                            // optional note
-                                                        }
+                                                        onError = { _ -> }
                                                     )
                                                 }
                                             },
                                             shape = RoundedCornerShape(10.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Icon(Icons.Default.Fingerprint, null, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Scan Fingerprint / Face ID Now", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            Text("Scan Fingerprint / Face ID Now", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                         }
                                     }
                                 }
@@ -928,11 +829,11 @@ fun RegisterScreen(
                             },
                             modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             enabled = password.length >= 8 && password == confirmPassword && !isLoading
                         ) {
                             if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Navy900, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                             } else {
                                 Text("Complete Registration", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
@@ -944,7 +845,8 @@ fun RegisterScreen(
                             onClick = { step = 1 },
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Gray300)
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             Text("Back to Details")
                         }
@@ -962,11 +864,11 @@ fun RegisterScreen(
             ) {
                 Text(
                     text = stringResource(R.string.already_have_an_account),
-                    color = Gray400,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 TextButton(onClick = onNavigateToLogin) {
-                    Text(stringResource(R.string.sign_in), color = Gold500, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.sign_in), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1018,7 +920,7 @@ fun ForgotPasswordScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Navy900, Navy700, Navy900)))
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -1036,12 +938,14 @@ fun ForgotPasswordScreen(
                     .clip(RoundedCornerShape(20.dp))
             )
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Reset Password", style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
+            Text("Reset Password", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(28.dp))
 
             Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard.copy(alpha = 0.85f)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(22.dp)) {
@@ -1266,11 +1170,11 @@ fun ForgotPasswordScreen(
                             },
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             enabled = newPassword.isNotBlank() && confirmNewPassword.isNotBlank() && !isLoading
                         ) {
                             if (isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Navy900)
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                             } else {
                                 Text("Update Password", fontWeight = FontWeight.Bold)
                             }
@@ -1282,7 +1186,7 @@ fun ForgotPasswordScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             TextButton(onClick = onNavigateToLogin) {
-                Text("Back to Sign In", color = Gold500)
+                Text("Back to Sign In", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -1298,17 +1202,17 @@ private fun StepBadge(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Surface(
             shape = CircleShape,
-            color = if (isCompleted) Emerald400 else if (isActive) Gold500 else SurfaceDarkCard,
-            border = if (!isActive && !isCompleted) androidx.compose.foundation.BorderStroke(1.dp, Gray600) else null,
+            color = if (isCompleted) Emerald400 else if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+            border = if (!isActive && !isCompleted) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
             modifier = Modifier.size(24.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (isCompleted) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = Navy900, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                 } else {
                     Text(
                         text = number,
-                        color = if (isActive) Navy900 else Gray400,
+                        color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -1320,7 +1224,7 @@ private fun StepBadge(
             text = label,
             fontSize = 12.sp,
             fontWeight = if (isActive || isCompleted) FontWeight.Bold else FontWeight.Normal,
-            color = if (isCompleted) Emerald400 else if (isActive) Gold500 else Gray400
+            color = if (isCompleted) Emerald400 else if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

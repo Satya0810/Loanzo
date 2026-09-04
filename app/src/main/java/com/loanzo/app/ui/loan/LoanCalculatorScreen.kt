@@ -60,8 +60,8 @@ fun LoanCalculatorScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Summary Card
-            GradientCard(gradientColors = listOf(Navy600, Navy700)) {
+            // Summary Card (Executive Obsidian Dark Hero Box)
+            GradientCard(gradientColors = listOf(Navy700, Navy900)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.monthly_emi), style = MaterialTheme.typography.labelLarge, color = Gray300)
                     Spacer(modifier = Modifier.height(8.dp))
@@ -69,7 +69,7 @@ fun LoanCalculatorScreen(
                         emi.toInrString(),
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Gold400
+                        color = GoldCoinBright
                     )
                 }
 
@@ -82,7 +82,7 @@ fun LoanCalculatorScreen(
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(stringResource(R.string.total_interest), style = MaterialTheme.typography.labelMedium, color = Gray300)
-                        Text(totalInterest.toInrString(), style = MaterialTheme.typography.titleMedium, color = Orange400, fontWeight = FontWeight.Bold)
+                        Text(totalInterest.toInrString(), style = MaterialTheme.typography.titleMedium, color = GoldCoinAmber, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -106,7 +106,7 @@ fun LoanCalculatorScreen(
                         style = Stroke(width = 40f, cap = StrokeCap.Round)
                     )
                     drawArc(
-                        color = Orange400,
+                        color = GoldCoinRich,
                         startAngle = -90f + principalAngle.toFloat(),
                         sweepAngle = interestAngle.toFloat(),
                         useCenter = false,

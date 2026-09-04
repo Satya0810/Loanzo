@@ -7,6 +7,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +30,7 @@ import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.toInrString
 
 /**
- * Premium glassmorphism card used across the app.
+ * Executive banking card with distinct elevation and hairline border.
  */
 @Composable
 fun GlassCard(
@@ -39,56 +40,90 @@ fun GlassCard(
     Card(
         modifier = modifier
             .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(20.dp),
-                ambientColor = Color.Black.copy(alpha = 0.1f),
-                spotColor = Color.Black.copy(alpha = 0.15f)
+                elevation = 2.5.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color(0x0A0F172A),
+                spotColor = Color(0x181D4ED8) // Soft Royal Blue ambient glow shadow
             ),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
-            modifier = Modifier
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(20.dp)
-                )
-                .padding(20.dp),
+            modifier = Modifier.padding(20.dp),
             content = content
         )
     }
 }
 
 /**
- * Gradient header card for dashboard summaries.
+ * Gradient header card for dashboard summaries (Obsidian Dark Hero Card).
  */
 @Composable
 fun GradientCard(
     modifier: Modifier = Modifier,
-    gradientColors: List<Color> = listOf(Navy600, Navy800),
+    gradientColors: List<Color> = listOf(Navy700, Navy900),
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         modifier = modifier
             .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(24.dp),
-                ambientColor = Navy600.copy(alpha = 0.3f)
+                elevation = 6.dp,
+                shape = RoundedCornerShape(22.dp),
+                ambientColor = Color(0x33000000),
+                spotColor = Color(0x400B0F19)
             ),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Column(
             modifier = Modifier
                 .background(Brush.linearGradient(gradientColors))
-                .padding(24.dp),
+                .padding(22.dp),
             content = content
         )
     }
 }
+
+/**
+ * Executive Obsidian Dark Hero Box (Signature top box matching Live Loan Simulator).
+ */
+@Composable
+fun ExecutiveHeroCard(
+    modifier: Modifier = Modifier,
+    gradientColors: List<Color> = listOf(Navy700, Navy900),
+    content: @Composable ColumnScope.() -> Unit
+) {
+    GradientCard(
+        modifier = modifier,
+        gradientColors = gradientColors,
+        content = content
+    )
+}
+
+/**
+ * Golden Coin Category FilterChip colors (Cream background, Gold border, Deep Amber text when selected).
+ */
+@Composable
+fun goldFilterChipColors() = FilterChipDefaults.filterChipColors(
+    containerColor = Color.White,
+    labelColor = MaterialTheme.colorScheme.onSurface,
+    selectedContainerColor = GoldCoinCream,
+    selectedLabelColor = GoldCoinAmber,
+    selectedLeadingIconColor = GoldCoinAmber
+)
+
+@Composable
+fun goldFilterChipBorder(selected: Boolean) = FilterChipDefaults.filterChipBorder(
+    enabled = true,
+    selected = selected,
+    borderColor = MaterialTheme.colorScheme.outlineVariant,
+    selectedBorderColor = GoldCoinBorder,
+    borderWidth = 1.dp,
+    selectedBorderWidth = 1.dp
+)
 
 /**
  * Status badge with color-coded backgrounds.
@@ -101,12 +136,13 @@ fun StatusBadge(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.15f)
+        shape = RoundedCornerShape(6.dp),
+        color = color.copy(alpha = 0.10f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.25f))
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
             color = color
@@ -246,13 +282,13 @@ fun LoanSummaryCard(
 
     Card(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .border(0.5.dp, GlassBorder, RoundedCornerShape(20.dp)),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = SurfaceDarkCard.copy(alpha = 0.9f)
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -282,7 +318,7 @@ fun LoanSummaryCard(
                         text = purpose,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -290,7 +326,7 @@ fun LoanSummaryCard(
                     Text(
                         text = "with $counterpartyName • $date",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Gray400,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -313,13 +349,13 @@ fun LoanSummaryCard(
                     Text(
                         text = stringResource(R.string.outstanding),
                         fontSize = 11.sp,
-                        color = Gray400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = outstanding.toInrString(),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (outstanding > 0) Gold400 else Emerald400
+                        color = if (outstanding > 0) MaterialTheme.colorScheme.primary else Emerald400
                     )
                 }
 
@@ -327,13 +363,13 @@ fun LoanSummaryCard(
                     Text(
                         text = stringResource(R.string.sanctioned),
                         fontSize = 11.sp,
-                        color = Gray400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = amount.toInrString(),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -354,13 +390,13 @@ fun LoanSummaryCard(
                     Text(
                         text = "${repaidAmount.toInrString()} repaid",
                         fontSize = 10.5.sp,
-                        color = Gray400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "$progressPercent%",
                         fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (progressPercent == 100) Emerald400 else Gray300
+                        color = if (progressPercent == 100) Emerald400 else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

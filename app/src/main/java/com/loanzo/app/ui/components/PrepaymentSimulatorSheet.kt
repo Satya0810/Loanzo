@@ -84,9 +84,9 @@ fun PrepaymentSimulatorSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Navy900,
+        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = {
-            BottomSheetDefaults.DragHandle(color = Gray500)
+            BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outlineVariant)
         }
     ) {
         Column(
@@ -108,24 +108,25 @@ fun PrepaymentSimulatorSheet(
                         text = "Debt Payoff Simulator",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "See how much interest you save with prepayments",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Gray400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, "Close", tint = Gray400)
+                    Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
             // Hero Savings Card
             Card(
                 shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                colors = CardDefaults.cardColors(containerColor = EmeraldLight),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.4f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateContentSize()
@@ -193,8 +194,9 @@ fun PrepaymentSimulatorSheet(
             // 1. Lump Sum Prepayment Slider
             Card(
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, GlassBorder),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -207,13 +209,13 @@ fun PrepaymentSimulatorSheet(
                             text = "Lump Sum Prepayment",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = lumpSumPrepayment.toInrString(),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Gold500
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -222,9 +224,9 @@ fun PrepaymentSimulatorSheet(
                         onValueChange = { lumpSumPrepayment = it.toDouble() },
                         valueRange = 0f..outstandingPrincipal.toFloat(),
                         colors = SliderDefaults.colors(
-                            thumbColor = Gold500,
-                            activeTrackColor = Gold500,
-                            inactiveTrackColor = Gray700
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                         )
                     )
 
@@ -236,8 +238,9 @@ fun PrepaymentSimulatorSheet(
                             if (preset <= outstandingPrincipal) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (lumpSumPrepayment == preset) Gold500 else SurfaceDarkCard,
-                                    contentColor = if (lumpSumPrepayment == preset) Navy900 else Gray300,
+                                    color = if (lumpSumPrepayment == preset) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                                    contentColor = if (lumpSumPrepayment == preset) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                     modifier = Modifier
                                         .weight(1f)
                                         .clickable { lumpSumPrepayment = preset }
@@ -259,8 +262,9 @@ fun PrepaymentSimulatorSheet(
             // 2. Extra Monthly Contribution Slider
             Card(
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, GlassBorder),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -273,13 +277,13 @@ fun PrepaymentSimulatorSheet(
                             text = "Extra Monthly Top-up",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "+${extraMonthlyContribution.toInrString()}/mo",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Emerald400
+                            color = Emerald500
                         )
                     }
 
@@ -288,9 +292,9 @@ fun PrepaymentSimulatorSheet(
                         onValueChange = { extraMonthlyContribution = it.toDouble() },
                         valueRange = 0f..(currentMonthlyEmi * 2).toFloat().coerceAtLeast(10000f),
                         colors = SliderDefaults.colors(
-                            thumbColor = Emerald400,
-                            activeTrackColor = Emerald400,
-                            inactiveTrackColor = Gray700
+                            thumbColor = Emerald500,
+                            activeTrackColor = Emerald500,
+                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                         )
                     )
 
@@ -301,8 +305,9 @@ fun PrepaymentSimulatorSheet(
                         listOf(1000.0, 2500.0, 5000.0).forEach { preset ->
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (extraMonthlyContribution == preset) Emerald400 else SurfaceDarkCard,
-                                contentColor = if (extraMonthlyContribution == preset) Navy900 else Gray300,
+                                color = if (extraMonthlyContribution == preset) Emerald500 else MaterialTheme.colorScheme.surface,
+                                contentColor = if (extraMonthlyContribution == preset) Color.White else MaterialTheme.colorScheme.onSurface,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable { extraMonthlyContribution = preset }
@@ -327,7 +332,7 @@ fun PrepaymentSimulatorSheet(
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
             ) {
                 Text("Done", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }

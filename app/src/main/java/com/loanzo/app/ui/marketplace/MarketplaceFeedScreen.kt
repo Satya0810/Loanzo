@@ -1,6 +1,7 @@
 package com.loanzo.app.ui.marketplace
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,7 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loanzo.app.data.entity.MarketplacePostEntity
-import com.loanzo.app.ui.components.SegmentedCapsuleTab
+import com.loanzo.app.ui.components.*
 import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.toFormattedString
 import com.loanzo.app.util.toRelativeTime
@@ -84,35 +85,38 @@ fun MarketplaceFeedScreen(
                                 "Community Loan Wall",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = Emerald400.copy(alpha = 0.2f)
+                                color = Emerald400.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
                             ) {
                                 Text(
                                     "LIVE",
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = Emerald400,
-                                    fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
                         }
                         Text(
-                            "The Social Network for P2P Credit",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Gray400
+                            "Verified direct P2P lending opportunities",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp
                         )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
@@ -121,14 +125,14 @@ fun MarketplaceFeedScreen(
                         Icon(
                             imageVector = Icons.Default.AddCircleOutline,
                             contentDescription = "Create Post",
-                            tint = Gold500
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceDark)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Navy900
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -173,12 +177,12 @@ fun MarketplaceFeedScreen(
                 },
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = SurfaceDarkElevated,
-                    unfocusedContainerColor = SurfaceDarkElevated,
-                    focusedBorderColor = Gold500,
-                    unfocusedBorderColor = GlassBorder,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 singleLine = true,
                 modifier = Modifier
@@ -203,17 +207,8 @@ fun MarketplaceFeedScreen(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Gold500,
-                            selectedLabelColor = Navy900,
-                            containerColor = SurfaceDarkElevated,
-                            labelColor = Gray300
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = isSelected,
-                            borderColor = if (isSelected) Gold500 else GlassBorder
-                        ),
+                        colors = goldFilterChipColors(),
+                        border = goldFilterChipBorder(isSelected),
                         shape = RoundedCornerShape(12.dp)
                     )
                 }
@@ -245,19 +240,19 @@ fun MarketplaceFeedScreen(
                             "No Community Posts Found",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             "Be the first to publish a lending offer or post a loan request!",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Gray400,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = { onNavigateToCreatePost("OFFER_TO_LEND") },
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Create a Post", fontWeight = FontWeight.Bold)
@@ -331,14 +326,10 @@ fun SocialPostCard(
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.linearGradient(
-                listOf(accentColor.copy(alpha = 0.4f), GlassBorder)
-            )
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -370,7 +361,7 @@ fun SocialPostCard(
                             text = post.authorName,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         if (post.authorKycVerified) {
                             Spacer(modifier = Modifier.width(4.dp))
@@ -391,7 +382,7 @@ fun SocialPostCard(
                             Text(
                                 "📍 ${post.locationCity}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Gray400
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text("•", color = Gray500, fontSize = 10.sp)
                         }
@@ -405,7 +396,7 @@ fun SocialPostCard(
                         Text(
                             post.createdAt.toRelativeTime(),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Gray400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -432,7 +423,7 @@ fun SocialPostCard(
                 text = post.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -441,7 +432,7 @@ fun SocialPostCard(
             Text(
                 text = post.description,
                 style = MaterialTheme.typography.bodySmall,
-                color = Gray300,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = if (isExpanded) 10 else 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
@@ -451,7 +442,7 @@ fun SocialPostCard(
             if (post.description.length > 90) {
                 Text(
                     text = if (isExpanded) "Show less" else "Read more...",
-                    color = Gold500,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
@@ -465,8 +456,8 @@ fun SocialPostCard(
             // Financial Capsule Card
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = SurfaceDark,
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, GlassBorder),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -478,7 +469,7 @@ fun SocialPostCard(
                         Text(
                             if (isLenderOffer) "CAPITAL POOL" else "AMOUNT NEEDED",
                             fontSize = 9.sp,
-                            color = Gray400,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
@@ -486,12 +477,12 @@ fun SocialPostCard(
                             else "₹${post.maxAmount.toFormattedString()}",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("INTEREST", fontSize = 9.sp, color = Gray400, fontWeight = FontWeight.SemiBold)
+                        Text("INTEREST", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                         Text(
                             "${post.interestRate}% p.a.",
                             fontSize = 14.sp,
@@ -501,12 +492,12 @@ fun SocialPostCard(
                     }
 
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("TENURE", fontSize = 9.sp, color = Gray400, fontWeight = FontWeight.SemiBold)
+                        Text("TENURE", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                         Text(
                             "${post.tenureMonths} Months",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -520,7 +511,7 @@ fun SocialPostCard(
                     Text(
                         "Security / Proof: ${post.collateralOffered}",
                         fontSize = 11.sp,
-                        color = Gray300
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -599,6 +590,8 @@ fun SocialPostCard(
 @Composable
 fun BidProposalBottomSheet(
     post: MarketplacePostEntity,
+    isKycCompleted: Boolean = true,
+    onNavigateToKyc: () -> Unit = {},
     onDismiss: () -> Unit,
     onSubmitBid: (amount: Double, rate: Double, tenure: Int, message: String) -> Unit
 ) {
@@ -610,7 +603,7 @@ fun BidProposalBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDarkElevated,
+        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
@@ -623,13 +616,13 @@ fun BidProposalBottomSheet(
                 text = if (isLenderOffer) "Apply for Loan Capital" else "Submit Funding Offer / Bid",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Target Post: ${post.title}",
                 style = MaterialTheme.typography.bodySmall,
-                color = Gray400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -677,19 +670,33 @@ fun BidProposalBottomSheet(
 
             Button(
                 onClick = {
+                    if (!isKycCompleted) {
+                        onDismiss()
+                        onNavigateToKyc()
+                        return@Button
+                    }
                     val amount = proposedAmount.toDoubleOrNull() ?: post.minAmount
                     val rate = proposedRate.toDoubleOrNull() ?: post.interestRate
                     val tenure = proposedTenure.toIntOrNull() ?: post.tenureMonths
                     onSubmitBid(amount, rate, tenure, message)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = if (isLenderOffer) Gold500 else Emerald400, contentColor = Navy900),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (!isKycCompleted) Red400 else (if (isLenderOffer) Gold500 else Emerald400),
+                    contentColor = if (!isKycCompleted) Color.White else Navy900
+                ),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
                 Text(
-                    text = if (isLenderOffer) "Submit Loan Application ➔" else "Submit Funding Proposal ➔",
+                    text = if (!isKycCompleted) {
+                        "Complete KYC to ${if (isLenderOffer) "Apply" else "Propose"} ➔"
+                    } else if (isLenderOffer) {
+                        "Submit Loan Application ➔"
+                    } else {
+                        "Submit Funding Proposal ➔"
+                    },
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )

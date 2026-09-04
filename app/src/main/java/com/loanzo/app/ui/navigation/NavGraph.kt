@@ -203,7 +203,7 @@ fun LoanzoNavGraph(
                     val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
                     val idToken = account?.idToken
                     if (idToken != null) {
-                        authViewModel.handleGoogleSignIn(idToken, "BORROWER", targetUsername = prefilledUsernameForGoogle)
+                        authViewModel.handleGoogleSignIn(idToken, "BORROWER", targetUsername = "")
                     } else if (account != null) {
                         authViewModel.register(
                             name = account.displayName ?: "Google User",
@@ -211,7 +211,7 @@ fun LoanzoNavGraph(
                             phone = "",
                             pass = "",
                             role = "BORROWER",
-                            username = prefilledUsernameForGoogle.ifBlank { account.email?.substringBefore("@") ?: "" }
+                            username = account.email?.substringBefore("@") ?: ""
                         )
                     }
                 } catch (e: com.google.android.gms.common.api.ApiException) {
@@ -259,9 +259,18 @@ fun LoanzoNavGraph(
                         )
                     }
                 },
-                onGoogleLogin = { typedUsername ->
-                    prefilledUsernameForGoogle = typedUsername
-                    googleSignInClient?.signInIntent?.let { googleLauncher.launch(it) }
+                onGoogleLogin = { _ ->
+                    prefilledUsernameForGoogle = ""
+                    val client = googleSignInClient
+                    if (client != null) {
+                        try {
+                            client.signOut().addOnCompleteListener {
+                                googleLauncher.launch(client.signInIntent)
+                            }
+                        } catch (_: Exception) {
+                            googleLauncher.launch(client.signInIntent)
+                        }
+                    }
                 },
                 onNavigateToRegister = { navController.navigate(Routes.REGISTER) },
                 onNavigateToForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) },
@@ -382,6 +391,11 @@ fun LoanzoNavGraph(
                 },
                 onUploadSelfie = { bmp -> authViewModel.uploadLivenessSelfie(context, bmp) },
                 onUploadDocument = { type, uri -> authViewModel.uploadSingleKycDocument(context, type, uri) },
+                onSkip = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onFinish = {
                     navController.navigate(Routes.MAIN) {
                         popUpTo(0) { inclusive = true }
@@ -392,6 +406,15 @@ fun LoanzoNavGraph(
 
         // Main scaffold with bottom nav
         composable(Routes.MAIN) {
+            LaunchedEffect(authState.isLoggedIn) {
+                if (!authState.isLoggedIn) {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+
             MainScaffold(
                 navController = navController,
                 authViewModel = authViewModel
@@ -466,9 +489,15 @@ fun LoanzoNavGraph(
             val loanViewModel: LoanViewModel = hiltViewModel()
             val loanState by loanViewModel.uiState.collectAsStateWithLifecycle()
             val registeredUsers by loanViewModel.getAllRegisteredUsers().collectAsStateWithLifecycle(initialValue = emptyList())
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val currentUser by (if (!currentUserId.isNullOrBlank()) userRepository.observeUser(currentUserId!!) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+            val isKycCompleted = currentUser?.kycStatus == "VERIFIED"
 
             CreateLoanScreen(
                 isGrantMode = isGrantMode,
+                isKycCompleted = isKycCompleted,
+                onNavigateToKyc = { navController.navigate(Routes.KYC) },
                 onCreateLoan = { counterpartyId, amount, purpose, type, rate, model, tenure, freq, notes, pRate, pModel, pGrace ->
                     loanViewModel.createLoan(
                         counterpartyId = counterpartyId,
@@ -738,9 +767,15 @@ fun LoanzoNavGraph(
         ) { backStackEntry ->
             val mode = backStackEntry.arguments?.getString("mode") ?: "OFFER_TO_LEND"
             val marketplaceViewModel: com.loanzo.app.ui.marketplace.MarketplaceViewModel = hiltViewModel()
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val currentUser by (if (!currentUserId.isNullOrBlank()) userRepository.observeUser(currentUserId!!) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+            val isKycCompleted = currentUser?.kycStatus == "VERIFIED"
 
             com.loanzo.app.ui.marketplace.CreateMarketplacePostScreen(
                 initialMode = mode,
+                isKycCompleted = isKycCompleted,
+                onNavigateToKyc = { navController.navigate(Routes.KYC) },
                 onPublish = { title, desc, postType, min, max, rate, tenure, cat, city, col ->
                     marketplaceViewModel.publishPost(
                         title = title,
@@ -792,6 +827,13 @@ fun MainScaffold(
     val activeTourStep by userRepository.getActiveTourStep()
         .collectAsStateWithLifecycle(initialValue = 0)
 
+    val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+    val currentUser by (if (!currentUserId.isNullOrBlank()) userRepository.observeUser(currentUserId!!) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+    val isKycCompleted = currentUser?.kycStatus == "VERIFIED"
+
+    var showKycRequiredDialog by remember { mutableStateOf(false) }
+    var kycDialogMessage by remember { mutableStateOf("") }
+
     // Back navigation handling for modal quick action menu and guided tour overlay
     androidx.activity.compose.BackHandler(enabled = isQuickActionMenuOpen) {
         isQuickActionMenuOpen = false
@@ -842,11 +884,19 @@ fun MainScaffold(
                     // Navigation Bar Surface with 5-slot layout
                     Surface(
                         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                        color = SurfaceDarkElevated,
-                        border = androidx.compose.foundation.BorderStroke(0.5.dp, GlassBorder),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         tonalElevation = 8.dp,
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        val navItemColors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = BrandIceBlue,
+                            unselectedIconColor = TextSlateMuted,
+                            unselectedTextColor = TextSlateMuted
+                        )
+
                         NavigationBar(
                             containerColor = Color.Transparent,
                             tonalElevation = 0.dp
@@ -867,7 +917,7 @@ fun MainScaffold(
                                 },
                                 icon = { Icon(if (homeSelected) homeItem.selectedIcon else homeItem.unselectedIcon, contentDescription = homeItem.label) },
                                 label = { Text(homeItem.label, fontWeight = if (homeSelected) FontWeight.Bold else FontWeight.Normal) },
-                                colors = NavigationBarItemDefaults.colors(selectedIconColor = Gold500, selectedTextColor = Gold500, indicatorColor = Gold500.copy(alpha = 0.12f))
+                                colors = navItemColors
                             )
 
                             // 2. Loans
@@ -886,10 +936,10 @@ fun MainScaffold(
                                 },
                                 icon = { Icon(if (loansSelected) loansItem.selectedIcon else loansItem.unselectedIcon, contentDescription = loansItem.label) },
                                 label = { Text(loansItem.label, fontWeight = if (loansSelected) FontWeight.Bold else FontWeight.Normal) },
-                                colors = NavigationBarItemDefaults.colors(selectedIconColor = Gold500, selectedTextColor = Gold500, indicatorColor = Gold500.copy(alpha = 0.12f))
+                                colors = navItemColors
                             )
 
-                            // 3. Center Cradle Slot (aligned beneath the floating yellow button)
+                            // 3. Center Cradle Slot (aligned beneath the floating action button)
                             NavigationBarItem(
                                 selected = false,
                                 onClick = {
@@ -902,7 +952,7 @@ fun MainScaffold(
                                         text = "Post",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Gold500
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
@@ -938,7 +988,7 @@ fun MainScaffold(
                                     }
                                 },
                                 label = { Text(notifItem.label, fontWeight = if (notifSelected) FontWeight.Bold else FontWeight.Normal) },
-                                colors = NavigationBarItemDefaults.colors(selectedIconColor = Gold500, selectedTextColor = Gold500, indicatorColor = Gold500.copy(alpha = 0.12f))
+                                colors = navItemColors
                             )
 
                             // 5. Profile
@@ -957,19 +1007,19 @@ fun MainScaffold(
                                 },
                                 icon = { Icon(if (profileSelected) profileItem.selectedIcon else profileItem.unselectedIcon, contentDescription = profileItem.label) },
                                 label = { Text(profileItem.label, fontWeight = if (profileSelected) FontWeight.Bold else FontWeight.Normal) },
-                                colors = NavigationBarItemDefaults.colors(selectedIconColor = Gold500, selectedTextColor = Gold500, indicatorColor = Gold500.copy(alpha = 0.12f))
+                                colors = navItemColors
                             )
                         }
                     }
 
-                    // Round Yellow Center Plus Button
+                    // Round Center Plus Button with Adaptive Styling
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .offset(y = (-28).dp)
                             .size(60.dp)
                             .clip(CircleShape)
-                            .background(SurfaceDarkElevated)
+                            .background(MaterialTheme.colorScheme.surface)
                             .padding(2.5.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -983,8 +1033,8 @@ fun MainScaffold(
                                 }
                             },
                             shape = CircleShape,
-                            containerColor = Gold500,
-                            contentColor = Navy900,
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                             elevation = FloatingActionButtonDefaults.elevation(
                                 defaultElevation = 6.dp,
                                 pressedElevation = 10.dp
@@ -994,7 +1044,7 @@ fun MainScaffold(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "Quick Action",
-                                tint = Navy900,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier
                                     .size(28.dp)
                                     .rotate(rotationAngle)
@@ -1016,17 +1066,44 @@ fun MainScaffold(
             ) {
             composable(Routes.DASHBOARD) {
                 val dashboardViewModel: DashboardViewModel = hiltViewModel()
+                val marketplaceViewModel: com.loanzo.app.ui.marketplace.MarketplaceViewModel = hiltViewModel()
                 val state by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+                val marketState by marketplaceViewModel.uiState.collectAsStateWithLifecycle()
 
                 DashboardScreen(
                     state = state,
-                    onNavigateToCreateLoan = { navController.navigate("${Routes.CREATE_LOAN}?mode=REQUEST") },
-                    onNavigateToGrantLoan = { navController.navigate("${Routes.CREATE_LOAN}?mode=GRANT") },
-                    onNavigateToRequestLoan = { navController.navigate("${Routes.CREATE_LOAN}?mode=REQUEST") },
+                    marketState = marketState,
+                    onTabSelected = { marketplaceViewModel.setTab(it) },
+                    onSearchQueryChange = { marketplaceViewModel.setSearchQuery(it) },
+                    onCategoryTagSelected = { marketplaceViewModel.setCategoryTag(it) },
+                    onVouchPost = { marketplaceViewModel.vouchForPost(it) },
+                    onSubmitBid = { postId, amount, rate, tenure, msg ->
+                        if (isKycCompleted) {
+                            marketplaceViewModel.submitBid(postId, amount, rate, tenure, msg) {}
+                        } else {
+                            kycDialogMessage = "In compliance with lending rules, identity verification (KYC) must be completed before you can propose loan bids or borrow."
+                            showKycRequiredDialog = true
+                        }
+                    },
+                    onNavigateToCreatePost = { mode -> 
+                        if (isKycCompleted) {
+                            navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=$mode")
+                        } else {
+                            kycDialogMessage = "You must complete identity verification (KYC) before publishing loan offers or requests."
+                            showKycRequiredDialog = true
+                        }
+                    },
+                    onNavigateToCreateLoan = { 
+                        if (isKycCompleted) {
+                            navController.navigate("${Routes.CREATE_LOAN}?mode=REQUEST")
+                        } else {
+                            kycDialogMessage = "You must complete identity verification (KYC) before borrowing or requesting loans."
+                            showKycRequiredDialog = true
+                        }
+                    },
                     onNavigateToCalculator = { navController.navigate(Routes.LOAN_CALCULATOR) },
                     onNavigateToLoanDetail = { loanId -> navController.navigate(Routes.loanDetail(loanId)) },
                     onNavigateToProfile = { innerNavController.navigate(Routes.PROFILE) },
-                    onNavigateToFinancialHealth = { innerNavController.navigate(Routes.FINANCIAL_HEALTH) },
                     onNavigateToApproval = { disbursementId ->
                         val relatedLoan = state.loansAsLender.find { l -> l.loanId == disbursementId || state.pendingApprovals.any { p -> p.disbursementId == disbursementId && p.loanId == l.loanId } }
                         if (relatedLoan != null) {
@@ -1034,7 +1111,8 @@ fun MainScaffold(
                         }
                     },
                     onNavigateToLoansTab = { innerNavController.navigate(Routes.LOANS) },
-                    onNavigateToChat = { loanId -> navController.navigate(Routes.chat(loanId)) }
+                    onNavigateToChat = { loanId -> navController.navigate(Routes.chat(loanId)) },
+                    onNavigateToKyc = { navController.navigate(Routes.KYC) }
                 )
             }
 
@@ -1054,8 +1132,14 @@ fun MainScaffold(
                         currentUserId = currentUserId ?: "",
                         isLoading = loanState.isLoading,
                         onNavigateToLoanDetail = { navController.navigate(Routes.loanDetail(it)) },
-                        onNavigateToCreateLoan = { mode -> navController.navigate("${Routes.CREATE_LOAN}?mode=$mode") },
-                        onNavigateToMarketplace = { navController.navigate(Routes.MARKETPLACE) }
+                        onNavigateToCreateLoan = { mode -> 
+                            if (isKycCompleted) {
+                                navController.navigate("${Routes.CREATE_LOAN}?mode=$mode")
+                            } else {
+                                kycDialogMessage = "You must complete identity verification (KYC) before borrowing or granting loans."
+                                showKycRequiredDialog = true
+                            }
+                        }
                     )
 
                     if (!loansGuideSeen) {
@@ -1129,6 +1213,8 @@ fun MainScaffold(
                     onSelectLanguage = { code -> scope.launch { userRepository.setAppLanguage(code) } },
                     onUploadKycDocument = { uri, type -> authViewModel.uploadSingleKycDocument(context, type, uri) },
                     onUpdateBankDetails = { accNum, ifsc -> authViewModel.updateBankDetails(accNum, ifsc) },
+                    onPushDemoData = { cb -> authViewModel.pushDemoData(cb) },
+                    onClearDemoData = { cb -> authViewModel.clearDemoData(cb) },
                     isUploadingPan = authState.isUploadingPan,
                     isUploadingAadhaar = authState.isUploadingAadhaar,
                     uploadMessage = authState.error,
@@ -1138,7 +1224,8 @@ fun MainScaffold(
                     onLogout = {
                         authViewModel.logout()
                         navController.navigate(Routes.LOGIN) {
-                            popUpTo(0) { inclusive = true }
+                            popUpTo(Routes.MAIN) { inclusive = true }
+                            launchSingleTop = true
                         }
                     },
                     onBack = {
@@ -1213,7 +1300,12 @@ fun MainScaffold(
                 offsetY = (-66 * radialProgress).dp,
                 onClick = {
                     isQuickActionMenuOpen = false
-                    navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=OFFER_TO_LEND")
+                    if (isKycCompleted) {
+                        navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=OFFER_TO_LEND")
+                    } else {
+                        kycDialogMessage = "You must complete identity verification (KYC) before posting lending offers."
+                        showKycRequiredDialog = true
+                    }
                 }
             )
 
@@ -1229,7 +1321,12 @@ fun MainScaffold(
                 offsetY = (-120 * radialProgress).dp,
                 onClick = {
                     isQuickActionMenuOpen = false
-                    navController.navigate("${Routes.CREATE_LOAN}?mode=GRANT")
+                    if (isKycCompleted) {
+                        navController.navigate("${Routes.CREATE_LOAN}?mode=GRANT")
+                    } else {
+                        kycDialogMessage = "You must complete identity verification (KYC) before creating or granting direct loans."
+                        showKycRequiredDialog = true
+                    }
                 }
             )
 
@@ -1244,7 +1341,12 @@ fun MainScaffold(
                 offsetY = (-66 * radialProgress).dp,
                 onClick = {
                     isQuickActionMenuOpen = false
-                    navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=SEEKING_LOAN")
+                    if (isKycCompleted) {
+                        navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=SEEKING_LOAN")
+                    } else {
+                        kycDialogMessage = "You must complete identity verification (KYC) before seeking or borrowing loans."
+                        showKycRequiredDialog = true
+                    }
                 }
             )
         }
@@ -1285,6 +1387,68 @@ fun MainScaffold(
                 }
             )
         }
+
+        // ─── KYC Required Dialog ────────────────────────────────────────────────
+        if (showKycRequiredDialog) {
+            AlertDialog(
+                onDismissRequest = { showKycRequiredDialog = false },
+                icon = {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                            .background(GoldCoinCream),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.VerifiedUser,
+                            contentDescription = null,
+                            tint = GoldCoinAmber,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                },
+                title = {
+                    Text(
+                        "KYC Verification Required",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                },
+                text = {
+                    Text(
+                        if (kycDialogMessage.isNotBlank()) kycDialogMessage else "In compliance with lending rules and security protocols, identity verification (KYC) must be completed before you can borrow, request, or grant loans.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showKycRequiredDialog = false
+                            navController.navigate(Routes.KYC)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldCoinRich, contentColor = Navy900)
+                    ) {
+                        Text("Complete KYC Now", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showKycRequiredDialog = false }
+                    ) {
+                        Text("Later", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                shape = RoundedCornerShape(24.dp),
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            )
+        }
     }
 }
 
@@ -1296,7 +1460,7 @@ fun CircularSatelliteItem(
     icon: ImageVector,
     label: String,
     containerColor: Color,
-    iconTint: Color = Navy900,
+    iconTint: Color = Color.White,
     size: Dp = 50.dp,
     progress: Float,
     offsetX: Dp,
@@ -1318,7 +1482,7 @@ fun CircularSatelliteItem(
             shape = CircleShape,
             color = containerColor,
             shadowElevation = (8 * progress).dp,
-            border = androidx.compose.foundation.BorderStroke(2.dp, SurfaceDarkElevated),
+            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface),
             modifier = Modifier.size(size)
         ) {
             Box(contentAlignment = Alignment.Center) {
@@ -1335,12 +1499,12 @@ fun CircularSatelliteItem(
 
         Surface(
             shape = RoundedCornerShape(8.dp),
-            color = SurfaceDarkElevated.copy(alpha = 0.95f),
-            border = androidx.compose.foundation.BorderStroke(0.5.dp, GlassBorder)
+            color = MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Text(
                 text = label,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -1356,8 +1520,7 @@ fun LoanListScreen(
     currentUserId: String,
     isLoading: Boolean,
     onNavigateToLoanDetail: (String) -> Unit,
-    onNavigateToCreateLoan: (mode: String) -> Unit,
-    onNavigateToMarketplace: () -> Unit = {}
+    onNavigateToCreateLoan: (mode: String) -> Unit
 ) {
     var selectedTab by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) } // 0: Lent, 1: Borrowed
     
@@ -1386,12 +1549,13 @@ fun LoanListScreen(
                     val mode = if (selectedTab == 0) "GRANT" else "REQUEST"
                     onNavigateToCreateLoan(mode)
                 },
-                containerColor = if (selectedTab == 0) Gold500 else Emerald400,
-                contentColor = Navy900
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
                 Icon(
                     Icons.Default.Add,
-                    contentDescription = if (selectedTab == 0) "Grant Loan" else "Request Loan"
+                    contentDescription = if (selectedTab == 0) "Grant Loan" else "Request Loan",
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -1412,9 +1576,7 @@ fun LoanListScreen(
                     ),
                     selectedIndex = selectedTab,
                     onTabSelected = { selectedTab = it },
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    activeColor = if (selectedTab == 0) Gold500 else Emerald400,
-                    activeTextColor = Navy900
+                    modifier = Modifier.padding(horizontal = 20.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -1430,65 +1592,6 @@ fun LoanListScreen(
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // Community Marketplace Banner
-            item {
-                Surface(
-                    onClick = onNavigateToMarketplace,
-                    shape = RoundedCornerShape(16.dp),
-                    color = SurfaceDarkElevated,
-                    border = androidx.compose.foundation.BorderStroke(0.5.dp, GlassBorder),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(Gold500.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.Language, contentDescription = null, tint = Gold500, modifier = Modifier.size(20.dp))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    "Community Loan Wall",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = Emerald400.copy(alpha = 0.2f)
-                                ) {
-                                    Text(
-                                        "LIVE",
-                                        color = Emerald400,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                    )
-                                }
-                            }
-                            Text(
-                                "Explore public lender capital & loan requests",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Gray400
-                            )
-                        }
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Gold500, modifier = Modifier.size(16.dp))
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Section Header

@@ -101,20 +101,20 @@ fun AppOwnerVerificationScreen(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("App Owner Hub", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.White)
+                            Text("App Owner Hub", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = MaterialTheme.colorScheme.onSurface)
                             Text("+91 7061559039 (Master Admin)", fontSize = 11.sp, color = Gold500)
                         }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Navy900)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
-        containerColor = Navy900
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -128,8 +128,9 @@ fun AppOwnerVerificationScreen(
                 // Live Verification Listener Status Card
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -145,7 +146,7 @@ fun AppOwnerVerificationScreen(
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Live Verification Listener", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                                Text("Live Verification Listener", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                                 Text("Active • Auto-verifies tokens", color = Emerald400, fontSize = 12.sp)
                             }
                         }
@@ -210,20 +211,22 @@ fun AppOwnerVerificationScreen(
                     Card(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Pending Requests", color = Gray400, fontSize = 11.sp)
+                            Text("Pending Requests", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             Text("$pendingCount", fontWeight = FontWeight.Bold, color = Gold500, fontSize = 20.sp)
                         }
                     }
                     Card(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Total Verified", color = Gray400, fontSize = 11.sp)
+                            Text("Total Verified", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                             Text("$verifiedCount", fontWeight = FontWeight.Bold, color = Emerald400, fontSize = 20.sp)
                         }
                     }
@@ -234,11 +237,12 @@ fun AppOwnerVerificationScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Manual Token / Phone Verification", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                        Text("Manual Token / Phone Verification", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
@@ -349,8 +353,9 @@ private fun VerificationItemCard(
 
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (isVerified) Emerald400.copy(alpha = 0.4f) else Gold500.copy(alpha = 0.3f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (isVerified) Emerald400.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -375,7 +380,7 @@ private fun VerificationItemCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(item.phone, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                    Text(item.phone, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                     if (item.username.isNotBlank()) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("(@${item.username})", color = Gray400, fontSize = 12.sp)

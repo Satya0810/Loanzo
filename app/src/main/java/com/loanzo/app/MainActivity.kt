@@ -39,13 +39,12 @@ class MainActivity : FragmentActivity() {
         // Truecaller OAuth removed per security audit
 
         setContent {
-            val themeMode by userRepository.getThemeMode().collectAsState(initial = "SYSTEM")
+            val themeMode by userRepository.getThemeMode().collectAsState(initial = "LIGHT")
             val appLanguage by userRepository.getAppLanguage().collectAsState(initial = "en")
 
             val isDark = when (themeMode) {
                 "DARK" -> true
-                "LIGHT" -> false
-                else -> isSystemInDarkTheme()
+                else -> false // Signature Brand Light Theme as primary default & system theme
             }
 
             val currentContext = androidx.compose.ui.platform.LocalContext.current

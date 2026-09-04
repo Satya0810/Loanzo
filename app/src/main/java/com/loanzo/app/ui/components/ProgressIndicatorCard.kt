@@ -34,7 +34,7 @@ fun LoanProgressBar(
     progress: Float, // 0f to 1f
     modifier: Modifier = Modifier,
     fillColors: List<Color> = listOf(Emerald400, Emerald500),
-    trackColor: Color = Color.White.copy(alpha = 0.12f),
+    trackColor: Color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
     height: Int = 8
 ) {
     val clampedProgress = progress.coerceIn(0f, 1f)
@@ -81,13 +81,12 @@ fun HeroPortfolioCard(
     val progressPercent = (progressRatio * 100).toInt().coerceIn(0, 100)
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(0.5.dp, GlassBorder, RoundedCornerShape(24.dp)),
-        shape = RoundedCornerShape(24.dp),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = SurfaceDarkElevated
-        )
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -103,7 +102,7 @@ fun HeroPortfolioCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(if (isLenderPerspective) Gold500.copy(alpha = 0.2f) else Emerald400.copy(alpha = 0.2f)),
+                            .background(if (isLenderPerspective) Gold500.copy(alpha = 0.15f) else Emerald400.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -118,20 +117,21 @@ fun HeroPortfolioCard(
                         text = if (isLenderPerspective) "Lending Portfolio" else "Borrowing Balance",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = Gray300
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
                 // Active loans badge
                 Surface(
                     shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.08f)
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Text(
                         text = "$activeLoanCount Active",
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Gray300,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
@@ -150,14 +150,14 @@ fun HeroPortfolioCard(
                         text = if (isLenderPerspective) "Total Out on Loan" else "Remaining Principal",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Gray400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = totalOutstanding.toInrString(),
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -166,14 +166,14 @@ fun HeroPortfolioCard(
                         text = if (isLenderPerspective) "Total Sanctioned" else "Total Borrowed",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Gray400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = totalDisbursed.toInrString(),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Gray300
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -207,7 +207,7 @@ fun HeroPortfolioCard(
                         text = "${totalRepaid.toInrString()} repaid ($progressPercent%)",
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Gray300
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 

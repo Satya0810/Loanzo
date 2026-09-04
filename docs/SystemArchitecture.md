@@ -88,7 +88,7 @@ Loanzo has a **Node.js/Express backend** deployed on **Vercel** at `https://back
     - `/repay`: Dispatches repayment instructions and UPI payment options.
     - `/statement`: Summarizes recent repayments, on-time status, and accrued late penalties.
     - `/help`: Returns customer support contacts and platform guide.
-    - *Admin Commands* (`8234574147`, `7464832770`): `/stats` (live metrics), `/pendingkyc` (verification queue), `/admin` (control panel).
+    - *Admin Commands* (Exclusively restricted to `@satyam_081`): `/stats` (live metrics), `/pendingkyc` (verification queue), `/admin` (control panel).
     - Active Fallback: Handles unrecognized text gracefully by returning the available command menu so the bot never stays silent.
   - Cryptographic Identity Verifier: Enforces role-based access based on verified `chat.id`.
 - **Notification Router (`/api/telegram/notify`)**:

@@ -37,7 +37,7 @@ import com.loanzo.app.data.dao.RepaymentDao
 import com.loanzo.app.data.repository.LoanRepository
 import com.loanzo.app.data.repository.UserRepository
 import com.loanzo.app.domain.PenaltyEngine
-import com.loanzo.app.ui.components.GlassCard
+import com.loanzo.app.ui.components.*
 import com.loanzo.app.ui.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -336,17 +336,17 @@ fun FinancialHealthScreen(
                 return@Column
             }
 
-            // Health Score Gauge
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
+            // Health Score Gauge (Executive Obsidian Dark Hero Box)
+            GradientCard(gradientColors = listOf(Navy700, Navy900), modifier = Modifier.fillMaxWidth()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Financial Health Score", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Financial Health Score", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(modifier = Modifier.height(16.dp))
                     HealthScoreGauge(score = state.healthScore)
                     Spacer(modifier = Modifier.height(12.dp))
                     val (label, color) = when {
                         state.healthScore >= 80 -> "Excellent" to Emerald400
-                        state.healthScore >= 60 -> "Good" to Gold500
-                        state.healthScore >= 40 -> "Fair" to Orange400
+                        state.healthScore >= 60 -> "Good" to GoldCoinBright
+                        state.healthScore >= 40 -> "Fair" to GoldCoinAmber
                         else -> "Needs Improvement" to Red400
                     }
                     Surface(
@@ -570,7 +570,7 @@ fun HealthScoreGauge(score: Int) {
     val (tierLabel, tierColor) = when {
         score >= 85 -> "PRIME TIER" to Emerald400
         score >= 70 -> "VERY GOOD" to Emerald500
-        score >= 50 -> "FAIR TIER" to Gold500
+        score >= 50 -> "FAIR TIER" to GoldCoinBright
         else -> "SUBPRIME" to Red400
     }
 
@@ -603,7 +603,7 @@ fun HealthScoreGauge(score: Int) {
 
                 // Multi-color active gauge gradient: Red -> Orange -> Gold -> Emerald
                 val gradientBrush = Brush.horizontalGradient(
-                    colors = listOf(Red400, Orange400, Gold500, Emerald400),
+                    colors = listOf(Red400, GoldCoinAmber, GoldCoinBright, Emerald400),
                     startX = arcTopLeft.x,
                     endX = arcTopLeft.x + arcSize.width
                 )

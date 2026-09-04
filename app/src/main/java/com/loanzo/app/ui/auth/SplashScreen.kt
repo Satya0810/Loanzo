@@ -82,8 +82,7 @@ fun SplashScreen(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    Gold500.copy(alpha = glowAlpha * 0.45f),
-                                    Color(0xFF00B0FF).copy(alpha = glowAlpha * 0.25f),
+                                    Gold500.copy(alpha = glowAlpha * 0.25f),
                                     Color.Transparent
                                 )
                             )
@@ -128,15 +127,15 @@ fun SplashScreen(
                 modifier = Modifier.size(28.dp),
                 color = Gold500,
                 strokeWidth = 2.5.dp,
-                trackColor = SurfaceDarkCard
+                trackColor = Navy800
             )
         }
 
         // Bottom Security Footnote
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = SurfaceDarkElevated.copy(alpha = 0.7f),
-            border = androidx.compose.foundation.BorderStroke(0.5.dp, GlassBorder),
+            color = Navy800.copy(alpha = 0.7f),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 36.dp)

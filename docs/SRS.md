@@ -87,7 +87,7 @@ Loanzo is a unified Android application where any registered user can act as a L
        - `/repay` — Generates direct payment options and UPI payment links for active loans.
        - `/statement` — Shows a summary of recent repayments, schedule status, and accrued penalties.
        - `/help` — Displays customer support contacts, FAQs, and bot usage guide.
-     - **Admin Commands** (Restricted to registered Admin IDs `8234574147` & `7464832770`):
+     - **Admin Commands** (Restricted exclusively to designated Admin `@satyam_081`):
        - `/stats` — Live business snapshot: Total active users, disbursed amount, pending KYCs, overdue loans.
        - `/pendingkyc` — Lists unverified user documents with direct review links.
        - `/admin` — Opens admin dashboard control panel with one-tap action buttons.

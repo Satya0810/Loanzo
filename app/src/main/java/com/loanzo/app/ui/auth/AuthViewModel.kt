@@ -62,7 +62,8 @@ class AuthViewModel @Inject constructor(
     private val firebaseManager: FirebaseManager,
     private val googleDriveManager: GoogleDriveManager,
     private val digiLockerService: com.loanzo.app.data.digilocker.DigiLockerVerificationService,
-    private val telegramManager: com.loanzo.app.util.TelegramManager
+    private val telegramManager: com.loanzo.app.util.TelegramManager,
+    private val demoDataSeeder: com.loanzo.app.data.DemoDataSeeder
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -815,24 +816,48 @@ class AuthViewModel @Inject constructor(
                     val photoUrl = firebaseUser.photoUrl?.toString() ?: ""
                     
                     val cleanTarget = targetUsername.trim().lowercase()
+                    val googleUserId = "usr_g_${firebaseUser.uid.take(12)}"
 
-                    // 1. First priority: Check if targetUsername was specified in Step 1
+                    // Strictly query existing user by Google email or Google UID.
+                    // Google accounts MUST NOT map to another user solely because a username was prefilled on the login screen.
                     var existingUser: UserEntity? = null
-                    if (cleanTarget.isNotBlank()) {
-                        existingUser = userRepository.getUserByUsername(cleanTarget)
-                            ?: firebaseManager.fetchUserFromFirestore(cleanTarget)
-                    }
-
-                    // 2. Second priority: Look up by Google email
-                    if (existingUser == null && email.isNotBlank()) {
+                    if (email.isNotBlank()) {
                         existingUser = userRepository.getUserByEmail(email)
                             ?: firebaseManager.fetchUserFromFirestore(email)
                     }
+                    if (existingUser == null) {
+                        existingUser = userRepository.getUserById(googleUserId)
+                            ?: firebaseManager.fetchUserFromFirestore(googleUserId)
+                    }
 
-                    val userId = existingUser?.userId ?: "usr_g_${firebaseUser.uid.take(12)}"
+                    val userId = existingUser?.userId ?: googleUserId
                     val role = existingUser?.role ?: defaultRole
                     val kycStatus = existingUser?.kycStatus ?: "PENDING"
-                    val username = existingUser?.username?.ifBlank { cleanTarget } ?: cleanTarget.ifBlank { email.substringBefore("@") }
+
+                    // Determine username:
+                    // If user already exists in DB, keep their assigned username.
+                    // If new user, generate a unique, clean username from their email prefix.
+                    val username = if (!existingUser?.username.isNullOrBlank()) {
+                        existingUser!!.username
+                    } else {
+                        var baseName = email.substringBefore("@").lowercase().replace(Regex("[^a-z0-9._]"), "")
+                        if (baseName.length < 3) baseName = "user_${firebaseUser.uid.take(6).lowercase()}"
+                        
+                        var candidate = baseName
+                        var attempt = 1
+                        while (attempt <= 10) {
+                            val collisionLocal = userRepository.getUserByUsername(candidate)
+                            val collisionRemote = firebaseManager.fetchUserFromFirestore(candidate)
+                            val isFree = (collisionLocal == null || collisionLocal.email.equals(email, ignoreCase = true)) &&
+                                         (collisionRemote == null || collisionRemote.email.equals(email, ignoreCase = true))
+                            if (isFree) {
+                                break
+                            }
+                            candidate = "${baseName}_${kotlin.random.Random.nextInt(100, 999)}"
+                            attempt++
+                        }
+                        candidate
+                    }
                     
                     // Restore KYC documents & profile from Firestore if needed
                     var restoredPan = existingUser?.panImageUrl ?: ""
@@ -1379,13 +1404,20 @@ class AuthViewModel @Inject constructor(
     }
 
     fun logout() {
+        _uiState.update {
+            AuthUiState(
+                isSessionChecking = false,
+                isLoggedIn = false,
+                currentUserId = null,
+                currentRole = null
+            )
+        }
         viewModelScope.launch {
             try {
                 com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
             } catch (_: Exception) {}
             // Do NOT clear biometric enrollment on logout so they can sign in with it next time
             userRepository.clearSession()
-            _uiState.update { AuthUiState(isSessionChecking = false, isLoggedIn = false) }
         }
     }
 
@@ -1452,6 +1484,58 @@ class AuthViewModel @Inject constructor(
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    /**
+     * Seeds comprehensive demo data everywhere across the app.
+     */
+    fun pushDemoData(onComplete: (Boolean, String) -> Unit = { _, _ -> }) {
+        viewModelScope.launch {
+            val userId = _uiState.value.currentUserId?.ifBlank { null }
+                ?: userRepository.getCurrentUserIdSync()
+                ?: ""
+            if (userId.isBlank()) {
+                onComplete(false, "Please log in first to push demo data.")
+                return@launch
+            }
+            _uiState.update { it.copy(isLoading = true) }
+            val res = demoDataSeeder.seedAllDemoData(userId)
+            _uiState.update { it.copy(isLoading = false, kycStatus = "VERIFIED") }
+            res.fold(
+                onSuccess = { msg ->
+                    onComplete(true, msg)
+                },
+                onFailure = { err ->
+                    onComplete(false, err.message ?: "Failed to seed demo data")
+                }
+            )
+        }
+    }
+
+    /**
+     * Clears all seeded demo records.
+     */
+    fun clearDemoData(onComplete: (Boolean, String) -> Unit = { _, _ -> }) {
+        viewModelScope.launch {
+            val userId = _uiState.value.currentUserId?.ifBlank { null }
+                ?: userRepository.getCurrentUserIdSync()
+                ?: ""
+            if (userId.isBlank()) {
+                onComplete(false, "No active user session.")
+                return@launch
+            }
+            _uiState.update { it.copy(isLoading = true) }
+            val res = demoDataSeeder.clearDemoData(userId)
+            _uiState.update { it.copy(isLoading = false) }
+            res.fold(
+                onSuccess = { msg ->
+                    onComplete(true, msg)
+                },
+                onFailure = { err ->
+                    onComplete(false, err.message ?: "Failed to clear demo data")
+                }
+            )
         }
     }
 }

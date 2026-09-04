@@ -1,6 +1,7 @@
 package com.loanzo.app.ui.dashboard
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -31,6 +33,17 @@ import androidx.compose.foundation.border
 import com.loanzo.app.util.toDateString
 import com.loanzo.app.util.toInrString
 import com.loanzo.app.util.toRelativeTime
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.foundation.lazy.LazyRow
+import com.loanzo.app.data.entity.MarketplacePostEntity
+import com.loanzo.app.ui.marketplace.MarketplaceTabFilter
+import com.loanzo.app.ui.marketplace.MarketplaceUiState
+import com.loanzo.app.ui.marketplace.SocialPostCard
+import com.loanzo.app.ui.marketplace.BidProposalBottomSheet
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 
@@ -38,20 +51,26 @@ import kotlinx.coroutines.launch
 @Composable
 fun DashboardScreen(
     state: DashboardUiState,
+    marketState: MarketplaceUiState = MarketplaceUiState(),
+    onTabSelected: (MarketplaceTabFilter) -> Unit = {},
+    onSearchQueryChange: (String) -> Unit = {},
+    onCategoryTagSelected: (String) -> Unit = {},
+    onVouchPost: (String) -> Unit = {},
+    onSubmitBid: (postId: String, amount: Double, rate: Double, tenure: Int, message: String) -> Unit = { _, _, _, _, _ -> },
+    onNavigateToCreatePost: (String) -> Unit = {},
     onNavigateToCreateLoan: () -> Unit = {},
-    onNavigateToGrantLoan: () -> Unit = onNavigateToCreateLoan,
-    onNavigateToRequestLoan: () -> Unit = onNavigateToCreateLoan,
-    onNavigateToCalculator: () -> Unit,
-    onNavigateToLoanDetail: (String) -> Unit,
+    onNavigateToCalculator: () -> Unit = {},
+    onNavigateToLoanDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToFinancialHealth: () -> Unit,
-    onNavigateToApproval: (String) -> Unit,
+    onNavigateToApproval: (String) -> Unit = {},
     onNavigateToLoansTab: () -> Unit = {},
-    onNavigateToChat: (String) -> Unit = {}
+    onNavigateToChat: (String) -> Unit = {},
+    onNavigateToKyc: () -> Unit = {}
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
     var showChatSheet by remember { mutableStateOf(false) }
     var showReportSheet by remember { mutableStateOf(false) }
+    var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
 
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
     val dashboardGuideSeen by userRepository.isGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_DASHBOARD_SEEN)
@@ -68,11 +87,7 @@ fun DashboardScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Navy800, MaterialTheme.colorScheme.background)
-                        )
-                    )
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(horizontal = 20.dp, vertical = 24.dp)
             ) {
                 Column {
@@ -98,7 +113,7 @@ fun DashboardScreen(
                                     text = dateStr.uppercase(),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Gold500,
+                                    color = MaterialTheme.colorScheme.primary,
                                     letterSpacing = 1.sp
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
@@ -106,12 +121,12 @@ fun DashboardScreen(
                                     text = "Hello, ${state.user?.name?.split(" ")?.firstOrNull() ?: "User"} 👋",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
                                 Text(
                                     text = "Welcome to Loanzo",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Gray400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -121,13 +136,13 @@ fun DashboardScreen(
                                 modifier = Modifier
                                     .size(42.dp)
                                     .clip(CircleShape)
-                                    .background(SurfaceDarkCard)
-                                    .border(1.dp, Gold500.copy(alpha = 0.35f), CircleShape)
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.MoreVert,
                                     contentDescription = "More Options",
-                                    tint = Gold500
+                                    tint = MaterialTheme.colorScheme.onSurface
                                 )
                             }
 
@@ -135,8 +150,8 @@ fun DashboardScreen(
                                 expanded = isMenuExpanded,
                                 onDismissRequest = { isMenuExpanded = false },
                                 modifier = Modifier
-                                    .background(SurfaceDarkElevated)
-                                    .border(1.dp, Gray700, RoundedCornerShape(14.dp))
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
                             ) {
                                 // Option 1: Chat
                                 DropdownMenuItem(
@@ -145,13 +160,13 @@ fun DashboardScreen(
                                             Text(
                                                 text = "Chat",
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
                                                 text = "Direct messages & bot",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = Gray400,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 fontSize = 11.sp
                                             )
                                         }
@@ -163,35 +178,35 @@ fun DashboardScreen(
                                     leadingIcon = {
                                         Surface(
                                             shape = CircleShape,
-                                            color = Gold500.copy(alpha = 0.15f),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(
                                                 Icons.Default.Chat,
                                                 contentDescription = "Chat",
-                                                tint = Gold500,
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.padding(7.dp)
                                             )
                                         }
                                     }
                                 )
 
-                                HorizontalDivider(color = Gray800, thickness = 0.5.dp)
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
-                                // Option 2: Report (for taking action on anyone)
+                                // Option 2: Report
                                 DropdownMenuItem(
                                     text = {
                                         Column {
                                             Text(
                                                 text = "Report",
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
                                                 text = "Take action on anyone",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = Red400.copy(alpha = 0.85f),
+                                                color = Red400,
                                                 fontSize = 11.sp
                                             )
                                         }
@@ -203,7 +218,7 @@ fun DashboardScreen(
                                     leadingIcon = {
                                         Surface(
                                             shape = CircleShape,
-                                            color = Red400.copy(alpha = 0.15f),
+                                            color = Red400.copy(alpha = 0.12f),
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(
@@ -216,7 +231,7 @@ fun DashboardScreen(
                                     }
                                 )
 
-                                HorizontalDivider(color = Gray800, thickness = 0.5.dp)
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
                                 // Option 3: Simulator
                                 DropdownMenuItem(
@@ -225,13 +240,13 @@ fun DashboardScreen(
                                             Text(
                                                 text = "Simulator",
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White,
+                                                color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
                                                 text = "Loan & EMI calculator",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = Emerald400.copy(alpha = 0.85f),
+                                                color = Emerald400,
                                                 fontSize = 11.sp
                                             )
                                         }
@@ -243,7 +258,7 @@ fun DashboardScreen(
                                     leadingIcon = {
                                         Surface(
                                             shape = CircleShape,
-                                            color = Emerald400.copy(alpha = 0.15f),
+                                            color = Emerald400.copy(alpha = 0.12f),
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(
@@ -262,200 +277,398 @@ fun DashboardScreen(
             }
         }
 
-        // Action buttons side-by-side
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = onNavigateToGrantLoan,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(horizontal = 6.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold500,
-                        contentColor = Navy900
-                    )
-                ) {
-                    Icon(Icons.Default.Upload, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Grant Loan",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                }
-                
-                Button(
-                    onClick = onNavigateToRequestLoan,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(horizontal = 6.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Emerald400,
-                        contentColor = Navy900
-                    )
-                ) {
-                    Icon(Icons.Default.Download, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Request Loan",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
 
-        // Unified Financial Portfolio Card on Home (No tabs - aggregate overview)
+
+        // Unified Financial Portfolio Card on Home (Executive Obsidian Dark Hero Box matching Live Loan Simulator)
         item {
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = Brush.linearGradient(listOf(Gold500.copy(alpha = 0.4f), Emerald400.copy(alpha = 0.25f)))
-                ),
+            ExecutiveHeroCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Portfolio Overview",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                // 1. Header: Emblem + Title + Active Pill
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Gold500.copy(alpha = 0.15f)
+                            shape = CircleShape,
+                            color = GoldCoinRich.copy(alpha = 0.2f),
+                            modifier = Modifier.size(38.dp)
                         ) {
+                            Icon(
+                                Icons.Default.AccountBalanceWallet,
+                                contentDescription = null,
+                                tint = GoldCoinRich,
+                                modifier = Modifier.padding(9.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
                             Text(
-                                text = "Active",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Gold500,
+                                text = "Portfolio Overview",
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Real-time capital balance",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Gray400
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Emerald400.copy(alpha = 0.15f)
                     ) {
-                        // Total Lent Metric Card
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(Gold500)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Total Lent",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Gray400
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = state.totalLentDisbursed.toInrString(),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Gold500
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Outstanding: ${state.totalLentOutstanding.toInrString()}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Gray300,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
+                        Text(
+                            text = "ACTIVE",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Emerald400,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
-                        // Total Borrowed Metric Card
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(Emerald400)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Total Borrowed",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Gray400
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = state.totalBorrowedDisbursed.toInrString(),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Emerald400
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "To Repay: ${state.totalBorrowedOutstanding.toInrString()}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Gray300,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 2. Main Metric (Golden Coin Yellow) + Interactive Donut Ring
+                val totalVolume = state.totalLentDisbursed + state.totalBorrowedDisbursed
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "Active Portfolio Value",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Gray300
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = totalVolume.toInrString(),
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = GoldCoinBright
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    OutlinedButton(
-                        onClick = onNavigateToLoansTab,
-                        modifier = Modifier.fillMaxWidth().height(42.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500),
-                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                            brush = Brush.horizontalGradient(listOf(Gold500.copy(alpha = 0.5f), Emerald400.copy(alpha = 0.5f)))
-                        )
+                    // Mini Interactive Donut Gauge (Emerald Lent vs Golden Coin Borrowed)
+                    Box(
+                        modifier = Modifier.size(72.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Manage All Loans in Loans Tab ➔", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        val lentAngle = if (totalVolume > 0) ((state.totalLentDisbursed / totalVolume) * 360f).toFloat() else 180f
+                        val borrowedAngle = if (totalVolume > 0) ((state.totalBorrowedDisbursed / totalVolume) * 360f).toFloat() else 180f
+
+                        Canvas(modifier = Modifier.size(64.dp)) {
+                            drawArc(
+                                color = Emerald400,
+                                startAngle = -90f,
+                                sweepAngle = lentAngle,
+                                useCenter = false,
+                                style = Stroke(width = 16f, cap = StrokeCap.Round)
+                            )
+                            drawArc(
+                                color = GoldCoinRich,
+                                startAngle = -90f + lentAngle,
+                                sweepAngle = borrowedAngle,
+                                useCenter = false,
+                                style = Stroke(width = 16f, cap = StrokeCap.Round)
+                            )
+                        }
+                        Icon(Icons.Default.PieChart, contentDescription = null, tint = Gray400, modifier = Modifier.size(20.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = Gray700.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 3. Bottom 3-Column Breakdown (Lent, Borrowed, Net)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Emerald400))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Total Lent", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                        }
+                        Text(state.totalLentDisbursed.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400)
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(GoldCoinRich))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Total Borrowed", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                        }
+                        Text(state.totalBorrowedDisbursed.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinRich)
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Outstanding Net", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                        Text((state.totalLentOutstanding - state.totalBorrowedOutstanding).toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 4. Quick Action Button inside Hero Box
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToLoansTab() }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp, horizontal = 14.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Manage All Loans in Loans Tab",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = GoldCoinBright,
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
             Spacer(modifier = Modifier.height(20.dp))
+        }
+
+        // ─── COMMUNITY LOAN WALL (LIVE & OPEN DIRECTLY ON HOME) ────────────────
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                // Header with LIVE badge + Create Post CTA
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Community Loan Wall",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Emerald400.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
+                            ) {
+                                Text(
+                                    "LIVE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Emerald400,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Text(
+                            "Verified direct P2P lending opportunities",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    Surface(
+                        onClick = { 
+                            if (marketState.isKycVerified) onNavigateToCreatePost("OFFER_TO_LEND") else onNavigateToKyc() 
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Post", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Segmented Tabs (All Offers, Lenders, Borrowers, My Posts)
+                val tabs = listOf("All Offers", "💰 Lenders", "🙋 Borrowers", "⭐ My Posts")
+                val selectedTabIndex = when (marketState.selectedTab) {
+                    MarketplaceTabFilter.ALL -> 0
+                    MarketplaceTabFilter.LENDERS -> 1
+                    MarketplaceTabFilter.BORROWERS -> 2
+                    MarketplaceTabFilter.MY_POSTS -> 3
+                }
+                SegmentedCapsuleTab(
+                    tabs = tabs,
+                    selectedIndex = selectedTabIndex,
+                    onTabSelected = { idx ->
+                        val selected = when (idx) {
+                            0 -> MarketplaceTabFilter.ALL
+                            1 -> MarketplaceTabFilter.LENDERS
+                            2 -> MarketplaceTabFilter.BORROWERS
+                            else -> MarketplaceTabFilter.MY_POSTS
+                        }
+                        onTabSelected(selected)
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Embedded Search Bar
+                OutlinedTextField(
+                    value = marketState.searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = { Text("Search by purpose, name, city (#Medical, #Education)...", fontSize = 13.sp, color = Gray400) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = "Search", tint = GoldCoinRich, modifier = Modifier.size(20.dp))
+                    },
+                    trailingIcon = {
+                        if (marketState.searchQuery.isNotBlank()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear", tint = Gray400, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Golden Category Chips
+                val categories = listOf("ALL", "EDUCATION", "MEDICAL", "BUSINESS", "EMERGENCY", "PERSONAL")
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(categories) { cat ->
+                        val isSelected = marketState.selectedCategoryTag.equals(cat, ignoreCase = true)
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onCategoryTagSelected(cat) },
+                            label = {
+                                Text(
+                                    if (cat == "ALL") "All Categories" else "#$cat",
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            colors = goldFilterChipColors(),
+                            border = goldFilterChipBorder(isSelected),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        // Live Community Post Cards directly in LazyColumn
+        if (marketState.isLoading && marketState.posts.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = GoldCoinRich)
+                }
+            }
+        } else if (marketState.posts.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(24.dp).fillMaxWidth()
+                        ) {
+                            Icon(Icons.Outlined.Forum, contentDescription = null, tint = Gray400, modifier = Modifier.size(44.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("No Community Posts Found", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Be the first to publish a lending offer or loan request!",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = { 
+                                    if (marketState.isKycVerified) onNavigateToCreatePost("OFFER_TO_LEND") else onNavigateToKyc() 
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Create Post", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            items(marketState.posts, key = { it.postId }) { post ->
+                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                    SocialPostCard(
+                        post = post,
+                        onVouch = { onVouchPost(post.postId) },
+                        onPrimaryAction = { selectedPostForBid = post }
+                    )
+                }
+            }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
         }
 
         // Pending approvals section (if any)
@@ -560,42 +773,7 @@ fun DashboardScreen(
             }
             Spacer(modifier = Modifier.height(20.dp))
         }
-        
-        // Utilities buttons
-        item {
-            OutlinedButton(
-                onClick = onNavigateToCalculator,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(Icons.Default.Calculate, null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.loan_calculator), fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = onNavigateToFinancialHealth,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Icon(Icons.Default.Analytics, null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Financial Health", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
+
 
         // Recent activity
         if (state.recentEvents.isNotEmpty()) {
@@ -696,6 +874,19 @@ fun DashboardScreen(
         )
     }
 
+    selectedPostForBid?.let { post ->
+        BidProposalBottomSheet(
+            post = post,
+            isKycCompleted = marketState.isKycVerified,
+            onNavigateToKyc = onNavigateToKyc,
+            onDismiss = { selectedPostForBid = null },
+            onSubmitBid = { amount, rate, tenure, msg ->
+                onSubmitBid(post.postId, amount, rate, tenure, msg)
+                selectedPostForBid = null
+            }
+        )
+    }
+
     if (!dashboardGuideSeen) {
         Box(
             modifier = Modifier
@@ -707,7 +898,7 @@ fun DashboardScreen(
                 visible = true,
                 icon = Icons.Default.Dashboard,
                 title = "Your Financial Command Center",
-                body = "View active loans, pending approvals, financial health score, and quick actions — all from one place.",
+                body = "Explore the Community Loan Wall, view portfolio metrics, and track all your active loans — all in one place.",
                 onDismiss = {
                     scope.launch {
                         userRepository.markGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_DASHBOARD_SEEN)

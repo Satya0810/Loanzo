@@ -36,7 +36,7 @@ fun PostDetailAndBidsSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDarkElevated,
+        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
@@ -46,13 +46,13 @@ fun PostDetailAndBidsSheet(
                 .padding(bottom = 36.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Bolt, contentDescription = null, tint = Gold500, modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Proposals & Competitive Bids (${bids.size})",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -60,7 +60,7 @@ fun PostDetailAndBidsSheet(
             Text(
                 text = "Target: ${post.title}",
                 style = MaterialTheme.typography.bodySmall,
-                color = Gray400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -76,13 +76,13 @@ fun PostDetailAndBidsSheet(
                         Text(
                             "No active proposals on this post yet.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Gray400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             "Community members will review your terms shortly!",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Gray500
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -107,10 +107,8 @@ fun BidCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = androidx.compose.ui.graphics.SolidColor(GlassBorder)
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -122,10 +120,10 @@ fun BidCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(Gold500.copy(alpha = 0.15f)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = null, tint = Gold500, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                 }
 
                 Spacer(modifier = Modifier.width(10.dp))
@@ -135,7 +133,7 @@ fun BidCard(
                         Text(
                             text = bid.bidderName,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 14.sp
                         )
                         if (bid.bidderKycVerified) {
@@ -184,7 +182,7 @@ fun BidCard(
                 Text(
                     "Tenure: ${bid.proposedTenureMonths} Months",
                     fontSize = 12.sp,
-                    color = Gray300
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -193,7 +191,7 @@ fun BidCard(
                 Text(
                     text = "\"${bid.message}\"",
                     fontSize = 12.sp,
-                    color = Gray300,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
                 )
             }

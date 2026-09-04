@@ -115,8 +115,11 @@ class UserRepository @Inject constructor(
     fun searchUsers(query: String): Flow<List<UserEntity>> = userDao.searchUsers(query)
     suspend fun deleteUser(user: UserEntity) = userDao.deleteUser(user)
 
-    // Theme preference
-    fun getThemeMode(): Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "SYSTEM" }
+    // Theme preference — Light Theme is the signature system default
+    fun getThemeMode(): Flow<String> = context.dataStore.data.map {
+        val mode = it[THEME_MODE]
+        if (mode == null || mode == "SYSTEM") "LIGHT" else mode
+    }
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { prefs -> prefs[THEME_MODE] = mode }
     }

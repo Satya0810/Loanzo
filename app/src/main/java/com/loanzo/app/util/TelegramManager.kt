@@ -25,8 +25,9 @@ class TelegramManager @Inject constructor() {
         const val BOT_USERNAME = "Loanzo_bot"
         const val BOT_URL = "https://t.me/$BOT_USERNAME"
 
-        // Primary Admin IDs registered to receive real-time business and KYC alerts
-        val ADMIN_CHAT_IDS = listOf(8234574147L, 7464832770L)
+        // Sole designated Administrator username and primary verified Chat ID for @satyam_081
+        const val ADMIN_USERNAME = "satyam_081"
+        val ADMIN_CHAT_IDS = listOf(8234574147L)
 
         private const val TELEGRAM_API_URL = "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
     }

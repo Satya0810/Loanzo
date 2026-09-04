@@ -1,4 +1,4 @@
-﻿package com.loanzo.app.ui.components
+package com.loanzo.app.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -188,7 +188,7 @@ fun WelcomeOnboardingCarousel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Navy900, Navy800, Navy900)))
+                .background(MaterialTheme.colorScheme.background)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -285,7 +285,7 @@ fun WelcomeOnboardingCarousel(
                                     .height(8.dp)
                                     .width(width)
                                     .clip(CircleShape)
-                                    .background(if (isSelected) Gold500 else SurfaceDarkElevated)
+                                    .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
                             )
                         }
                     }
@@ -305,8 +305,8 @@ fun WelcomeOnboardingCarousel(
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -367,10 +367,10 @@ fun ContextualGuideCard(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                color = SurfaceDarkElevated.copy(alpha = 0.96f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Gold500.copy(alpha = 0.4f)),
-                tonalElevation = 12.dp,
-                shadowElevation = 8.dp
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                tonalElevation = 2.dp,
+                shadowElevation = 4.dp
             ) {
                 Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.Top) {
                     Box(
@@ -518,10 +518,10 @@ fun GuidedTourOverlay(
 
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = SurfaceDarkElevated,
-                border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder),
-                tonalElevation = 16.dp,
-                shadowElevation = 16.dp,
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                tonalElevation = 2.dp,
+                shadowElevation = 4.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
@@ -578,7 +578,7 @@ fun GuidedTourOverlay(
                                     modifier = Modifier
                                         .size(6.dp)
                                         .clip(CircleShape)
-                                        .background(if (idx == currentStep) Gold500 else SurfaceDarkElevated)
+                                        .background(if (idx == currentStep) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
                                 )
                             }
                         }
@@ -586,7 +586,7 @@ fun GuidedTourOverlay(
                         Button(
                             onClick = { if (isLast) onFinish() else onNext(currentStep + 1) },
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                         ) {
                             Text(if (isLast) "Finish" else "Next", fontWeight = FontWeight.Bold)
                         }

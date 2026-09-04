@@ -1,6 +1,7 @@
 package com.loanzo.app.ui.dashboard
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,7 +45,7 @@ fun ChatSelectionBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDarkElevated,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
@@ -61,13 +62,13 @@ fun ChatSelectionBottomSheet(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = Gold500.copy(alpha = 0.15f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             Icons.Default.Chat,
                             contentDescription = "Chat",
-                            tint = Gold500,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(10.dp)
                         )
                     }
@@ -77,35 +78,32 @@ fun ChatSelectionBottomSheet(
                             text = "Conversations & Chat",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Chat with loan counterparties or assistant",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Gray400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Gray400)
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // AI & Support Bot Card
-            Card(
+            // Option 1: Loanzo Bot
+            Surface(
+                onClick = {
+                    onDismiss()
+                    TelegramManager().openBotForLinking(context, currentUserId)
+                },
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = Brush.horizontalGradient(listOf(Gold500.copy(alpha = 0.4f), Emerald400.copy(alpha = 0.25f)))
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        onDismiss()
-                        TelegramManager().openBotForLinking(context, currentUserId)
-                    }
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -113,13 +111,13 @@ fun ChatSelectionBottomSheet(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = Gold500.copy(alpha = 0.15f),
-                        modifier = Modifier.size(44.dp)
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             Icons.Default.Forum,
                             contentDescription = "Loanzo Bot",
-                            tint = Gold500,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(10.dp)
                         )
                     }
@@ -129,15 +127,15 @@ fun ChatSelectionBottomSheet(
                             text = "Loanzo Assistant (@Loanzo_bot)",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "24/7 automated loan support, EMI alerts & queries",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Gray400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Gold500)
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -163,7 +161,8 @@ fun ChatSelectionBottomSheet(
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard.copy(alpha = 0.5f))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp),
@@ -172,7 +171,7 @@ fun ChatSelectionBottomSheet(
                         Icon(
                             Icons.Default.HourglassEmpty,
                             contentDescription = null,
-                            tint = Gray500,
+                            tint = Gray400,
                             modifier = Modifier.size(36.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -180,13 +179,13 @@ fun ChatSelectionBottomSheet(
                             text = "No active loans found",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = Gray300
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Direct peer-to-peer chats will appear here as soon as you grant or request a loan.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Gray500,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
@@ -211,7 +210,8 @@ fun ChatSelectionBottomSheet(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
@@ -236,7 +236,7 @@ fun ChatSelectionBottomSheet(
                                             text = loan.purpose.ifBlank { "Loan #${loan.loanId.take(6)}" },
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = Color.White
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Surface(
@@ -303,7 +303,7 @@ fun ReportActionBottomSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = SurfaceDarkElevated,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
@@ -338,17 +338,17 @@ fun ReportActionBottomSheet(
                             text = "Report & Take Action",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "File complaint to take formal platform or legal action",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Gray400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Gray400)
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -359,7 +359,7 @@ fun ReportActionBottomSheet(
                 text = "TARGET INDIVIDUAL / COUNTERPARTY",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                color = Gray400,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 1.sp
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -398,15 +398,15 @@ fun ReportActionBottomSheet(
             OutlinedTextField(
                 value = targetPerson,
                 onValueChange = { targetPerson = it },
-                placeholder = { Text("Enter Counterparty Name, Phone or User ID", color = Gray500) },
+                placeholder = { Text("Enter Counterparty Name, Phone or User ID", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Red400,
-                    unfocusedBorderColor = Gray700,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 )
             )
 
@@ -517,9 +517,9 @@ fun ReportActionBottomSheet(
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Red400,
-                    unfocusedBorderColor = Gray700,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 )
             )
 
@@ -530,14 +530,15 @@ fun ReportActionBottomSheet(
                 text = "ACTIONS REQUESTED ON TARGET",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
-                color = Gray400,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 1.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
 
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     Row(
@@ -553,7 +554,7 @@ fun ReportActionBottomSheet(
                             colors = CheckboxDefaults.colors(checkedColor = Red400)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Immediate Platform & Transaction Restriction", color = Color.White, fontSize = 13.sp)
+                        Text("Immediate Platform & Transaction Restriction", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                     }
 
                     Row(
@@ -569,7 +570,7 @@ fun ReportActionBottomSheet(
                             colors = CheckboxDefaults.colors(checkedColor = Red400)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Issue Formal Legal / Administrative Demand", color = Color.White, fontSize = 13.sp)
+                        Text("Issue Formal Legal / Administrative Demand", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                     }
 
                     Row(
@@ -585,7 +586,7 @@ fun ReportActionBottomSheet(
                             colors = CheckboxDefaults.colors(checkedColor = Red400)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Dispatch Urgent Alert to Telegram Admin Desk", color = Color.White, fontSize = 13.sp)
+                        Text("Dispatch Urgent Alert to Telegram Admin Desk", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                     }
                 }
             }

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -37,19 +38,25 @@ fun SegmentedCapsuleTab(
     selectedIndex: Int,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    activeColor: Color = Gold500,
-    activeTextColor: Color = Navy900,
-    inactiveTextColor: Color = Color(0xFF94A3B8),
-    containerColor: Color = SurfaceDarkCard.copy(alpha = 0.85f)
+    activeColor: Color = Color.Unspecified,
+    activeTextColor: Color = Color.Unspecified,
+    inactiveTextColor: Color = Color.Unspecified,
+    containerColor: Color = Color.Unspecified
 ) {
     if (tabs.isEmpty()) return
+
+    val resolvedActiveColor = if (activeColor != Color.Unspecified) activeColor else MaterialTheme.colorScheme.primary
+    val resolvedActiveTextColor = if (activeTextColor != Color.Unspecified) activeTextColor else MaterialTheme.colorScheme.onPrimary
+    val resolvedInactiveTextColor = if (inactiveTextColor != Color.Unspecified) inactiveTextColor else MaterialTheme.colorScheme.onSurfaceVariant
+    val resolvedContainerColor = if (containerColor != Color.Unspecified) containerColor else MaterialTheme.colorScheme.surfaceVariant
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp)
             .clip(CircleShape)
-            .background(containerColor)
+            .background(resolvedContainerColor)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
             .padding(4.dp)
     ) {
         val tabCount = tabs.size
@@ -71,7 +78,7 @@ fun SegmentedCapsuleTab(
                 .fillMaxWidth(1f / tabCount)
                 .align(BiasAlignment(animatedBias, 0f))
                 .clip(CircleShape)
-                .background(activeColor)
+                .background(resolvedActiveColor)
         )
 
         // Tab Text Row
@@ -82,7 +89,7 @@ fun SegmentedCapsuleTab(
             tabs.forEachIndexed { index, title ->
                 val isSelected = index == selectedIndex
                 val textColor by animateColorAsState(
-                    targetValue = if (isSelected) activeTextColor else inactiveTextColor,
+                    targetValue = if (isSelected) resolvedActiveTextColor else resolvedInactiveTextColor,
                     animationSpec = tween(durationMillis = 200),
                     label = "tabTextColor"
                 )

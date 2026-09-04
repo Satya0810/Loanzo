@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,6 +53,7 @@ fun KycScreen(
     onCompleteStep: (step: Int, data: Map<String, String>) -> Unit,
     onUploadSelfie: (Bitmap) -> Unit,
     onUploadDocument: (String, android.net.Uri) -> Unit,
+    onSkip: () -> Unit = {},
     onFinish: () -> Unit
 ) {
     val context = LocalContext.current
@@ -95,30 +98,66 @@ fun KycScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(colors = listOf(Navy900, Navy800)))
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = stringResource(R.string.kyc_verification),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        Text(
-            text = "Complete your verified credentials to proceed",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Gray400
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.kyc_verification),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = "Complete your verified credentials to proceed",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Surface(
+                onClick = onSkip,
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Skip",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Skip for now",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // 1. DIGILOCKER SECTION (GOVT OF INDIA)
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Navy700.copy(alpha = 0.9f)),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -139,37 +178,37 @@ fun KycScreen(
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("DigiLocker Official KYC", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                            Text("Govt of India • MeitY", style = MaterialTheme.typography.labelSmall, color = Emerald400)
+                            Text("DigiLocker Official KYC", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Govt of India • MeitY", style = MaterialTheme.typography.labelSmall, color = Emerald500)
                         }
                     }
                     if (isDigiLockerDone) {
-                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald400)
+                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald500)
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("Direct live verification via official UIDAI Aadhaar OTP and Income Tax Department PAN Card records.", style = MaterialTheme.typography.bodySmall, color = Gray300)
+                Text("Direct live verification via official UIDAI Aadhaar OTP and Income Tax Department PAN Card records.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 
                 if (isDigiLockerDone) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = Emerald400.copy(alpha = 0.15f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.4f)),
+                        color = Emerald400.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier.padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.CheckCircle, null, tint = Emerald400, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.CheckCircle, null, tint = Emerald500, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text("DigiLocker Verified ✓", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400)
+                                Text("DigiLocker Verified ✓", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald500)
                                 Text(
                                     text = if (!user?.name.isNullOrBlank()) "Linked to: ${user?.name}" else "Aadhaar & PAN matched with Govt Records",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -199,10 +238,12 @@ fun KycScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 2. SELFIE UPLOAD CARD
+        // 2. SELFIE LIVENESS SECTION
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Navy700.copy(alpha = 0.9f)),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -217,15 +258,15 @@ fun KycScreen(
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("Selfie Photo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Selfie Photo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Text("Identity Verification", style = MaterialTheme.typography.labelSmall, color = Gold500)
                         }
                     }
                     if (isSelfieDone) {
-                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald400)
+                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald500)
                     }
                 }
-
+                
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (selfieBitmap != null && !isSelfieDone) {
@@ -247,12 +288,12 @@ fun KycScreen(
                         
                         Button(
                             onClick = { onUploadSelfie(selfieBitmap!!) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !isUploadingSelfie
                         ) {
                             if (isUploadingSelfie) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Navy900, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Uploading...", fontWeight = FontWeight.Bold)
                             } else {
@@ -276,8 +317,8 @@ fun KycScreen(
                                     cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                                 }
                             },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Gray500),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             enabled = !isUploadingSelfie
                         ) {
                             Icon(Icons.Default.CameraAlt, null)
@@ -300,8 +341,8 @@ fun KycScreen(
                         },
                         modifier = Modifier.fillMaxWidth().height(120.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(containerColor = Navy600.copy(alpha = 0.5f), contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Gray600)
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.CameraAlt, null, tint = Gold500, modifier = Modifier.size(36.dp))
@@ -336,10 +377,12 @@ fun KycScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 3. DOCUMENT UPLOAD CARD
+        // 3. PHYSICAL DOCUMENT UPLOADS
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Navy700.copy(alpha = 0.9f)),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -354,12 +397,12 @@ fun KycScreen(
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("Document Upload (Image)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Document Upload (Image)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Text("PAN and Aadhaar Cards", style = MaterialTheme.typography.labelSmall, color = Blue500)
                         }
                     }
                     if (isPanDone && isAadhaarDone) {
-                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald400)
+                        Icon(Icons.Default.CheckCircle, "Verified", tint = Emerald500)
                     }
                 }
 
@@ -375,8 +418,8 @@ fun KycScreen(
                     OutlinedButton(
                         onClick = { panLauncher.launch("image/*") },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (panImageUri != null) Emerald400 else Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (panImageUri != null) Emerald400 else Gray500),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (panImageUri != null) Emerald500 else MaterialTheme.colorScheme.onSurface),
+                        border = BorderStroke(1.dp, if (panImageUri != null) Emerald500 else MaterialTheme.colorScheme.outlineVariant),
                         enabled = !isUploadingPan
                     ) {
                         Icon(if (panImageUri != null) Icons.Default.Check else Icons.Default.Image, null)
@@ -387,11 +430,11 @@ fun KycScreen(
                         Button(
                             onClick = { onUploadDocument("PAN", panImageUri!!) },
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Blue500, contentColor = Color.White),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             enabled = !isUploadingPan
                         ) {
                             if (isUploadingPan) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Uploading...")
                             } else {
@@ -405,16 +448,16 @@ fun KycScreen(
 
                 if (isAadhaarDone) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                        Icon(Icons.Default.CheckCircle, null, tint = Emerald400)
+                        Icon(Icons.Default.CheckCircle, null, tint = Emerald500)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Aadhaar Card Uploaded", color = Emerald400, fontWeight = FontWeight.SemiBold)
+                        Text("Aadhaar Card Uploaded", color = Emerald500, fontWeight = FontWeight.SemiBold)
                     }
                 } else {
                     OutlinedButton(
                         onClick = { aadhaarLauncher.launch("image/*") },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (aadhaarImageUri != null) Emerald400 else Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (aadhaarImageUri != null) Emerald400 else Gray500),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (aadhaarImageUri != null) Emerald500 else MaterialTheme.colorScheme.onSurface),
+                        border = BorderStroke(1.dp, if (aadhaarImageUri != null) Emerald500 else MaterialTheme.colorScheme.outlineVariant),
                         enabled = !isUploadingAadhaar
                     ) {
                         Icon(if (aadhaarImageUri != null) Icons.Default.Check else Icons.Default.Image, null)
@@ -425,11 +468,11 @@ fun KycScreen(
                         Button(
                             onClick = { onUploadDocument("AADHAAR", aadhaarImageUri!!) },
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Blue500, contentColor = Color.White),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             enabled = !isUploadingAadhaar
                         ) {
                             if (isUploadingAadhaar) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Uploading...")
                             } else {
@@ -447,10 +490,22 @@ fun KycScreen(
             onClick = onFinish,
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
             enabled = isDigiLockerDone && isSelfieDone && isPanDone && isAadhaarDone
         ) {
             Text("Complete KYC & Go to Dashboard", fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = onSkip,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+        ) {
+            Text("Skip for Now (Explore App)", fontWeight = FontWeight.SemiBold)
         }
     }
 }

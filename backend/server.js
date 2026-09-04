@@ -395,7 +395,9 @@ app.post('/api/kyc/digilocker/verify', async (req, res) => {
 // TELEGRAM BOT WEBHOOK & ALERT SYSTEM
 // ==========================================
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8911421683:AAFpIQLIBY9USPni5Ylr1I5vx4zgh_BXTq0';
-const TELEGRAM_ADMIN_IDS = [8234574147, 7464832770];
+const ADMIN_TELEGRAM_USERNAME = 'satyam_081';
+let satyamAdminChatId = 8234574147; // Default or updated dynamically when @satyam_081 messages
+const TELEGRAM_ADMIN_IDS = [8234574147];
 
 async function sendTelegramMessage(chatId, text, replyMarkup = null) {
     try {
@@ -424,17 +426,25 @@ app.post('/api/telegram/webhook', async (req, res) => {
         const message = update.message;
         const chatId = message.chat.id;
         const text = (message.text || '').trim();
+        const fromUsername = (message.from?.username || message.chat?.username || '').toLowerCase().replace('@', '');
 
-        console.log(`[Telegram received from ${chatId}]:`, text);
+        // Dynamically capture @satyam_081's chatId when they message the bot
+        if (fromUsername === ADMIN_TELEGRAM_USERNAME.toLowerCase()) {
+            satyamAdminChatId = chatId;
+            console.log(`[Telegram Admin Identified]: Registered chat ID ${chatId} for @${ADMIN_TELEGRAM_USERNAME}`);
+        }
+
+        const isAdmin = fromUsername === ADMIN_TELEGRAM_USERNAME.toLowerCase() || chatId === satyamAdminChatId;
+
+        console.log(`[Telegram received from ${chatId} (@${fromUsername})]:`, text);
 
         // Normalize command (strip @Loanzo_bot if present)
         const lowerText = text.toLowerCase();
         const cmd = lowerText.split(' ')[0].replace(/@\w+$/, '');
 
         if (cmd === '/start') {
-            const isAdmin = TELEGRAM_ADMIN_IDS.includes(chatId);
             const adminSection = isAdmin ? (
-                `\n🛡️ <b>Admin Commands:</b>\n` +
+                `\n🛡️ <b>Admin Commands (@${ADMIN_TELEGRAM_USERNAME}):</b>\n` +
                 `• /stats — Platform business snapshot & live metrics\n` +
                 `• /pendingkyc — Review pending user verifications\n` +
                 `• /admin — Open admin control panel\n`
@@ -515,10 +525,10 @@ app.post('/api/telegram/webhook', async (req, res) => {
                 `Type /myloans to view your loans or /repay for payment assistance.`
             );
         } else if (cmd === '/stats') {
-            if (TELEGRAM_ADMIN_IDS.includes(chatId)) {
+            if (isAdmin) {
                 await sendTelegramMessage(
                     chatId,
-                    `📈 <b>Loanzo Platform Live Stats (Admin)</b>\n\n` +
+                    `📈 <b>Loanzo Platform Live Stats (Admin: @${ADMIN_TELEGRAM_USERNAME})</b>\n\n` +
                     `• Total Registered Users: <b>${usersDb.size}</b>\n` +
                     `• Active Webhook: <code>Operational ✅</code>\n` +
                     `• Server Status: <code>Healthy</code>\n` +
@@ -526,31 +536,31 @@ app.post('/api/telegram/webhook', async (req, res) => {
                     `• Overdue Loans: 0`
                 );
             } else {
-                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved for Loanzo Admins.</i>`);
+                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved exclusively for Loanzo Admin (@${ADMIN_TELEGRAM_USERNAME}).</i>`);
             }
         } else if (cmd === '/pendingkyc') {
-            if (TELEGRAM_ADMIN_IDS.includes(chatId)) {
+            if (isAdmin) {
                 await sendTelegramMessage(
                     chatId,
-                    `📋 <b>Pending KYC Review Queue (Admin)</b>\n\n` +
+                    `📋 <b>Pending KYC Review Queue (Admin: @${ADMIN_TELEGRAM_USERNAME})</b>\n\n` +
                     `All submitted documents are currently up-to-date! No pending items.\n` +
                     `New submissions will be alerted here in real-time.`
                 );
             } else {
-                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved for Loanzo Admins.</i>`);
+                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved exclusively for Loanzo Admin (@${ADMIN_TELEGRAM_USERNAME}).</i>`);
             }
         } else if (cmd === '/admin') {
-            if (TELEGRAM_ADMIN_IDS.includes(chatId)) {
+            if (isAdmin) {
                 await sendTelegramMessage(
                     chatId,
-                    `🛡️ <b>Loanzo Admin Control Panel</b>\n\n` +
+                    `🛡️ <b>Loanzo Admin Control Panel (@${ADMIN_TELEGRAM_USERNAME})</b>\n\n` +
                     `Welcome Admin! Available controls:\n` +
                     `• /stats — Platform business snapshot\n` +
                     `• /pendingkyc — Review pending user verifications\n` +
                     `• Server: Node.js / Vercel (Online)`
                 );
             } else {
-                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved for Loanzo Admins.</i>`);
+                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved exclusively for Loanzo Admin (@${ADMIN_TELEGRAM_USERNAME}).</i>`);
             }
         } else if (text.length > 0) {
             // Friendly fallback for any unrecognized message so the bot is NEVER inactive
@@ -572,21 +582,16 @@ app.post('/api/telegram/webhook', async (req, res) => {
     }
 });
 
-// Admin Broadcast / Notify endpoint
+// Admin Broadcast / Notify endpoint - Exclusively delivers to @satyam_081
 app.post('/api/telegram/notify', async (req, res) => {
     const { title, message, type, url } = req.body;
-    const formatted = `🔔 <b>${title || 'Loanzo Notification'}</b>\n\n${message || ''}`;
+    const formatted = `🔔 <b>${title || 'Loanzo Notification'}</b> (Admin Desk)\n\n${message || ''}`;
     const replyMarkup = url ? {
         inline_keyboard: [[{ text: '🔗 View in Loanzo', url: url }]]
     } : null;
 
-    let count = 0;
-    for (const adminId of TELEGRAM_ADMIN_IDS) {
-        const ok = await sendTelegramMessage(adminId, formatted, replyMarkup);
-        if (ok) count++;
-    }
-
-    res.json({ success: true, delivered: count });
+    const ok = await sendTelegramMessage(satyamAdminChatId, formatted, replyMarkup);
+    res.json({ success: ok, deliveredTo: `@${ADMIN_TELEGRAM_USERNAME}`, chatId: satyamAdminChatId });
 });
 
 // ==========================================

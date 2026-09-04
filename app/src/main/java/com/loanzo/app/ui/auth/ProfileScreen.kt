@@ -80,6 +80,8 @@ fun ProfileScreen(
     onSelectLanguage: (String) -> Unit = {},
     onUploadKycDocument: (android.net.Uri, String) -> Unit = { _, _ -> },
     onUpdateBankDetails: (String, String) -> Unit = { _, _ -> },
+    onPushDemoData: ((Boolean, String) -> Unit) -> Unit = { _ -> },
+    onClearDemoData: ((Boolean, String) -> Unit) -> Unit = { _ -> },
     isUploadingPan: Boolean = false,
     isUploadingAadhaar: Boolean = false,
     uploadMessage: String? = null,
@@ -91,6 +93,8 @@ fun ProfileScreen(
     var showBankDialog by remember { mutableStateOf(false) }
     var showLanguageSheet by remember { mutableStateOf(false) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+    var showDemoDataDialog by remember { mutableStateOf(false) }
+    var isSeedingDemo by remember { mutableStateOf(false) }
     var isVaultUnlocked by remember { mutableStateOf(false) }
     var showVaultPasswordDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -191,9 +195,9 @@ fun ProfileScreen(
                     ) {
                         // Compact Executive Hero Card
                         Card(
-                            shape = RoundedCornerShape(22.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-                            border = BorderStroke(1.dp, Brush.horizontalGradient(listOf(Gold500.copy(alpha = 0.45f), Emerald400.copy(alpha = 0.25f)))),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
@@ -209,21 +213,21 @@ fun ProfileScreen(
                                             modifier = Modifier
                                                 .size(86.dp)
                                                 .clip(CircleShape)
-                                                .border(2.5.dp, Gold500, CircleShape),
+                                                .border(2.5.dp, MaterialTheme.colorScheme.primary, CircleShape),
                                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                         )
                                     } else {
                                         Surface(
                                             shape = CircleShape,
-                                            color = Gold500.copy(alpha = 0.18f),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                                             modifier = Modifier
                                                 .size(86.dp)
-                                                .border(2.dp, Gold500, CircleShape)
+                                                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
                                         ) {
                                             Icon(
                                                 if (isOwner) Icons.Default.AdminPanelSettings else Icons.Default.Person,
                                                 null,
-                                                tint = Gold500,
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.padding(20.dp)
                                             )
                                         }
@@ -235,7 +239,7 @@ fun ProfileScreen(
                                         color = if (user.kycStatus == "VERIFIED") Emerald500 else Gold500,
                                         modifier = Modifier
                                             .size(24.dp)
-                                            .border(2.dp, SurfaceDarkElevated, CircleShape)
+                                            .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
                                     ) {
                                         Icon(
                                             Icons.Default.Check,
@@ -252,20 +256,20 @@ fun ProfileScreen(
                                     text = user.name.ifBlank { "Loanzo Member" },
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
 
                                 if (user.username.isNotBlank()) {
                                     Surface(
                                         shape = RoundedCornerShape(10.dp),
-                                        color = Gold500.copy(alpha = 0.12f),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
                                         modifier = Modifier.padding(top = 4.dp)
                                     ) {
                                         Text(
                                             text = "@${user.username}",
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = Gold500,
+                                            color = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                                         )
                                     }
@@ -275,13 +279,13 @@ fun ProfileScreen(
 
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isOwner) Gold500.copy(alpha = 0.2f) else Navy700
+                                    color = if (isOwner) Gold500.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
                                 ) {
                                     Text(
                                         text = if (isOwner) "👑 APP OWNER / MASTER ADMIN" else "VERIFIED ${user.role.uppercase()}",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isOwner) Gold500 else Gray300,
+                                        color = if (isOwner) Gold500 else MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                     )
                                 }
@@ -321,26 +325,26 @@ fun ProfileScreen(
                         ProfileSectionHeader(title = "IDENTITY & CREDENTIALS")
                         Card(
                             shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                            border = BorderStroke(1.dp, Gray800),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column {
                                 ProfileActionRow(
                                     icon = Icons.Default.Badge,
-                                    iconTint = Gold500,
+                                    iconTint = MaterialTheme.colorScheme.primary,
                                     title = "Personal & Identity Details",
                                     subtitle = user.email.ifBlank { user.phone.ifBlank { "Contact & verification details" } },
                                     onClick = { currentSubPage = ProfileSubPage.PERSONAL_INFO }
                                 )
-                                HorizontalDivider(color = Gray800, thickness = 0.8.dp)
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
                                 ProfileActionRow(
                                     icon = if (isVaultUnlocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                                    iconTint = if (isVaultUnlocked) Emerald400 else Gold500,
+                                    iconTint = if (isVaultUnlocked) Emerald400 else MaterialTheme.colorScheme.primary,
                                     title = "Encrypted Document Vault",
                                     subtitle = if (isVaultUnlocked) "Session active • Tap to view documents" else "PAN, Aadhaar & Gov KYC • Password protected",
                                     statusBadge = if (isVaultUnlocked) "UNLOCKED" else "LOCKED",
-                                    badgeColor = if (isVaultUnlocked) Emerald400 else Gold500,
+                                    badgeColor = if (isVaultUnlocked) Emerald400 else MaterialTheme.colorScheme.primary,
                                     onClick = {
                                         if (isVaultUnlocked) {
                                             currentSubPage = ProfileSubPage.DOCUMENT_VAULT
@@ -358,8 +362,8 @@ fun ProfileScreen(
                         ProfileSectionHeader(title = "FINANCES & PAYOUTS")
                         Card(
                             shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                            border = BorderStroke(1.dp, Gray800),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column {
@@ -369,7 +373,7 @@ fun ProfileScreen(
                                     title = "Bank & Payout Accounts",
                                     subtitle = if (user.bankAccountNumber.isNotBlank()) "•••• ${user.bankAccountNumber.takeLast(4)} • Verified Payout Account" else "No account linked • Tap to add",
                                     statusBadge = if (user.bankVerified) "VERIFIED ✓" else if (user.bankAccountNumber.isNotBlank()) "PENDING" else "ADD",
-                                    badgeColor = if (user.bankVerified) Emerald400 else Gold500,
+                                    badgeColor = if (user.bankVerified) Emerald400 else MaterialTheme.colorScheme.primary,
                                     onClick = { currentSubPage = ProfileSubPage.BANK_ACCOUNTS }
                                 )
                             }
@@ -381,19 +385,19 @@ fun ProfileScreen(
                         ProfileSectionHeader(title = "PREFERENCES & CONNECTED SERVICES")
                         Card(
                             shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                            border = BorderStroke(1.dp, Gray800),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column {
                                 ProfileActionRow(
                                     icon = Icons.Default.Palette,
-                                    iconTint = Gold500,
+                                    iconTint = MaterialTheme.colorScheme.primary,
                                     title = "App Preferences & Display",
                                     subtitle = "Theme: ${themeMode.lowercase().replaceFirstChar { it.uppercase() }} • Lang: ${com.loanzo.app.ui.components.getLanguageNameByCode(currentLanguageCode).substringBefore(" (")}",
                                     onClick = { currentSubPage = ProfileSubPage.PREFERENCES }
                                 )
-                                HorizontalDivider(color = Gray800, thickness = 0.8.dp)
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
                                 ProfileActionRow(
                                     icon = Icons.AutoMirrored.Filled.Send,
                                     iconTint = Emerald400,
@@ -410,14 +414,14 @@ fun ProfileScreen(
                         ProfileSectionHeader(title = "LEGAL & COMPLIANCE")
                         Card(
                             shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                            border = BorderStroke(1.dp, Gray800),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column {
                                 ProfileActionRow(
                                     icon = Icons.Default.Description,
-                                    iconTint = Gray300,
+                                    iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     title = "Terms & Conditions & Legal",
                                     subtitle = "RBI P2P guidelines, eSign legality & privacy rules",
                                     statusBadge = "COMPLIANT",
@@ -433,18 +437,40 @@ fun ProfileScreen(
                             ProfileSectionHeader(title = "SYSTEM ADMINISTRATION")
                             Card(
                                 shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                                border = BorderStroke(1.dp, Gold500),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 ProfileActionRow(
                                     icon = Icons.Default.AdminPanelSettings,
-                                    iconTint = Gold500,
+                                    iconTint = MaterialTheme.colorScheme.primary,
                                     title = "App Owner Control Center",
                                     subtitle = "Master KYC, user verification, system ledger",
                                     statusBadge = "MASTER",
-                                    badgeColor = Gold500,
+                                    badgeColor = MaterialTheme.colorScheme.primary,
                                     onClick = onNavigateToAdminHub
+                                )
+                            }
+                        }
+
+                        // ================= GROUP: DEMO & TESTING PLAYGROUND =================
+                        Spacer(modifier = Modifier.height(18.dp))
+                        ProfileSectionHeader(title = "DEMO & TESTING PLAYGROUND")
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.6f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column {
+                                ProfileActionRow(
+                                    icon = Icons.Default.PlayArrow,
+                                    iconTint = BrandAmberGold,
+                                    title = "Push Demo Data Everywhere",
+                                    subtitle = "Populate realistic active loans, community wall, EMIs, KYC & notifications",
+                                    statusBadge = "DEMO MODE",
+                                    badgeColor = BrandAmberGold,
+                                    onClick = { showDemoDataDialog = true }
                                 )
                             }
                         }
@@ -454,8 +480,8 @@ fun ProfileScreen(
                         ProfileSectionHeader(title = "INTERACTIVE GUIDES")
                         Card(
                             shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column {
@@ -488,7 +514,7 @@ fun ProfileScreen(
                                                 text = "Guide Me 🧭",
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Surface(
@@ -508,7 +534,7 @@ fun ProfileScreen(
                                         Text(
                                             text = "Interactive step-by-step walkthroughs of key features",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Gray400
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     Icon(
@@ -534,7 +560,7 @@ fun ProfileScreen(
                                             .padding(bottom = 12.dp)
                                     ) {
                                         HorizontalDivider(
-                                            color = Gray800,
+                                            color = MaterialTheme.colorScheme.outlineVariant,
                                             thickness = 0.5.dp,
                                             modifier = Modifier.padding(bottom = 8.dp)
                                         )
@@ -573,25 +599,25 @@ fun ProfileScreen(
                                                         text = tour.title,
                                                         style = MaterialTheme.typography.bodyMedium,
                                                         fontWeight = FontWeight.SemiBold,
-                                                        color = Color.White
+                                                        color = MaterialTheme.colorScheme.onSurface
                                                     )
                                                     Text(
                                                         text = "${tour.steps.size} steps • Tap to start tour",
                                                         style = MaterialTheme.typography.labelSmall,
-                                                        color = Gray400
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
                                                 Icon(
                                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                                    contentDescription = "Start tour",
-                                                    tint = Gold500.copy(alpha = 0.7f),
+                                                    contentDescription = null,
+                                                    tint = Gray400,
                                                     modifier = Modifier.size(16.dp)
                                                 )
                                             }
 
                                             if (index < AppTours.all.size - 1) {
                                                 HorizontalDivider(
-                                                    color = Gray800.copy(alpha = 0.5f),
+                                                    color = MaterialTheme.colorScheme.outlineVariant,
                                                     thickness = 0.5.dp,
                                                     modifier = Modifier.padding(vertical = 2.dp)
                                                 )
@@ -696,8 +722,8 @@ fun ProfileScreen(
                                 Icon(Icons.Default.VerifiedUser, null, tint = Emerald400, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
-                                    Text("AES-256 Verified Session Active", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
-                                    Text("Decrypted for this active session only. Documents will re-encrypt when you leave.", color = Gray300, fontSize = 11.sp)
+                                    Text("AES-256 Verified Session Active", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+                                    Text("Decrypted for this active session only. Documents will re-encrypt when you leave.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                                 }
                             }
                         }
@@ -725,8 +751,8 @@ fun ProfileScreen(
                         // DigiLocker Gov Status
                         Card(
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-                            border = BorderStroke(1.dp, Gray800)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -741,12 +767,13 @@ fun ProfileScreen(
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("DigiLocker Government KYC", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    Text("Direct API integration verified with official UIDAI/ITD records", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
+                                    Text("DigiLocker Government KYC", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("Direct API integration verified with official UIDAI/ITD records", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                                 }
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
-                                    color = Emerald400.copy(alpha = 0.15f)
+                                    color = Emerald400.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
                                 ) {
                                     Text("VALID", color = Emerald400, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
                                 }
@@ -756,8 +783,8 @@ fun ProfileScreen(
                         // Liveness Selfie
                         Card(
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-                            border = BorderStroke(1.dp, Gray800)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -772,12 +799,13 @@ fun ProfileScreen(
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("CameraX ML Kit Liveness", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    Text("Real-time facial geometry & active liveness verified", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
+                                    Text("CameraX ML Kit Liveness", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("Real-time facial geometry & active liveness verified", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                                 }
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
-                                    color = Emerald400.copy(alpha = 0.15f)
+                                    color = Emerald400.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
                                 ) {
                                     Text("VERIFIED ✓", color = Emerald400, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
                                 }
@@ -812,14 +840,14 @@ fun ProfileScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
-                            Text("Contact & Communication", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Contact & Communication", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Spacer(modifier = Modifier.height(10.dp))
                             ProfileRow(
                                 icon = Icons.Default.Email,
                                 label = "Email Address",
                                 value = if (user.email.isNotBlank()) user.email + if (user.emailVerified) " (Verified ✓)" else "" else "Not provided"
                             )
-                            HorizontalDivider(color = Gray800, thickness = 0.8.dp)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
                             ProfileRow(
                                 icon = Icons.Default.Phone,
                                 label = "Phone Number",
@@ -828,14 +856,14 @@ fun ProfileScreen(
                         }
 
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
-                            Text("Demographics & Residence", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Demographics & Residence", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Spacer(modifier = Modifier.height(10.dp))
                             ProfileRow(
                                 icon = Icons.Default.Cake,
                                 label = "Date of Birth",
                                 value = user.dateOfBirth.ifBlank { "Not specified" }
                             )
-                            HorizontalDivider(color = Gray800, thickness = 0.8.dp)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
                             ProfileRow(
                                 icon = Icons.Default.Home,
                                 label = "Permanent Address",
@@ -844,14 +872,14 @@ fun ProfileScreen(
                         }
 
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
-                            Text("Account Security & Role", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Account Security & Role", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Spacer(modifier = Modifier.height(10.dp))
                             ProfileRow(
                                 icon = Icons.Default.Person,
                                 label = "User Role",
                                 value = user.role.uppercase()
                             )
-                            HorizontalDivider(color = Gray800, thickness = 0.8.dp)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
                             ProfileRow(
                                 icon = Icons.Default.Fingerprint,
                                 label = "Biometric Authentication",
@@ -891,11 +919,12 @@ fun ProfileScreen(
                             .padding(horizontal = 20.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Metallic Styled Bank Card
+                        // Executive Obsidian Bank Card
                         Card(
                             shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = Navy800),
-                            border = BorderStroke(1.dp, Brush.horizontalGradient(listOf(Gold500.copy(alpha = 0.5f), Blue400.copy(alpha = 0.4f)))),
+                            colors = CardDefaults.cardColors(containerColor = Gray900),
+                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.35f)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
@@ -907,7 +936,8 @@ fun ProfileScreen(
                                     Text("PRIMARY DISBURSEMENT ACCOUNT", style = MaterialTheme.typography.labelSmall, color = Gold500, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                                     Surface(
                                         shape = RoundedCornerShape(8.dp),
-                                        color = if (user.bankVerified) Emerald400.copy(alpha = 0.15f) else Gold500.copy(alpha = 0.15f)
+                                        color = if (user.bankVerified) Emerald400.copy(alpha = 0.15f) else Gold500.copy(alpha = 0.15f),
+                                        border = BorderStroke(1.dp, if (user.bankVerified) Emerald400.copy(alpha = 0.3f) else Gold500.copy(alpha = 0.3f))
                                     ) {
                                         Text(
                                             text = if (user.bankVerified) "VERIFIED ✓" else "₹1 PENNY DROP PENDING",
@@ -963,7 +993,7 @@ fun ProfileScreen(
                                 .fillMaxWidth()
                                 .height(48.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                         ) {
                             Icon(Icons.Default.AccountBalance, null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
@@ -975,12 +1005,12 @@ fun ProfileScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Security, null, tint = Emerald400, modifier = Modifier.size(22.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Text("Bank-Grade Settlement Guarantee", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                Text("Bank-Grade Settlement Guarantee", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 "Payouts are transferred directly into this account via real-time IMPS. Before any loan disbursement is released, Loanzo executes an automated ₹1 penny-drop validation to confirm name matching.",
-                                color = Gray400,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp,
                                 lineHeight = 16.sp
                             )
@@ -1015,13 +1045,13 @@ fun ProfileScreen(
                     ) {
                         // Appearance
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.appearance), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(stringResource(R.string.appearance), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Spacer(modifier = Modifier.height(12.dp))
                             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                                 val systemLabel = stringResource(R.string.theme_system)
                                 val lightLabel = stringResource(R.string.theme_light)
                                 val darkLabel = stringResource(R.string.theme_dark)
-                                val options = listOf("SYSTEM" to systemLabel, "LIGHT" to lightLabel, "DARK" to darkLabel)
+                                val options = listOf("LIGHT" to "$lightLabel (Default)", "DARK" to darkLabel)
                                 options.forEachIndexed { index, (key, label) ->
                                     SegmentedButton(
                                         selected = themeMode == key,
@@ -1036,22 +1066,23 @@ fun ProfileScreen(
 
                         // Language Selection
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.app_language), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text(stringResource(R.string.app_language), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Spacer(modifier = Modifier.height(10.dp))
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(SurfaceDarkElevated)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                                     .clickable { showLanguageSheet = true }
                                     .padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Language, null, tint = Gold500, modifier = Modifier.size(22.dp))
+                                Icon(Icons.Default.Language, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
                                     text = com.loanzo.app.ui.components.getLanguageNameByCode(currentLanguageCode),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Medium,
                                     fontSize = 14.sp,
                                     modifier = Modifier.weight(1f)
@@ -1062,11 +1093,11 @@ fun ProfileScreen(
 
                         // Telegram Assistant Bot
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
-                            Text("Telegram Bot Notifications", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Telegram Bot Notifications", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 "Receive instant real-time EMI reminders, disbursal alerts, and loan status updates via our Telegram Bot (@Loanzo_bot).",
-                                color = Gray400,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp
                             )
                             Spacer(modifier = Modifier.height(12.dp))
@@ -1277,6 +1308,127 @@ fun ProfileScreen(
         )
     }
 
+    // Demo Data Seeder Dialog
+    if (showDemoDataDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSeedingDemo) showDemoDataDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = BrandAmberGold,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Demo Testing Playground",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = "Push realistic demo data everywhere across the app to test features, UI flows, and lifecycle interactions:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val items = listOf(
+                        "✅ Full KYC & Bank Verification" to "Unlocks loan creation, borrowing, and community wall posting without restrictions.",
+                        "💰 3 Diverse Active Loans" to "1 Lent loan (₹50k), 1 Borrowed loan (₹25k), and 1 Closed pristine loan.",
+                        "📅 EMI Schedules & Statements" to "Paid and upcoming scheduled installments with real UPI transaction references.",
+                        "🌐 Community Loan Wall Posts" to "4 rich posts (Lending offers & Borrowing requests) with interactive proposals/bids.",
+                        "🔔 Alerts & Audit Logs" to "EMI reminder notifications, disbursal receipts, and audit trail ledger."
+                    )
+                    
+                    items.forEach { (heading, desc) ->
+                        Row(modifier = Modifier.padding(vertical = 4.dp)) {
+                            Column {
+                                Text(
+                                    text = heading,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = desc,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    if (isSeedingDemo) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.dp,
+                                color = BrandAmberGold
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Applying demo records...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BrandAmberGold,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isSeedingDemo = true
+                        onPushDemoData { success, msg ->
+                            isSeedingDemo = false
+                            showDemoDataDialog = false
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    enabled = !isSeedingDemo,
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color.Black)
+                ) {
+                    Text("Push Demo Data", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                Row {
+                    OutlinedButton(
+                        onClick = {
+                            isSeedingDemo = true
+                            onClearDemoData { success, msg ->
+                                isSeedingDemo = false
+                                showDemoDataDialog = false
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        enabled = !isSeedingDemo
+                    ) {
+                        Text("Reset Demo Data")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = { showDemoDataDialog = false },
+                        enabled = !isSeedingDemo
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
+    }
+
     // 4. Language Selection Sheet
     if (showLanguageSheet) {
         com.loanzo.app.ui.components.LanguageSelectionBottomSheet(
@@ -1308,8 +1460,9 @@ private fun UnlockVaultDialog(
     Dialog(onDismissRequest = { if (!isVerifying) onDismiss() }) {
         Card(
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Navy800),
-            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.35f)),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp)
@@ -1339,7 +1492,7 @@ private fun UnlockVaultDialog(
                     text = "Unlock Document Vault",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -1347,7 +1500,7 @@ private fun UnlockVaultDialog(
                 Text(
                     text = "Enter your Loanzo account password to access your encrypted KYC documents.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Gray400,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     fontSize = 12.sp,
                     lineHeight = 16.sp
@@ -1400,10 +1553,10 @@ private fun UnlockVaultDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Gold500,
-                        unfocusedBorderColor = Gray600,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
 
@@ -1506,8 +1659,8 @@ private fun ProfileActionRow(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.SemiBold, color = Color.White, fontSize = 14.sp)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp, maxLines = 1)
+            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1)
         }
         if (statusBadge != null) {
             Surface(
@@ -1518,7 +1671,7 @@ private fun ProfileActionRow(
                 Text(statusBadge, color = badgeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
             }
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Gray500, modifier = Modifier.size(18.dp))
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
     }
 }
 
@@ -1528,7 +1681,7 @@ private fun ProfileSectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Bold,
-        color = Gray400,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = 1.sp,
         modifier = Modifier
             .fillMaxWidth()
@@ -1550,8 +1703,8 @@ private fun VaultDocumentCard(
 
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-        border = BorderStroke(1.dp, Gray800)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -1562,15 +1715,15 @@ private fun VaultDocumentCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = Gold500.copy(alpha = 0.15f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                         modifier = Modifier.size(34.dp)
                     ) {
-                        Icon(Icons.Default.Badge, contentDescription = null, tint = Gold500, modifier = Modifier.padding(7.dp))
+                        Icon(Icons.Default.Badge, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(7.dp))
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text(documentType, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
-                        Text(documentNumber, style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
+                        Text(documentType, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                        Text(documentNumber, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 }
 
@@ -1616,14 +1769,14 @@ private fun VaultDocumentCard(
                 }
 
                 if (isUploading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Gold500, strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
                 } else {
                     Button(
                         onClick = onUploadClick,
                         shape = RoundedCornerShape(8.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         modifier = Modifier.height(34.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                     ) {
                         Icon(Icons.Default.UploadFile, null, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
@@ -1643,28 +1796,28 @@ private fun LegalClauseCard(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDarkElevated),
-        border = BorderStroke(0.8.dp, Gray800)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     shape = CircleShape,
-                    color = Gold500.copy(alpha = 0.15f),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                     modifier = Modifier.size(24.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(clauseNumber, fontWeight = FontWeight.Bold, color = Gold500, fontSize = 11.sp)
+                        Text(clauseNumber, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = content,
                 style = MaterialTheme.typography.bodySmall,
-                color = Gray300,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 lineHeight = 17.sp
             )
@@ -1681,15 +1834,15 @@ private fun ProfileMetricChip(
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-        border = BorderStroke(0.5.dp, Gray800),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Gray400, fontSize = 10.sp)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
             Spacer(modifier = Modifier.height(2.dp))
             Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = color, fontSize = 12.sp)
         }
@@ -1713,8 +1866,8 @@ private fun ProfileRow(icon: ImageVector, label: String, value: String) {
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = Gray400, fontSize = 10.sp)
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = Color.White, fontSize = 13.sp)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+            Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
         }
     }
 }
