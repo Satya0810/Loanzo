@@ -212,10 +212,30 @@ Loanzo is a unified Android application where any registered user can act as a L
     - **Dual Publication Output**: Integrated into both high-resolution PDF publications (`Loanzo_Unified_Master_Comic_Book.pdf`) and an interactive HTML5 web reader (`Loanzo_Comic_Reader.html`) featuring Movie Mode and perspective filters.
 
 22. **Certified Field Agent Empanelment & Isolated Control Center Protocol**
+
+```mermaid
+flowchart TD
+    A[New User Registration & DigiLocker KYC] --> B[Role Selection Modal: Normal vs Agent]
+    B -->|Normal Member| C[Standard Consumer Dashboard: Borrow & Lend]
+    B -->|Certified Agent| D[Bank-Grade Empanelment Form: Experience, PCC, Vehicle]
+    D --> E[Application Submitted: Status = PENDING]
+    E --> F[Agent Pending Review Screen: Timeline Tracker]
+    F --> G{Master Admin Review @satyam0810}
+    G -->|Reject with Remarks| H[Application Status = REJECTED]
+    G -->|Approve Empanelment| I[Role = AGENT, Status = APPROVED]
+    I --> J[Launch Isolated Agent Dashboard: Routes.AGENT_MAIN]
+    J --> K[Toggle Duty: On Duty vs On Break]
+    K --> L[Scheduled Visits Feed: Collateral, Borrower, Lender]
+    L --> M[1-Tap Contact: Call, WhatsApp, Google Maps]
+    M --> N[Doorstep Inspection Sheet: Geotag, Appraisal, Photo Proof]
+    N --> O[Submit Inspection: Status = COMPLETED & Instant Payout]
+    O --> P[Collateral Delivered to Bank Vault: Locker Assigned]
+```
+
     - **Post-KYC Multi-Role Partitioning**: Immediately following KYC completion or skip, members encounter an explicit choice (`RoleSelectionScreen`): proceed as a Standard Consumer (Borrower/Lender) or empanel as a Loanzo Certified Field Agent to earn ₹500–₹1,500 per physical visit.
     - **Bank-Grade Empanelment Application**: A 4-step formal application form (`AgentApplicationScreen`) capturing:
       - *Verification Experience*: Years in field verification, past financial institutions/agencies (e.g. HDFC, ICICI, SBI), education level.
-      - *Police Verification & PCC Clearance*: Police Clearance Certificate (PCC) issue date, issuing police station, and binding legal declaration of a clean record.
+      - *Police Verification & PCC Clearance*: Police Clearance Certificate (PCC) issue date, issuing police station, document proof, and binding legal declaration of a clean record.
       - *Operating Territory & Mobility*: Permanent residence, operating city, postal code, adjustable service radius (5 km to 50 km), vehicle type (Bike, Car, Transit), and Driving License Number.
     - **Master Admin Approval Console**: Integrated into the App Owner Hub (`AppOwnerVerificationScreen`), enabling Master Admin `@satyam_081` to review applications, inspect police clearance certificates, and execute 1-tap empanelment approvals or rejections with custom remarks. Approving an agent promotes their role, marks `agentStatus = APPROVED`, and automatically seeds active doorstep visits.
     - **Strict Role Isolation Gate**: Field agents are permanently isolated from consumer borrowing, lending, P2P biddings, and community wall cards. On login or app launch, approved agents are dispatched directly to `Routes.AGENT_MAIN`. Any attempt to access consumer routes automatically redirects to the agent console.
@@ -230,3 +250,43 @@ Loanzo is a unified Android application where any registered user can act as a L
       - Multi-factor verification checklist (identity, physical documents, address matching).
       - Live camera photo capture for photographic proof and tamper-evident audit logging.
       - Automated instant payout crediting upon inspection submission.
+
+23. **Master Admin Command Center (Institutional Operational Console)**
+
+```mermaid
+graph LR
+    ADMIN((Master Admin<br/>@satyam0810)) --> KPI[Real-Time KPI Ribbon]
+    ADMIN --> TAB1[1. Agents Roster & Empanelment]
+    ADMIN --> TAB2[2. KYC & Document Verification]
+    ADMIN --> TAB3[3. Proximity Dispatch Engine]
+    ADMIN --> TAB4[4. Vault Custody & Lockers]
+    ADMIN --> TAB5[5. Grievances & Disputes]
+    ADMIN --> TAB6[6. Legal NOC Clearance]
+    ADMIN --> TAB7[7. Mediation & Hearings Calendar]
+    ADMIN --> TAB8[8. SMS / Auth Interceptor]
+
+    TAB1 --> AGENT_DB[(Agent Roster & Status)]
+    TAB3 --> VISIT_DB[(Scheduled Visits Queue)]
+    TAB4 --> VAULT_DB[(Locker Allocation & Barcodes)]
+    TAB5 --> DISPUTE_DB[(Dispute Memos & Hearings)]
+    TAB6 --> NOC_DB[(SHA-256 Certificates)]
+```
+
+    - **Security & Authorization**: The console (`AppOwnerVerificationScreen.kt`) is strictly gated to the verified App Owner (`@satyam0810` / `+91 7061559039`). Any unauthorized access attempts are immediately routed back to the consumer dashboard.
+    - **Real-Time Executive KPI Ribbon**: Dynamic metrics strip displaying:
+      - Active on-duty agents count.
+      - Pending KYC verification backlog.
+      - Unassigned doorstep inspection requests.
+      - Total cumulative collateral value vaulted in institutional custody.
+      - Open multi-party disputes and unresolved grievances.
+      - Legal No Objection Certificates (NOC) cleared.
+    - **Eight Dedicated Operational Consoles**:
+      1. **👥 Agent Empanelment & Roster**: Real-time roster of field agents, filterable by `ALL`, `PENDING`, and `APPROVED`. Offers one-tap deep document audit of Police Clearance Certificates (PCC), direct 📞 phone calls and 💬 WhatsApp links, one-tap approval promoting applicants to certified status, and modal rejection with deficiency remarks.
+      2. **📑 KYC & Document Verification Desk**: Interactive inspection queue for Aadhaar cards, PAN cards, and applicant identity photos. Integrated with `DocumentInspectionDialog` providing 4K document zoom, OCR/number cross-matching, tamper-check checklists, one-tap approval, and formal deficiency notices.
+      3. **🗺️ Loan-to-Agent Proximity Dispatch Engine**: Real-time queue of unassigned loan inspections (`DispatchAgentSheet`). Calculates geodesic distance between borrower address and agent operating territory, displaying available on-duty agents, vehicle types, and single-click dispatch confirmation.
+      4. **💎 Collateral Vault & Custody System**: Full inventory of physical collateral (gold ornaments, vehicle RC titles, property deeds). Features `AssignVaultLockerDialog` to designate partner bank vault branches (e.g. HDFC Fort, ICICI Connaught Place), assign secure locker numbers (e.g. `LK-704`), record gross/net weight, and affix tamper-evident serialized barcode seals (`#G408459`).
+      5. **⚖️ Grievance & Dispute Arbitration Desk**: Multi-party dispute tracking system categorizing grievances into `PAYMENT_DISPUTE`, `HARASSMENT`, `FRAUD_ATTEMPT`, `AGREEMENT_BREACH`, and `UNAUTHORIZED_CONTACT`. Includes priority tiering (`URGENT`, `HIGH`, `NORMAL`), direct counterparty dialers, dispute resolution memos, and single-tap escalation to virtual mediation hearings.
+      6. **📜 Legal NOC Clearance & De-Hypothecation Engine**: Automated verification of zero-due settled loans. Generates cryptographically signed No Objection Certificates (`NocCertificateEntity`) with unique 64-character SHA-256 digital hashes, timestamps, and authorized signatory seals, simultaneously executing collateral release orders for vault retrieval within 24 hours.
+      7. **📅 Dispute Mediation & Hearings Calendar**: Virtual arbitration calendar (`ScheduleMediationDialog`) allowing Master Admin to schedule formal hearings between disputing parties. Automatically configures hearing date/time, arbitration agenda, and generates direct Google Meet conference links with automated notifications dispatched to both counterparties.
+      8. **🔑 SMS / Auth Token Interceptor**: Live administrative interceptor console displaying active authentication tokens, penny-drop SMS credit verifications, and system broadcast alerts.
+

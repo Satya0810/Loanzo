@@ -70,6 +70,12 @@ This document establishes the **Quality Assurance (QA) and Software Testing Plan
 | **TC-AGENT-03**| Field Agent | Admin Empanelment Approval | Admin approves application in AppOwnerHub; promotes user to `AGENT` & auto-seeds 3 visits | ✅ Verified |
 | **TC-AGENT-04**| Field Agent | Security Isolation Gate | Approved agents routed to `AGENT_MAIN`; access to consumer borrow/lend tabs strictly blocked | ✅ Verified |
 | **TC-AGENT-05**| Field Agent | In-App Inspection & Payout | Geotags arrival, calculates appraisal, uploads photo proof, and credits daily earnings | ✅ Verified |
+| **TC-ADMIN-01**| Command Center | App Owner Security Perimeter | Restricts access strictly to `@satyam0810` / `+917061559039`; unauthorized redirected to dashboard | ✅ Verified |
+| **TC-ADMIN-02**| Command Center | Document Audit & Deficiency Notice | Provides 4K zoom, anti-tamper checklist, and deficiency memos for Aadhaar/PAN/PCC | ✅ Verified |
+| **TC-ADMIN-03**| Command Center | Proximity-Based Agent Dispatch | Matches unassigned visits with nearby on-duty agents based on service radius and vehicle type | ✅ Verified |
+| **TC-ADMIN-04**| Command Center | Vault Locker & Barcode Sealing | Designates bank vault branch, locker number, gross/net weight, and serialized barcode seal | ✅ Verified |
+| **TC-ADMIN-05**| Command Center | Dispute Arbitration & Mediation | Escalates high-priority grievances to virtual hearings with auto-generated Google Meet links | ✅ Verified |
+| **TC-ADMIN-06**| Command Center | Cryptographic SHA-256 Digital NOC | Generates 64-character SHA-256 hash certificate and triggers 24hr collateral de-hypothecation | ✅ Verified |
 
 ---
 

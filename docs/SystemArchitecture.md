@@ -256,3 +256,66 @@ The complete loan lifecycle follows an unambiguous 6-stage progression:
 - **`AgentApplicationEntity`** (`agent_applications` table): Stores bank-grade empanelment data, experience history, Police Clearance Certificate (PCC) date, police station name, operating radius (5–50 km), transport type, driving license, and status.
 - **`AgentVisitEntity`** (`agent_visits` table): Stores scheduled physical verification visits (`COLLATERAL_VERIFICATION`, `BORROWER_VERIFICATION`, `LENDER_VERIFICATION`), contact details of counterparties, address geotags, payout values, and inspection proof.
 - **`AgentDao` & `AgentRepository`**: Reactive Room DAO emitting continuous `Flow` streams for dynamic dashboard updates, duty/break toggling, and instant inspection completions.
+
+---
+
+## 7. Master Admin Command Center & Institutional Custodial Architecture
+
+### 7.1 Multi-Party Operational Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Borrower as Borrower
+    actor Lender as Lender
+    actor Agent as Certified Field Agent
+    actor Admin as Master Admin (@satyam0810)
+    participant App as Loanzo App Engine
+    participant Room as Room SQLite (v12)
+    participant Vault as Bank Safe Deposit Vault
+
+    Note over Borrower,Lender: Phase 1: Loan Origination with Physical Collateral
+    Borrower->>App: Pledges Gold Collateral (Gross Wt: 55.4g)
+    App->>Room: Insert PledgeEntity & Unassigned AgentVisitEntity
+    Admin->>App: Opens Master Admin Command Center (Dispatch Tab)
+    Admin->>App: Selects On-Duty Agent (Within 8km) & Dispatches
+    App->>Room: Update AgentVisitEntity (agentId, status = SCHEDULED)
+
+    Note over Agent,Borrower: Phase 2: Doorstep Physical Inspection & Assaying
+    Agent->>App: Opens Agent Cockpit -> Geotag Arrival Check-in
+    Agent->>Borrower: Assays Gold with Jeweler's Scale (-5.3g stones)
+    Agent->>App: Inputs Net Wt (50.1g), Condition, Takes Camera Proof
+    Agent->>App: Submits Doorstep Inspection Sheet
+    App->>Room: AgentVisit = COMPLETED, UserEntity.totalAgentEarnings += 750
+
+    Note over Agent,Vault: Phase 3: Bank Safe Deposit Custody
+    Agent->>Admin: Hands over Barcode Bag #G408459 to Partner Bank Branch
+    Admin->>App: Opens Vault Tab -> AssignVaultLockerDialog
+    Admin->>App: Designates Branch, Assigns Locker #LK-704, Enters Barcode
+    App->>Room: Insert CollateralVaultEntity (status = SAFELY_VAULTED)
+    App->>Lender: Notifies Lender: Collateral Vaulted -> Disburse Loan
+
+    Note over Borrower,Lender: Phase 4: Repayment & De-Hypothecation
+    Borrower->>Lender: Completes Final EMI (Remaining Balance = ₹0.00)
+    App->>Room: LoanEntity.status = REPAID
+    Admin->>App: Opens NOC Clearance Desk -> Generates Digital NOC
+    App->>Room: Insert NocCertificateEntity (SHA-256 Hash Generated)
+    Admin->>Vault: Dispatches De-Hypothecation Release Order
+    Borrower->>Vault: Inspects Unbroken Barcode Seal & Takes Physical Return
+    App->>Room: CollateralVaultEntity.status = RELEASED
+```
+
+### 7.2 Administrative Persistence Schema & Daos
+1. **`CollateralVaultEntity`** (`collateral_vault` table):
+   - Primary Key: `vaultId: String`
+   - Fields: `loanId`, `borrowerId`, `borrowerName`, `assetType`, `assetDescription`, `estimatedValue`, `grossWeightGrams`, `netWeightGrams`, `purityCarat`, `vaultBranchName`, `lockerNumber`, `barcodeSecurityTag`, `depositTimestamp`, `status` (`SAFELY_VAULTED`, `PENDING_DEPOSIT`, `IN_AUDIT`, `RELEASED`, `AUCTION_ESCROW`).
+2. **`ComplaintEntity`** (`complaints` table):
+   - Primary Key: `complaintId: String`
+   - Fields: `complainantId`, `complainantName`, `complainantRole`, `accusedId`, `accusedName`, `accusedRole`, `loanId`, `category` (`PAYMENT_DISPUTE`, `HARASSMENT`, `FRAUD_ATTEMPT`, `AGREEMENT_BREACH`, `UNAUTHORIZED_CONTACT`), `priority` (`URGENT`, `HIGH`, `NORMAL`), `subject`, `detailedDescription`, `resolutionMemo`, `status` (`OPEN`, `INVESTIGATING`, `RESOLVED`, `ESCALATED_TO_HEARING`).
+3. **`MediationMeetingEntity`** (`mediation_meetings` table):
+   - Primary Key: `meetingId: String`
+   - Fields: `complaintId`, `loanId`, `initiatorName`, `counterpartyName`, `scheduledDate`, `scheduledTimeSlot`, `meetingLink` (Google Meet), `agenda`, `status` (`SCHEDULED`, `COMPLETED`, `CANCELLED`, `NO_SHOW`).
+4. **`NocCertificateEntity`** (`noc_certificates` table):
+   - Primary Key: `nocId: String`
+   - Fields: `loanId`, `borrowerName`, `borrowerId`, `lenderName`, `lenderId`, `totalAmountRepaid`, `loanSettledDate`, `digitalSignatureSha256` (unique 64-char cryptographic verification signature), `certificatePdfUrl`, `status` (`ACTIVE_VALID`, `REVOKED`).
+
