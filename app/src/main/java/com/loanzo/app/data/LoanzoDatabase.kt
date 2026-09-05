@@ -1,0 +1,51 @@
+package com.loanzo.app.data
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import com.loanzo.app.data.dao.*
+import com.loanzo.app.data.entity.*
+
+@Database(
+    entities = [
+        UserEntity::class,
+        LoanEntity::class,
+        DisbursementEntity::class,
+        RepaymentEntity::class,
+        PayeeEntity::class,
+        PledgeEntity::class,
+        AuditEventEntity::class,
+        GuarantorEntity::class,
+        SyncQueueEntity::class,
+        VerificationEntity::class,
+        NotificationEntity::class,
+        MarketplacePostEntity::class,
+        MarketplaceBidEntity::class,
+        AgentApplicationEntity::class,
+        AgentVisitEntity::class,
+        ComplaintEntity::class,
+        MediationMeetingEntity::class,
+        CollateralVaultEntity::class,
+        NocCertificateEntity::class
+    ],
+    version = 13,
+    exportSchema = false
+)
+abstract class LoanzoDatabase : RoomDatabase() {
+    abstract fun userDao(): UserDao
+    abstract fun loanDao(): LoanDao
+    abstract fun disbursementDao(): DisbursementDao
+    abstract fun repaymentDao(): RepaymentDao
+    abstract fun payeeDao(): PayeeDao
+    abstract fun pledgeDao(): PledgeDao
+    abstract fun auditEventDao(): AuditEventDao
+    abstract fun guarantorDao(): GuarantorDao
+    abstract fun syncQueueDao(): SyncQueueDao
+    abstract fun verificationDao(): VerificationDao
+    abstract fun notificationDao(): NotificationDao
+    abstract fun marketplaceDao(): MarketplaceDao
+    abstract fun agentDao(): AgentDao
+    abstract fun complaintDao(): ComplaintDao
+    abstract fun mediationMeetingDao(): MediationMeetingDao
+    abstract fun collateralVaultDao(): CollateralVaultDao
+    abstract fun nocCertificateDao(): NocCertificateDao
+}

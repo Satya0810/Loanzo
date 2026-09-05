@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loanzo Protocol | Legal & Compliance Framework</title>
+  
+  <meta name="description" content="Section 4 NI Act, Order 37 CPC summary suits, RBI Circular 2023-24/53, and FMEA Risk Mitigation Matrix.">
+  <meta name="keywords" content="Loanzo, Android, Kotlin, Jetpack Compose, P2P Lending, Microfinance, Collateral Escrow, Fintech India, Room Database, Telegram Bot, Clean Architecture">
+  <meta name="author" content="Satyam Kumar & The Loanzo Engineering Protocol">
+
+  <link rel="icon" type="image/png" href="screenshots/app_logo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="nav-brand">
+        <img src="screenshots/app_logo.png" alt="Loanzo Emblem">
+        <span>LOANZO<span style="color: var(--gold-primary); font-size: 0.8rem; margin-left: 4px;">DOCS</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="index.html" class="">Executive Hub</a></li>
+        <li><a href="problem-solution.html" class="">Problem ➔ Solution</a></li>
+        <li><a href="architecture.html" class="">Architecture & Code</a></li>
+        <li><a href="user-roles.html" class="">User Roles</a></li>
+        <li><a href="legal-compliance.html" class="active">Legal & Security</a></li>
+        <li><a href="simulator.html" class="">Interactive Simulators</a></li>
+      </ul>
+
+      <div class="nav-cta-group">
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Theme">
+          <span>🌙 Dark Mode</span>
+        </button>
+        <a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download class="btn-secondary">
+          <span>📄 13-Slide PDF</span>
+        </a>
+        <a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener" class="btn-primary">
+          <span>★ GitHub Repo</span>
+        </a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="page-header-section">
+      <div class="container text-center">
+        <span class="section-pretitle">INSTITUTIONAL ENFORCEABILITY</span>
+        <h1 class="page-header-title">Statutory Legal Framework & <span class="gradient-text">FMEA Risk Matrix</span></h1>
+        <p class="page-header-desc">
+          How Loanzo operates strictly within sovereign Indian statutes to protect lender capital with 21-day fast-track summary court recovery while strictly enforcing RBI fair debt collection practices.
+        </p>
+      </div>
+    </section>
+
+    <!-- 4 Statutory Legal Pillars -->
+    <section class="section">
+      <div class="container">
+        <div class="protection-grid">
+          <div class="protection-card">
+            <div class="prot-icon-wrap">⚖️</div>
+            <h3>Section 4, NI Act 1881</h3>
+            <p>Every loan generates an unconditional <strong>Promissory Note</strong> payable on demand or fixed date, forming an indisputable legal debt instrument recognized by all Indian civil courts.</p>
+          </div>
+
+          <div class="protection-card">
+            <div class="prot-icon-wrap">⚡</div>
+            <h3>Order 37, CPC 1908</h3>
+            <p>In the event of default, lenders file a <strong>Summary Suit</strong>. Unlike regular 3-5 year suits, the court enters judgment in <strong>21 to 90 days</strong> unless the borrower demonstrates a triable defense.</p>
+          </div>
+
+          <div class="protection-card">
+            <div class="prot-icon-wrap">📜</div>
+            <h3>Section 65B Evidence Act</h3>
+            <p>Digital promissory notes, biometric timestamps, and photo proofs are certified under <strong>Section 65B</strong> (Sec 63 BSA 2023), ensuring primary admissibility in judicial proceedings.</p>
+          </div>
+
+          <div class="protection-card">
+            <div class="prot-icon-wrap">🏛️</div>
+            <h3>RBI Circular 2023-24/53</h3>
+            <p>Full compliance with RBI Fair Practices Code: penal charges are strictly non-compounding, capped at 2% monthly, and all collections occur without abusive harassment or shaming.</p>
+          </div>
+        </div>
+
+        <!-- Comprehensive FMEA Risk Mitigation Table -->
+        <div id="fmea" class="section-header" style="margin-top: 4.5rem;">
+          <span class="section-pretitle">SYSTEMIC RESILIENCE</span>
+          <h2 class="section-title">Failure Mode and Effects Analysis <span class="gradient-text">(FMEA Matrix)</span></h2>
+          <p class="section-subtitle">
+            Exhaustive risk analysis evaluating Severity (SEV), Occurrence (OCC), Detection (DET), and Risk Priority Number (RPN) with automated mitigation protocols.
+          </p>
+        </div>
+
+        <div class="table-container">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Failure Mode</th>
+                <th>Potential Effect on System</th>
+                <th>SEV</th>
+                <th>OCC</th>
+                <th>DET</th>
+                <th>RPN</th>
+                <th>Automated Mitigation Protocol</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Gold Bullion Crash (&gt; 20%)</strong></td>
+                <td>Collateral value dips below outstanding debt</td>
+                <td>8</td>
+                <td>3</td>
+                <td>2</td>
+                <td><strong>48</strong></td>
+                <td>Automated margin call protocol via Telegram. Borrowers given 72h cash top-up or secondary asset lien.</td>
+              </tr>
+              <tr>
+                <td><strong>Borrower Absconding</strong></td>
+                <td>Capital loss to community lender</td>
+                <td>9</td>
+                <td>2</td>
+                <td>2</td>
+                <td><strong>36</strong></td>
+                <td>Co-Borrower joint liability (Sec 128 ICA) + Order 37 summary suit + collateral vault asset liquidation.</td>
+              </tr>
+              <tr>
+                <td><strong>Valuer Collusion / Tamper</strong></td>
+                <td>Fake gold or inflated machine value</td>
+                <td>9</td>
+                <td>2</td>
+                <td>2</td>
+                <td><strong>36</strong></td>
+                <td>Forensic re-assaying at central vault. Agent rolling deposit liquidated under Section 406/420 IPC.</td>
+              </tr>
+              <tr>
+                <td><strong>Offline Partition Loss</strong></td>
+                <td>Field visit mutations lost in remote villages</td>
+                <td>7</td>
+                <td>3</td>
+                <td>2</td>
+                <td><strong>42</strong></td>
+                <td>Android WorkManager SQLite transaction replay with exponential backoff & deterministic Last-Write-Wins.</td>
+              </tr>
+              <tr>
+                <td><strong>Device Tamper / Root</strong></td>
+                <td>Session token or SQLite extraction attempt</td>
+                <td>8</td>
+                <td>2</td>
+                <td>2</td>
+                <td><strong>32</strong></td>
+                <td>Google Play Integrity API + RootBeer hardware keystore binding; instant biometric session invalidation.</td>
+              </tr>
+              <tr>
+                <td><strong>Legal Repudiation</strong></td>
+                <td>Borrower denies signing promissory note</td>
+                <td>9</td>
+                <td>1</td>
+                <td>1</td>
+                <td><strong>9</strong></td>
+                <td>Section 65B Certificate + SHA-256 digital hash + CameraX biometric facial audit trail signed at execution.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h4>LOANZO PROTOCOL</h4>
+        <p>
+          Next-Generation Decentralized Peer-to-Peer Microfinance Protocol. Purpose-bound milestone payouts, multi-asset collateral escrow, and zero-scam compliance for India's MSME credit ecosystem.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Documentation Pages</h5>
+        <ul>
+          <li><a href="index.html">Executive Hub & Story</a></li>
+          <li><a href="problem-solution.html">Problem ➔ Solution Matrix</a></li>
+          <li><a href="architecture.html">Code-Level Architecture</a></li>
+          <li><a href="user-roles.html">4 Multi-Sided User Roles</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Legal & Technical</h5>
+        <ul>
+          <li><a href="legal-compliance.html">Statutory Laws & RBI Compliance</a></li>
+          <li><a href="legal-compliance.html#fmea">FMEA Failure Mode Analysis</a></li>
+          <li><a href="architecture.html#room-schema">19 Room v12 Entities</a></li>
+          <li><a href="simulator.html">Live LTV Simulator</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Official Artifacts</h5>
+        <ul>
+          <li><a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download>Download 13-Slide PDF</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo/blob/main/README.md" target="_blank" rel="noopener">Master README</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <div>&copy; 2026 Loanzo Protocol. Engineered under Apache 2.0 / MIT Open Source License.</div>
+      <div>Architect & Lead Engineer: <strong>Satyam Kumar (@satyam0810)</strong></div>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loanzo Protocol | Code Architecture & Room v12</title>
+  
+  <meta name="description" content="Detailed file communication callstacks, Clean Architecture layers, and 19-entity Room database model.">
+  <meta name="keywords" content="Loanzo, Android, Kotlin, Jetpack Compose, P2P Lending, Microfinance, Collateral Escrow, Fintech India, Room Database, Telegram Bot, Clean Architecture">
+  <meta name="author" content="Satyam Kumar & The Loanzo Engineering Protocol">
+
+  <link rel="icon" type="image/png" href="screenshots/app_logo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="nav-brand">
+        <img src="screenshots/app_logo.png" alt="Loanzo Emblem">
+        <span>LOANZO<span style="color: var(--gold-primary); font-size: 0.8rem; margin-left: 4px;">DOCS</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="index.html" class="">Executive Hub</a></li>
+        <li><a href="problem-solution.html" class="">Problem ➔ Solution</a></li>
+        <li><a href="architecture.html" class="active">Architecture & Code</a></li>
+        <li><a href="user-roles.html" class="">User Roles</a></li>
+        <li><a href="legal-compliance.html" class="">Legal & Security</a></li>
+        <li><a href="simulator.html" class="">Interactive Simulators</a></li>
+      </ul>
+
+      <div class="nav-cta-group">
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Theme">
+          <span>🌙 Dark Mode</span>
+        </button>
+        <a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download class="btn-secondary">
+          <span>📄 13-Slide PDF</span>
+        </a>
+        <a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener" class="btn-primary">
+          <span>★ GitHub Repo</span>
+        </a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="page-header-section">
+      <div class="container text-center">
+        <span class="section-pretitle">TECHNICAL DEEP-DIVE</span>
+        <h1 class="page-header-title">Code-Level Architecture & <span class="gradient-text">File Communication</span></h1>
+        <p class="page-header-desc">
+          How every Composable screen dispatches UI events, queries ViewModels via reactive StateFlow, evaluates domain invariants, and commits transactions to the offline-first Room v12 database.
+        </p>
+      </div>
+    </section>
+
+    <!-- Clean Architecture 4-Layer Breakdown -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pretitle">SEPARATION OF CONCERNS</span>
+          <h2 class="section-title">The 4 Clean Architecture Layers</h2>
+          <p class="section-subtitle">
+            Strict Unidirectional Data Flow (UDF) with immutable data models and reactive state observers.
+          </p>
+        </div>
+
+        <div class="comm-grid">
+          <div class="comm-card">
+            <div class="comm-step-num">LAYER 1 • PRESENTATION</div>
+            <h4 class="comm-layer-title">Compose UI & Sheets</h4>
+            <ul class="comm-file-list">
+              <li>• LoginScreen.kt</li>
+              <li>• DashboardScreen.kt</li>
+              <li>• CollateralVaultModal.kt</li>
+              <li>• LoanAgreementSheet.kt</li>
+              <li>• UpiPaymentSheet.kt</li>
+              <li>• AgentInspectionSheet.kt</li>
+            </ul>
+          </div>
+
+          <div class="comm-card">
+            <div class="comm-step-num">LAYER 2 • VIEWMODELS</div>
+            <h4 class="comm-layer-title">StateFlow & UDF</h4>
+            <ul class="comm-file-list">
+              <li>• AuthViewModel.kt</li>
+              <li>• DashboardViewModel.kt</li>
+              <li>• LoanViewModel.kt</li>
+              <li>• MarketplaceViewModel.kt</li>
+              <li>• ChatViewModel.kt</li>
+              <li>• NotificationViewModel.kt</li>
+            </ul>
+          </div>
+
+          <div class="comm-card">
+            <div class="comm-step-num">LAYER 3 • DOMAIN ENGINES</div>
+            <h4 class="comm-layer-title">Business Invariants</h4>
+            <ul class="comm-file-list">
+              <li>• RuleEngine.kt (LTV Constraints)</li>
+              <li>• PenaltyEngine.kt (RBI Ceiling)</li>
+              <li>• RestructuringEngine.kt</li>
+              <li>• BiometricAuthManager.kt</li>
+              <li>• AgreementGenerator.kt</li>
+            </ul>
+          </div>
+
+          <div class="comm-card">
+            <div class="comm-step-num">LAYER 4 • DATA & REPOSITORIES</div>
+            <h4 class="comm-layer-title">SSOT & Room v12</h4>
+            <ul class="comm-file-list">
+              <li>• LoanRepository.kt</li>
+              <li>• UserRepository.kt</li>
+              <li>• LoanzoDatabase.kt (v12)</li>
+              <li>• TelegramManager.kt</li>
+              <li>• UpiHelper.kt</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Interactive Callstack Sequence Viewer -->
+        <div class="callstack-box">
+          <div class="callstack-header">
+            <h4>Live Code-Level Execution Callstack</h4>
+            <div class="callstack-tabs">
+              <button class="cs-tab active" data-cs="cs1">1. Biometric Auth</button>
+              <button class="cs-tab" data-cs="cs2">2. Collateral Appraisal</button>
+              <button class="cs-tab" data-cs="cs3">3. Tranche Payout</button>
+              <button class="cs-tab" data-cs="cs4">4. UPI Repayment</button>
+            </div>
+          </div>
+          <pre id="callstackCode" class="callstack-content">// FLOW 1: Biometric Login & Session Token Lifecycle
+LoginScreen.kt
+  ➔ AuthViewModel.biometricAuth(activity)
+    ➔ BiometricAuthManager.authenticate(activity, onSuccess = { ... })
+      ➔ UserRepository.setLoggedIn(userId = "satyam0810", role = "MEMBER")
+        ➔ UserDao.getUserById("satyam0810")
+          ➔ Emit AuthUiState.Success(role = Role.MEMBER)
+            ➔ NavGraph.kt navigates to DashboardScreen.kt</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Complete 19 Room Entities Database Schema Reference -->
+    <section id="room-schema" class="section section-alt">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pretitle">DATABASE LAYER (ROOM V12)</span>
+          <h2 class="section-title">Complete 19-Entity <span class="gradient-text">Relational Schema & DAOs</span></h2>
+          <p class="section-subtitle">
+            Catalog of all 19 SQLite database tables and 17 DAOs powering offline-first resilience.
+          </p>
+        </div>
+
+        <div class="table-container">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Table Name</th>
+                <th>Primary Key</th>
+                <th>Core Fields & Foreign Keys</th>
+                <th>DAO Interface</th>
+                <th>Functional Responsibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>users</code></td>
+                <td><code>userId (TEXT)</code></td>
+                <td>name, email, role, kycStatus, biometricHash, phone</td>
+                <td><code>UserDao</code></td>
+                <td>Multi-role authentication, RBAC, and session management</td>
+              </tr>
+              <tr>
+                <td><code>loans</code></td>
+                <td><code>loanId (TEXT)</code></td>
+                <td>borrowerId, lenderId, principal, interestRate, status, purpose</td>
+                <td><code>LoanDao</code></td>
+                <td>Master loan state machine (PENDING, ACTIVE, REPAID)</td>
+              </tr>
+              <tr>
+                <td><code>collateral_vault</code></td>
+                <td><code>vaultId (TEXT)</code></td>
+                <td>loanId, assetType, appraisedValue, ltvCap, custodyStatus, lockerId</td>
+                <td><code>CollateralVaultDao</code></td>
+                <td>Asset pledge, real-time LTV valuation, and legal lock</td>
+              </tr>
+              <tr>
+                <td><code>disbursements</code></td>
+                <td><code>disbursementId</code></td>
+                <td>loanId, trancheIndex, amount, vendorVpa, milestoneProofUri, isSigned</td>
+                <td><code>DisbursementDao</code></td>
+                <td>Purpose-bound milestone payouts direct to suppliers</td>
+              </tr>
+              <tr>
+                <td><code>repayments</code></td>
+                <td><code>repaymentId</code></td>
+                <td>loanId, dueDate, paidDate, principalPart, interestPart, upiTxnId</td>
+                <td><code>RepaymentDao</code></td>
+                <td>EMI schedule tracking, non-compounding penalty calculation</td>
+              </tr>
+              <tr>
+                <td><code>marketplace_posts</code></td>
+                <td><code>postId (TEXT)</code></td>
+                <td>borrowerId, requestedAmount, collateralSummary, tenureMonths</td>
+                <td><code>MarketplaceDao</code></td>
+                <td>Community social orderbook for P2P syndication</td>
+              </tr>
+              <tr>
+                <td><code>marketplace_bids</code></td>
+                <td><code>bidId (TEXT)</code></td>
+                <td>postId, lenderId, bidAmount, proposedInterestRate, status</td>
+                <td><code>MarketplaceDao</code></td>
+                <td>Multi-lender fractional co-funding proposals</td>
+              </tr>
+              <tr>
+                <td><code>agent_visits</code></td>
+                <td><code>visitId (TEXT)</code></td>
+                <td>agentId, borrowerId, loanId, gpsLat, gpsLng, checklistJson, photoUri</td>
+                <td><code>AgentDao</code></td>
+                <td>Doorstep physical audit logs with tamper-evident GPS stamps</td>
+              </tr>
+              <tr>
+                <td><code>noc_certificates</code></td>
+                <td><code>certificateId</code></td>
+                <td>loanId, borrowerId, dischargeTimestamp, digitalSignatureHash</td>
+                <td><code>NocCertificateDao</code></td>
+                <td>Legally binding discharge deed releasing collateral lien</td>
+              </tr>
+              <tr>
+                <td><code>audit_events</code></td>
+                <td><code>eventId (INT)</code></td>
+                <td>eventType, actorId, targetId, payloadJson, timestamp, telegramDispatched</td>
+                <td><code>AuditEventDao</code></td>
+                <td>Immutable chronological event ledger synced to Telegram</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h4>LOANZO PROTOCOL</h4>
+        <p>
+          Next-Generation Decentralized Peer-to-Peer Microfinance Protocol. Purpose-bound milestone payouts, multi-asset collateral escrow, and zero-scam compliance for India's MSME credit ecosystem.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Documentation Pages</h5>
+        <ul>
+          <li><a href="index.html">Executive Hub & Story</a></li>
+          <li><a href="problem-solution.html">Problem ➔ Solution Matrix</a></li>
+          <li><a href="architecture.html">Code-Level Architecture</a></li>
+          <li><a href="user-roles.html">4 Multi-Sided User Roles</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Legal & Technical</h5>
+        <ul>
+          <li><a href="legal-compliance.html">Statutory Laws & RBI Compliance</a></li>
+          <li><a href="legal-compliance.html#fmea">FMEA Failure Mode Analysis</a></li>
+          <li><a href="architecture.html#room-schema">19 Room v12 Entities</a></li>
+          <li><a href="simulator.html">Live LTV Simulator</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Official Artifacts</h5>
+        <ul>
+          <li><a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download>Download 13-Slide PDF</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo/blob/main/README.md" target="_blank" rel="noopener">Master README</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <div>&copy; 2026 Loanzo Protocol. Engineered under Apache 2.0 / MIT Open Source License.</div>
+      <div>Architect & Lead Engineer: <strong>Satyam Kumar (@satyam0810)</strong></div>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

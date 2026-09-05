@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loanzo Protocol | Problem ➔ Solution ➔ Implementation</title>
+  
+  <meta name="description" content="Detailed analysis of 6 core Indian microfinance failure modes, Loanzo solutions, and real Android app screenshots.">
+  <meta name="keywords" content="Loanzo, Android, Kotlin, Jetpack Compose, P2P Lending, Microfinance, Collateral Escrow, Fintech India, Room Database, Telegram Bot, Clean Architecture">
+  <meta name="author" content="Satyam Kumar & The Loanzo Engineering Protocol">
+
+  <link rel="icon" type="image/png" href="screenshots/app_logo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="nav-brand">
+        <img src="screenshots/app_logo.png" alt="Loanzo Emblem">
+        <span>LOANZO<span style="color: var(--gold-primary); font-size: 0.8rem; margin-left: 4px;">DOCS</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="index.html" class="">Executive Hub</a></li>
+        <li><a href="problem-solution.html" class="active">Problem ➔ Solution</a></li>
+        <li><a href="architecture.html" class="">Architecture & Code</a></li>
+        <li><a href="user-roles.html" class="">User Roles</a></li>
+        <li><a href="legal-compliance.html" class="">Legal & Security</a></li>
+        <li><a href="simulator.html" class="">Interactive Simulators</a></li>
+      </ul>
+
+      <div class="nav-cta-group">
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Theme">
+          <span>🌙 Dark Mode</span>
+        </button>
+        <a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download class="btn-secondary">
+          <span>📄 13-Slide PDF</span>
+        </a>
+        <a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener" class="btn-primary">
+          <span>★ GitHub Repo</span>
+        </a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="page-header-section">
+      <div class="container text-center">
+        <span class="section-pretitle">THE CORE PEDAGOGICAL BLUEPRINT</span>
+        <h1 class="page-header-title">Problem ➔ Solution ➔ <span class="gradient-text">App Implementation</span></h1>
+        <p class="page-header-desc">
+          Every screen, entity, and usecase in Loanzo was engineered to mathematically neutralize a real-world vulnerability in Indian microfinance. Explore the 6 core pillars below with authentic UI screenshots and code callouts.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <!-- Pillar Tabs -->
+        <div class="psi-tabs-container">
+          <button class="psi-tab active" data-psi="0"><span>1. Identity & Fraud</span></button>
+          <button class="psi-tab" data-psi="1"><span>2. Collateral Escrow</span></button>
+          <button class="psi-tab" data-psi="2"><span>3. Purpose-Bound Tranches</span></button>
+          <button class="psi-tab" data-psi="3"><span>4. Legal Promissory Note</span></button>
+          <button class="psi-tab" data-psi="4"><span>5. P2P Syndication</span></button>
+          <button class="psi-tab" data-psi="5"><span>6. Repayment & Debt Defense</span></button>
+        </div>
+
+        <!-- Dynamic Content Card -->
+        <div class="psi-content-card">
+          <div class="psi-details">
+            <!-- Problem -->
+            <div class="psi-block">
+              <span class="psi-label label-problem">THE REAL-WORLD PROBLEM IN INDIA</span>
+              <h3 id="psiProblemHeading" class="psi-heading">Identity Theft, Fake SIMs & Stolen Aadhaar/PAN Accounts</h3>
+              <p id="psiProblemText" class="psi-text">
+                Unsecured digital lending apps suffer catastrophic delinquency waves due to synthetic identity fraud, stolen photocopies of Aadhaar cards, and cloned SIM cards creating ghost borrower accounts with zero repayment liability.
+              </p>
+            </div>
+
+            <!-- Solution -->
+            <div class="psi-block">
+              <span class="psi-label label-solution">THE LOANZO PROTOCOL SOLUTION</span>
+              <h3 id="psiSolutionHeading" class="psi-heading">Hardware BiometricPrompt & DigiLocker Aadhaar e-KYC</h3>
+              <p id="psiSolutionText" class="psi-text">
+                Loanzo enforces local cryptographic biometric authentication backed by the device's hardware KeyStore/StrongBox, combined with instant C-DAC DigiLocker KYC verification. No account can be created or accessed without live biometric authorization.
+              </p>
+            </div>
+
+            <!-- App Implementation -->
+            <div class="psi-block">
+              <span class="psi-label label-implementation">HOW THE APP ACTUALLY IMPLEMENTS IT</span>
+              <h3 id="psiImplHeading" class="psi-heading">ui/auth/LoginScreen.kt & KycScreen.kt</h3>
+              <p id="psiImplText" class="psi-text">
+                Features dynamic role switching (Member, Field Agent, Master Admin), StrongBox-backed SHA-256 session tokens, and biometric fingerprint trigger. When the user taps 'Biometric Login', BiometricAuthManager binds with FragmentActivity and verifies the cryptographic signature.
+              </p>
+              <div id="psiCodeBadge" class="psi-code-badge">AuthViewModel.kt ➔ BiometricAuthManager.kt ➔ UserDao.kt</div>
+            </div>
+          </div>
+
+          <div class="psi-screenshot-wrap">
+            <div class="psi-phone-mockup">
+              <img id="psiMockupImg" src="screenshots/screen_login_auth.png" alt="Screen Implementation">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Detailed 6-Pillar Summary Table -->
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pretitle">SYSTEMIC COMPARISON</span>
+          <h2 class="section-title">Cross-Pillar Architecture & <span class="gradient-text">Failure Mode Matrix</span></h2>
+          <p class="section-subtitle">
+            A comprehensive mapping of each failure mode against its corresponding Room entity and Kotlin UI implementation.
+          </p>
+        </div>
+
+        <div class="table-container">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Vulnerability Vector</th>
+                <th>Traditional Failure Mode</th>
+                <th class="col-loanzo">Loanzo Protocol Solution</th>
+                <th>Room v12 Entity</th>
+                <th>Jetpack Compose UI</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Identity Theft</strong></td>
+                <td>Cloned SIMs & fake PAN cards create ghost debt</td>
+                <td class="col-loanzo">Hardware BiometricPrompt + DigiLocker e-KYC</td>
+                <td><code>UserEntity</code></td>
+                <td><code>LoginScreen.kt</code></td>
+              </tr>
+              <tr>
+                <td><strong>2. Unsecured Defaults</strong></td>
+                <td>No collateral leads to 14.2% default and write-offs</td>
+                <td class="col-loanzo">5-Class Multi-Asset Vault (60%-80% LTV)</td>
+                <td><code>CollateralVaultEntity</code></td>
+                <td><code>CollateralVaultModal.kt</code></td>
+              </tr>
+              <tr>
+                <td><strong>3. Fund Diversion</strong></td>
+                <td>Lump sum cash spent on consumption rather than work</td>
+                <td class="col-loanzo">Purpose-Bound Tranches direct to supplier accounts</td>
+                <td><code>DisbursementEntity</code></td>
+                <td><code>TrancheAndOtherScreens.kt</code></td>
+              </tr>
+              <tr>
+                <td><strong>4. Unenforceable Debt</strong></td>
+                <td>Verbal handshake loans dismissed in court (3-5 yrs)</td>
+                <td class="col-loanzo">Section 4 NI Act Promissory Note (Order 37 CPC)</td>
+                <td><code>RepaymentScheduleEntity</code></td>
+                <td><code>LoanAgreementSheet.kt</code></td>
+              </tr>
+              <tr>
+                <td><strong>5. Usurious Cartels</strong></td>
+                <td>Loan sharks charge 60%–120% APR compounding</td>
+                <td class="col-loanzo">P2P Social Marketplace capped at 12%–18% APR</td>
+                <td><code>MarketplaceBidEntity</code></td>
+                <td><code>MarketplaceFeedScreen.kt</code></td>
+              </tr>
+              <tr>
+                <td><strong>6. Collection Abuse</strong></td>
+                <td>Contact shaming, predatory threats & pooled float</td>
+                <td class="col-loanzo">Direct UPI QR + Autonomous Telegram Bot Audit Desk</td>
+                <td><code>AuditLogEntity</code></td>
+                <td><code>UpiPaymentSheet.kt</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h4>LOANZO PROTOCOL</h4>
+        <p>
+          Next-Generation Decentralized Peer-to-Peer Microfinance Protocol. Purpose-bound milestone payouts, multi-asset collateral escrow, and zero-scam compliance for India's MSME credit ecosystem.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Documentation Pages</h5>
+        <ul>
+          <li><a href="index.html">Executive Hub & Story</a></li>
+          <li><a href="problem-solution.html">Problem ➔ Solution Matrix</a></li>
+          <li><a href="architecture.html">Code-Level Architecture</a></li>
+          <li><a href="user-roles.html">4 Multi-Sided User Roles</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Legal & Technical</h5>
+        <ul>
+          <li><a href="legal-compliance.html">Statutory Laws & RBI Compliance</a></li>
+          <li><a href="legal-compliance.html#fmea">FMEA Failure Mode Analysis</a></li>
+          <li><a href="architecture.html#room-schema">19 Room v12 Entities</a></li>
+          <li><a href="simulator.html">Live LTV Simulator</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Official Artifacts</h5>
+        <ul>
+          <li><a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download>Download 13-Slide PDF</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo/blob/main/README.md" target="_blank" rel="noopener">Master README</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <div>&copy; 2026 Loanzo Protocol. Engineered under Apache 2.0 / MIT Open Source License.</div>
+      <div>Architect & Lead Engineer: <strong>Satyam Kumar (@satyam0810)</strong></div>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

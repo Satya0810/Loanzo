@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loanzo Protocol | Executive Hub & Human Story</title>
+  
+  <meta name="description" content="Overview of Loanzo decentralized P2P microfinance protocol, $350B credit crisis, and Indian artisan case story.">
+  <meta name="keywords" content="Loanzo, Android, Kotlin, Jetpack Compose, P2P Lending, Microfinance, Collateral Escrow, Fintech India, Room Database, Telegram Bot, Clean Architecture">
+  <meta name="author" content="Satyam Kumar & The Loanzo Engineering Protocol">
+
+  <link rel="icon" type="image/png" href="screenshots/app_logo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="nav-brand">
+        <img src="screenshots/app_logo.png" alt="Loanzo Emblem">
+        <span>LOANZO<span style="color: var(--gold-primary); font-size: 0.8rem; margin-left: 4px;">DOCS</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="index.html" class="active">Executive Hub</a></li>
+        <li><a href="problem-solution.html" class="">Problem ➔ Solution</a></li>
+        <li><a href="architecture.html" class="">Architecture & Code</a></li>
+        <li><a href="user-roles.html" class="">User Roles</a></li>
+        <li><a href="legal-compliance.html" class="">Legal & Security</a></li>
+        <li><a href="simulator.html" class="">Interactive Simulators</a></li>
+      </ul>
+
+      <div class="nav-cta-group">
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Theme">
+          <span>🌙 Dark Mode</span>
+        </button>
+        <a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download class="btn-secondary">
+          <span>📄 13-Slide PDF</span>
+        </a>
+        <a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener" class="btn-primary">
+          <span>★ GitHub Repo</span>
+        </a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="hero-section">
+      <div class="container hero-grid">
+        <div class="hero-content">
+          <div class="hero-badge">
+            <span class="pulse-dot"></span>
+            <span>V12 PRODUCTION-READY ARCHITECTURE</span>
+          </div>
+
+          <h1 class="hero-title">
+            Decentralized <span class="gradient-text">P2P Microfinance</span> Built for Real India
+          </h1>
+
+          <p class="hero-description">
+            Loanzo systematically replaces predatory payday apps and loan sharks with mathematical rigor. Featuring 
+            <strong>purpose-bound milestone payouts</strong>, <strong>5-class collateral escrow</strong>, 
+            and <strong>DigiLocker biometric promissory notes</strong> under Section 4 NI Act 1881.
+          </p>
+
+          <div class="hero-tags">
+            <span class="tag-badge">Kotlin 2.0.21</span>
+            <span class="tag-badge">Jetpack Compose M3</span>
+            <span class="tag-badge">19 Room v12 Entities</span>
+            <span class="tag-badge">Dagger Hilt</span>
+            <span class="tag-badge">Telegram Alert Desk</span>
+            <span class="tag-badge">RBI Compliant</span>
+          </div>
+
+          <div class="hero-actions">
+            <a href="problem-solution.html" class="btn-primary">
+              <span>⚡ Explore Problem ➔ Solution Matrix</span>
+            </a>
+            <a href="architecture.html" class="btn-secondary">
+              <span>🏗️ View Code Architecture</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="hero-phone-frame">
+            <img src="screenshots/screen_login_auth.png" alt="Loanzo Biometric Login Screen">
+          </div>
+
+          <div class="hero-float-card top-right">
+            <div style="font-weight: 700; color: var(--emerald-accent);">✔ Verified Escrow</div>
+            <div style="color: var(--text-dim); font-size: 0.75rem;">100% Zero Diversion</div>
+          </div>
+
+          <div class="hero-float-card bottom-left">
+            <div style="font-weight: 700; color: var(--gold-primary);">⚖ Sec 4 NI Act 1881</div>
+            <div style="color: var(--text-dim); font-size: 0.75rem;">Court Admissible Note</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quantitative Metrics Strip -->
+      <div class="container">
+        <div class="metrics-strip">
+          <div class="metric-card">
+            <div class="metric-value">₹3.99L Cr</div>
+            <div class="metric-label">India MSME Credit Deficit</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">&lt; 1.8%</div>
+            <div class="metric-label">Loanzo Milestone Default Rate</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">5 Classes</div>
+            <div class="metric-label">Multi-Asset Escrow Vault</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">21 Days</div>
+            <div class="metric-label">Order 37 CPC Dispute Recovery</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Directory Grid to Deep-Dive Pages -->
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pretitle">DOCUMENTATION SECTIONS</span>
+          <h2 class="section-title">Comprehensive <span class="gradient-text">Engineering Dossier</span></h2>
+          <p class="section-subtitle">
+            Navigate directly to any section of the technical documentation for deep code-level insights, statutory frameworks, and interactive tools.
+          </p>
+        </div>
+
+        <div class="portal-nav-grid">
+          <a href="problem-solution.html" class="portal-card">
+            <div class="portal-icon">🔍</div>
+            <h3>1. Problem ➔ Solution Matrix</h3>
+            <p>Every Indian microfinance failure mode analyzed alongside Loanzo's exact architectural remedy and real captured app screenshots.</p>
+            <span class="portal-link-text">Read Breakdown ➔</span>
+          </a>
+
+          <a href="architecture.html" class="portal-card">
+            <div class="portal-icon">⚙️</div>
+            <h3>2. Code-Level Architecture</h3>
+            <p>Call-chain sequence flows, Clean Architecture layers, StateFlow pipelines, and complete 19-entity Room v12 database schema.</p>
+            <span class="portal-link-text">Inspect Callstacks ➔</span>
+          </a>
+
+          <a href="user-roles.html" class="portal-card">
+            <div class="portal-icon">👥</div>
+            <h3>3. Multi-Sided User Roles</h3>
+            <p>The 4 distinct personas (Borrower, Peer Lender, Field Agent, Master Admin), their permissions, and cross-system interaction mechanics.</p>
+            <span class="portal-link-text">View Roles & RBAC ➔</span>
+          </a>
+
+          <a href="legal-compliance.html" class="portal-card">
+            <div class="portal-icon">⚖️</div>
+            <h3>4. Statutory Laws & Security</h3>
+            <p>Section 4 NI Act 1881 promissory notes, Order 37 CPC summary suits, RBI Circular RBI/2023-24/53 compliance, and FMEA matrix.</p>
+            <span class="portal-link-text">Review Compliance ➔</span>
+          </a>
+
+          <a href="simulator.html" class="portal-card">
+            <div class="portal-icon">📊</div>
+            <h3>5. Interactive Simulators</h3>
+            <p>Test the real-time Multi-Asset Collateral & LTV Calculator, simulate milestone tranche disbursements, and explore developer setup.</p>
+            <span class="portal-link-text">Launch Simulators ➔</span>
+          </a>
+
+          <a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download class="portal-card highlight">
+            <div class="portal-icon">📑</div>
+            <h3>6. 13-Slide Master PDF Report</h3>
+            <p>Download the high-density executive pitch presentation featuring the complete All-Module Master Synthesis infographic (Slide 13).</p>
+            <span class="portal-link-text">Download Report (PDF) ➔</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- The Indian Microfinance Narrative (AI Story Visuals) -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pretitle">HUMAN TRANSFORMATION CASE STUDY</span>
+          <h2 class="section-title">The Real India: <span class="gradient-text">From Predatory Trap to Thriving Business</span></h2>
+          <p class="section-subtitle">
+            How a generational artisan workshop in Jaipur broke free from 60% compound interest loan sharks through Loanzo's purpose-bound milestone escrow.
+          </p>
+        </div>
+
+        <div class="story-grid">
+          <!-- Chapter 1 -->
+          <article class="story-card">
+            <div class="story-image-wrap">
+              <img src="assets/story/story_ch1_predatory_trap.jpg" alt="Stressed artisan with predatory loan ledger" loading="lazy">
+              <div class="story-badge">Chapter 01</div>
+            </div>
+            <div class="story-content">
+              <h3 class="story-title">The Predatory Debt Trap</h3>
+              <p class="story-body">
+                Suresh Kumar, a master textile craftsman in Jaipur, faced an urgent seasonal purchase order. Traditional commercial banks rejected him for lack of audited balance sheets, forcing him into the hands of local unorganized moneylenders demanding 60% annualized compound interest.
+              </p>
+              <div class="story-pill-row">
+                <span class="story-pill pill-danger">60% Annual Interest</span>
+                <span class="story-pill pill-danger">Predatory Extortion</span>
+                <span class="story-pill pill-danger">No Legal Safety</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Chapter 2 -->
+          <article class="story-card">
+            <div class="story-image-wrap">
+              <img src="assets/story/story_ch2_loanzo_pledge.jpg" alt="Artisan holding appraisal certificate with phone app" loading="lazy">
+              <div class="story-badge">Chapter 02</div>
+            </div>
+            <div class="story-content">
+              <h3 class="story-title">The Loanzo Collateral Pledge</h3>
+              <p class="story-body">
+                Introduced to Loanzo, Suresh pledged ancestral gold ornaments into the certified Multi-Asset Collateral Escrow Vault at a transparent 72% LTV. The app instantly drafted a legally binding promissory note under Section 4 NI Act 1881 via DigiLocker biometric e-KYC.
+              </p>
+              <div class="story-pill-row">
+                <span class="story-pill pill-success">72% LTV Ceiling</span>
+                <span class="story-pill pill-info">DigiLocker e-KYC</span>
+                <span class="story-pill pill-success">Zero Hidden Fees</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Chapter 3 -->
+          <article class="story-card">
+            <div class="story-image-wrap">
+              <img src="assets/story/story_ch3_agent_verification.jpg" alt="Certified field officer inspecting workshop with tablet" loading="lazy">
+              <div class="story-badge">Chapter 03</div>
+            </div>
+            <div class="story-content">
+              <h3 class="story-title">Certified Field Verification</h3>
+              <p class="story-body">
+                Rather than an algorithmic black-box rejection, Rajesh—a certified local community agent—conducted a dignified on-site physical inspection. He verified the loom machinery and certified the yarn supplier's invoice directly in the agent cockpit.
+              </p>
+              <div class="story-pill-row">
+                <span class="story-pill pill-info">Certified Field Agent</span>
+                <span class="story-pill pill-info">Physical Asset Audit</span>
+                <span class="story-pill pill-success">Instant Telegram Sync</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Chapter 4 -->
+          <article class="story-card">
+            <div class="story-image-wrap">
+              <img src="assets/story/story_ch4_empowerment_repayment.jpg" alt="Thriving workshop with successful UPI notification" loading="lazy">
+              <div class="story-badge">Chapter 04</div>
+            </div>
+            <div class="story-content">
+              <h3 class="story-title">Flourishing Business & Safe Repayment</h3>
+              <p class="story-body">
+                Disbursements were paid in milestone tranches directly to the fabric vendor (40% yarn, 35% dying, 25% shipping). After completing the export order, Suresh cleared his EMIs seamlessly via UPI intent. The collateral was unlocked with an automated discharge deed.
+              </p>
+              <div class="story-pill-row">
+                <span class="story-pill pill-success">Milestone Payouts</span>
+                <span class="story-pill pill-success">Zero Diversion Risk</span>
+                <span class="story-pill pill-success">Automated Escrow Unlock</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dynamic Graphs Section -->
+    <section class="section section-alt">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-pretitle">EMPIRICAL DATA & MACROECONOMIC METRICS</span>
+          <h2 class="section-title">The Numbers Behind <span class="gradient-text">India's Microfinance Reality</span></h2>
+          <p class="section-subtitle">
+            Citing authoritative research from the International Finance Corporation (IFC), NITI Aayog, and Reserve Bank of India regulatory filings.
+          </p>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <h3>MSME Unmet Credit Deficit</h3>
+                <p>Growth of the uncollateralized lending gap in India (2020 - 2025)</p>
+              </div>
+              <span class="chart-badge">Source: IFC & NITI Aayog</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="tamChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <h3>Default Rate Benchmark</h3>
+                <p>Unsecured digital lending apps vs Loanzo Purpose-Bound Escrow</p>
+              </div>
+              <span class="chart-badge">14.2% vs 1.78%</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="delinquencyChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <h3>Collateral Vault Asset Mix</h3>
+                <p>Diversification beyond gold into high-recovery commercial collateral</p>
+              </div>
+              <span class="chart-badge">5 Asset Classes</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="collateralChart"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <div>
+                <h3>Dispute Resolution Velocity</h3>
+                <p>Days to recover defaulted capital: Traditional courts vs Order 37 CPC</p>
+              </div>
+              <span class="chart-badge">48 Mos vs 21 Days</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="recoveryChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h4>LOANZO PROTOCOL</h4>
+        <p>
+          Next-Generation Decentralized Peer-to-Peer Microfinance Protocol. Purpose-bound milestone payouts, multi-asset collateral escrow, and zero-scam compliance for India's MSME credit ecosystem.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Documentation Pages</h5>
+        <ul>
+          <li><a href="index.html">Executive Hub & Story</a></li>
+          <li><a href="problem-solution.html">Problem ➔ Solution Matrix</a></li>
+          <li><a href="architecture.html">Code-Level Architecture</a></li>
+          <li><a href="user-roles.html">4 Multi-Sided User Roles</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Legal & Technical</h5>
+        <ul>
+          <li><a href="legal-compliance.html">Statutory Laws & RBI Compliance</a></li>
+          <li><a href="legal-compliance.html#fmea">FMEA Failure Mode Analysis</a></li>
+          <li><a href="architecture.html#room-schema">19 Room v12 Entities</a></li>
+          <li><a href="simulator.html">Live LTV Simulator</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Official Artifacts</h5>
+        <ul>
+          <li><a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download>Download 13-Slide PDF</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo/blob/main/README.md" target="_blank" rel="noopener">Master README</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <div>&copy; 2026 Loanzo Protocol. Engineered under Apache 2.0 / MIT Open Source License.</div>
+      <div>Architect & Lead Engineer: <strong>Satyam Kumar (@satyam0810)</strong></div>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

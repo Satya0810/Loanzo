@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loanzo Protocol | Multi-Sided User Roles</title>
+  
+  <meta name="description" content="The 4 user personas in Loanzo: Borrower, Peer Lender, Field Agent, Master Admin, with RBAC and interaction flows.">
+  <meta name="keywords" content="Loanzo, Android, Kotlin, Jetpack Compose, P2P Lending, Microfinance, Collateral Escrow, Fintech India, Room Database, Telegram Bot, Clean Architecture">
+  <meta name="author" content="Satyam Kumar & The Loanzo Engineering Protocol">
+
+  <link rel="icon" type="image/png" href="screenshots/app_logo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="nav-brand">
+        <img src="screenshots/app_logo.png" alt="Loanzo Emblem">
+        <span>LOANZO<span style="color: var(--gold-primary); font-size: 0.8rem; margin-left: 4px;">DOCS</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="index.html" class="">Executive Hub</a></li>
+        <li><a href="problem-solution.html" class="">Problem ➔ Solution</a></li>
+        <li><a href="architecture.html" class="">Architecture & Code</a></li>
+        <li><a href="user-roles.html" class="active">User Roles</a></li>
+        <li><a href="legal-compliance.html" class="">Legal & Security</a></li>
+        <li><a href="simulator.html" class="">Interactive Simulators</a></li>
+      </ul>
+
+      <div class="nav-cta-group">
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Theme">
+          <span>🌙 Dark Mode</span>
+        </button>
+        <a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download class="btn-secondary">
+          <span>📄 13-Slide PDF</span>
+        </a>
+        <a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener" class="btn-primary">
+          <span>★ GitHub Repo</span>
+        </a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="page-header-section">
+      <div class="container text-center">
+        <span class="section-pretitle">DECENTRALIZED ECOSYSTEM PARTICIPANTS</span>
+        <h1 class="page-header-title">4 Multi-Sided User Personas & <span class="gradient-text">How They Interact</span></h1>
+        <p class="page-header-desc">
+          Loanzo connects honest Indian entrepreneurs with verified peer investors, certified local doorstep agents, and institutional governors on a shared, tamper-evident ledger.
+        </p>
+      </div>
+    </section>
+
+    <!-- 4 User Persona Cards -->
+    <section class="section">
+      <div class="container">
+        <div class="roles-grid">
+          <!-- Role 1: Borrower -->
+          <div class="role-card">
+            <div class="role-icon borrower">🌾</div>
+            <h3 class="role-title">Member (Borrower)</h3>
+            <span class="role-badge-tag" style="background: #FEF3C7; color: #92400E;">Artisans / MSMEs</span>
+            <p class="role-desc">
+              Pledges gold, vehicles, or trade invoices. Requests purpose-bound milestone tranches to purchase raw inventory with zero middleman exploitation.
+            </p>
+            <ul class="role-perms-list">
+              <li>Aadhaar DigiLocker e-KYC</li>
+              <li>Collateral Vault Appraisal</li>
+              <li>Upload Vendor Invoices</li>
+              <li>Instant Repay via UPI QR</li>
+            </ul>
+          </div>
+
+          <!-- Role 2: Peer Lender -->
+          <div class="role-card">
+            <div class="role-icon lender">💎</div>
+            <h3 class="role-title">Peer Lender</h3>
+            <span class="role-badge-tag" style="background: #D1FAE5; color: #065F46;">Investors / Co-ops</span>
+            <p class="role-desc">
+              Browses verified order feeds on the Social Marketplace. Evaluates physical inspection reports, funds fractional orders, and earns 12-18% APR yield.
+            </p>
+            <ul class="role-perms-list">
+              <li>Inspect Collateral Health</li>
+              <li>Syndicate Loan Bids</li>
+              <li>Direct Bank Payouts</li>
+              <li>Real-Time Telegram Receipts</li>
+            </ul>
+          </div>
+
+          <!-- Role 3: Field Agent -->
+          <div class="role-card">
+            <div class="role-icon agent">🛵</div>
+            <h3 class="role-title">Certified Field Agent</h3>
+            <span class="role-badge-tag" style="background: #E0F2FE; color: #0369A1;">Local Community Verifier</span>
+            <p class="role-desc">
+              Visits borrower sites with an offline-first inspection checklist. Assays gold, verifies equipment serial numbers, and uploads geo-stamped audit logs.
+            </p>
+            <ul class="role-perms-list">
+              <li>Physical Asset Inspection</li>
+              <li>Supplier Invoice Validation</li>
+              <li>GPS-Stamped Audit Trail</li>
+              <li>Rolling Security Bond Lock</li>
+            </ul>
+          </div>
+
+          <!-- Role 4: Master Admin -->
+          <div class="role-card">
+            <div class="role-icon admin">🏛️</div>
+            <h3 class="role-title">Master Admin</h3>
+            <span class="role-badge-tag" style="background: #F3E8FF; color: #6B21A8;">Protocol Governor</span>
+            <p class="role-desc">
+              Oversees platform solvency, arbitrates dispute mediations, assigns physical vault lockers, and regulates compliance with statutory RBI directives.
+            </p>
+            <ul class="role-perms-list">
+              <li>Accredit Field Agents</li>
+              <li>Allocate Bank Lockers</li>
+              <li>Order 37 CPC Summary Legal Filing</li>
+              <li>Immutable Audit Governance</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Cross-Persona Interaction Matrix -->
+        <div class="section-header" style="margin-top: 4rem;">
+          <span class="section-pretitle">CROSS-PERSONA PROTOCOL FLOW</span>
+          <h2 class="section-title">How Actions Propagate <span class="gradient-text">Across Personas in Real-Time</span></h2>
+          <p class="section-subtitle">
+            Trace the chain reaction triggered across Room, Firebase, and Telegram whenever a persona executes an action.
+          </p>
+        </div>
+
+        <div class="table-container">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Triggering Action</th>
+                <th>Initiating Persona</th>
+                <th class="col-loanzo">Automated System State Machine</th>
+                <th>Downstream Persona Impact</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Asset Pledged & Tranche Requested</strong></td>
+                <td>Borrower (Member)</td>
+                <td class="col-loanzo"><code>RuleEngine.evaluate()</code> locks asset in <code>CollateralVaultEntity</code>; publishes order to Marketplace</td>
+                <td><strong>Lenders:</strong> See verified order card.<br/><strong>Admin:</strong> Auto-dispatches nearest field agent.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Order Syndicated by Multiple Bidders</strong></td>
+                <td>Peer Lenders</td>
+                <td class="col-loanzo"><code>MarketplaceDao</code> commits fractional bids; compiles multi-lender syndication pool</td>
+                <td><strong>Borrower:</strong> Notified that loan order is 100% funded and ready for audit sign-off.</td>
+              </tr>
+              <tr>
+                <td><strong>3. Doorstep Inspection Completed</strong></td>
+                <td>Field Agent</td>
+                <td class="col-loanzo"><code>AgentDao.insertVisit()</code> records GPS coordinates and physical assay report; releases Milestone 1 trigger</td>
+                <td><strong>Borrower & Lenders:</strong> Receive Telegram notification with verified inspection receipt.</td>
+              </tr>
+              <tr>
+                <td><strong>4. Direct Supplier Disbursal Executed</strong></td>
+                <td>Escrow Smart Engine</td>
+                <td class="col-loanzo"><code>UpiHelper.launchUpiIntent()</code> pays supplier VPA directly; generates Section 4 Promissory Note PDF</td>
+                <td><strong>Borrower:</strong> Receives raw materials.<br/><strong>Supplier:</strong> Receives 100% instant payment.</td>
+              </tr>
+              <tr>
+                <td><strong>5. Full EMI Balance Cleared via UPI QR</strong></td>
+                <td>Borrower (Member)</td>
+                <td class="col-loanzo"><code>RepaymentDao</code> records zero balance; <code>CollateralVaultDao</code> unlocks asset; issues Golden NOC</td>
+                <td><strong>Borrower:</strong> Regains physical collateral.<br/><strong>Lenders:</strong> Principal + yield disbursed.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h4>LOANZO PROTOCOL</h4>
+        <p>
+          Next-Generation Decentralized Peer-to-Peer Microfinance Protocol. Purpose-bound milestone payouts, multi-asset collateral escrow, and zero-scam compliance for India's MSME credit ecosystem.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Documentation Pages</h5>
+        <ul>
+          <li><a href="index.html">Executive Hub & Story</a></li>
+          <li><a href="problem-solution.html">Problem ➔ Solution Matrix</a></li>
+          <li><a href="architecture.html">Code-Level Architecture</a></li>
+          <li><a href="user-roles.html">4 Multi-Sided User Roles</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Legal & Technical</h5>
+        <ul>
+          <li><a href="legal-compliance.html">Statutory Laws & RBI Compliance</a></li>
+          <li><a href="legal-compliance.html#fmea">FMEA Failure Mode Analysis</a></li>
+          <li><a href="architecture.html#room-schema">19 Room v12 Entities</a></li>
+          <li><a href="simulator.html">Live LTV Simulator</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Official Artifacts</h5>
+        <ul>
+          <li><a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download>Download 13-Slide PDF</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo/blob/main/README.md" target="_blank" rel="noopener">Master README</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <div>&copy; 2026 Loanzo Protocol. Engineered under Apache 2.0 / MIT Open Source License.</div>
+      <div>Architect & Lead Engineer: <strong>Satyam Kumar (@satyam0810)</strong></div>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

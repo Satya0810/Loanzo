@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loanzo Protocol | Interactive Simulators & Tools</title>
+  
+  <meta name="description" content="Live Multi-Asset Collateral & LTV Calculator, Milestone Tranche Simulator, and Developer Setup.">
+  <meta name="keywords" content="Loanzo, Android, Kotlin, Jetpack Compose, P2P Lending, Microfinance, Collateral Escrow, Fintech India, Room Database, Telegram Bot, Clean Architecture">
+  <meta name="author" content="Satyam Kumar & The Loanzo Engineering Protocol">
+
+  <link rel="icon" type="image/png" href="screenshots/app_logo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="nav-brand">
+        <img src="screenshots/app_logo.png" alt="Loanzo Emblem">
+        <span>LOANZO<span style="color: var(--gold-primary); font-size: 0.8rem; margin-left: 4px;">DOCS</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="index.html" class="">Executive Hub</a></li>
+        <li><a href="problem-solution.html" class="">Problem ➔ Solution</a></li>
+        <li><a href="architecture.html" class="">Architecture & Code</a></li>
+        <li><a href="user-roles.html" class="">User Roles</a></li>
+        <li><a href="legal-compliance.html" class="">Legal & Security</a></li>
+        <li><a href="simulator.html" class="active">Interactive Simulators</a></li>
+      </ul>
+
+      <div class="nav-cta-group">
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle Theme">
+          <span>🌙 Dark Mode</span>
+        </button>
+        <a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download class="btn-secondary">
+          <span>📄 13-Slide PDF</span>
+        </a>
+        <a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener" class="btn-primary">
+          <span>★ GitHub Repo</span>
+        </a>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="page-header-section">
+      <div class="container text-center">
+        <span class="section-pretitle">INTERACTIVE TOOLS</span>
+        <h1 class="page-header-title">Live Multi-Asset <span class="gradient-text">Collateral & LTV Simulator</span></h1>
+        <p class="page-header-desc">
+          Test the Loanzo risk management algorithm live. Select an asset class, adjust the appraised valuation, and watch the LTV ratio, monthly EMI, and milestone tranches recalculate in real-time.
+        </p>
+      </div>
+    </section>
+
+    <!-- Simulator Box -->
+    <section class="section">
+      <div class="container">
+        <div class="simulator-box">
+          <div class="sim-grid">
+            <div class="sim-controls">
+              <!-- Asset Class Selector -->
+              <div class="sim-control-group">
+                <div class="sim-control-label">
+                  <span>SELECT PLEDGED ASSET TYPE</span>
+                </div>
+                <div class="sim-asset-chips">
+                  <button class="sim-chip active" data-asset="GOLD">👑 Gold Bullion (75% Cap)</button>
+                  <button class="sim-chip" data-asset="PROPERTY">🏢 Commercial Property (65% Cap)</button>
+                  <button class="sim-chip" data-asset="EQUIPMENT">💻 IT / Machinery (60% Cap)</button>
+                  <button class="sim-chip" data-asset="VEHICLE">🚚 Motor Vehicle (70% Cap)</button>
+                  <button class="sim-chip" data-asset="INVOICE">📑 Trade Invoice (80% Cap)</button>
+                </div>
+              </div>
+
+              <!-- Collateral Market Value Slider -->
+              <div class="sim-control-group">
+                <div class="sim-control-label">
+                  <span>Appraised Collateral Market Value</span>
+                  <span id="simValText" style="color: var(--gold-light); font-weight: 700;">₹2,50,000</span>
+                </div>
+                <input type="range" min="30000" max="1000000" step="10000" value="250000" class="sim-slider" id="simValSlider">
+              </div>
+
+              <!-- Requested Loan Amount Slider -->
+              <div class="sim-control-group">
+                <div class="sim-control-label">
+                  <span>Requested Working Capital</span>
+                  <span id="simLoanText" style="color: var(--emerald-accent); font-weight: 700;">₹1,50,000</span>
+                </div>
+                <input type="range" min="10000" max="800000" step="5000" value="150000" class="sim-slider" id="simLoanSlider">
+              </div>
+
+              <!-- Extra Summary Details -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem;">
+                <div style="background: var(--bg-secondary); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card);">
+                  <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 700;">Max Safe Borrowing</div>
+                  <div id="simMaxBorrow" style="font-size: 1.25rem; font-weight: 700; color: var(--gold-primary);">₹1,87,500</div>
+                </div>
+                <div style="background: var(--bg-secondary); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-card);">
+                  <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; font-weight: 700;">Estimated Monthly EMI (12m @ 12%)</div>
+                  <div id="simEmiValue" style="font-size: 1.25rem; font-weight: 700; color: #0284C7;">₹13,327/mo</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Readout Panel -->
+            <div class="sim-readout-panel">
+              <div class="sim-ltv-display">
+                <div style="font-size: 0.82rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700;">Calculated Loan-To-Value (LTV)</div>
+                <div id="simLtvValue" class="sim-ltv-percentage">60.0%</div>
+                <div id="simHealthBadge" class="sim-health-indicator health-healthy">● LTV HEALTHY (SECURED)</div>
+              </div>
+
+              <!-- Purpose-Bound Tranche Breakdown -->
+              <div class="sim-tranches-breakdown">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--gold-primary); text-transform: uppercase;">Purpose-Bound Milestone Schedule</div>
+                <div class="tranche-row">
+                  <span>Tranche 1: Raw Materials (40%)</span>
+                  <strong id="tranche1Val" style="color: var(--text-main);">₹60,000</strong>
+                </div>
+                <div class="tranche-row">
+                  <span>Tranche 2: Manufacturing & Labor (35%)</span>
+                  <strong id="tranche2Val" style="color: var(--text-main);">₹52,500</strong>
+                </div>
+                <div class="tranche-row">
+                  <span>Tranche 3: Logistics & Distribution (25%)</span>
+                  <strong id="tranche3Val" style="color: var(--text-main);">₹37,500</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Developer Setup & Build Instructions -->
+        <div class="section-header" style="margin-top: 4.5rem;">
+          <span class="section-pretitle">DEVELOPER QUICKSTART</span>
+          <h2 class="section-title">Local Environment Setup & <span class="gradient-text">Gradle Build</span></h2>
+          <p class="section-subtitle">
+            Instructions to clone, configure, build, and run the Android application locally on device or emulator.
+          </p>
+        </div>
+
+        <div class="code-block">
+          <div style="color: var(--gold-light); font-weight: 700; margin-bottom: 0.5rem;"># 1. Clone the repository</div>
+          git clone https://github.com/Satya0810/Loanzo.git<br>
+          cd Loanzo<br><br>
+          <div style="color: var(--gold-light); font-weight: 700; margin-bottom: 0.5rem;"># 2. Build Debug APK using Gradle</div>
+          ./gradlew assembleDebug<br><br>
+          <div style="color: var(--gold-light); font-weight: 700; margin-bottom: 0.5rem;"># 3. Prerequisites</div>
+          <span style="color: #CBD5E1;">• Android Studio Ladybug (2024.2+) or Koala</span><br>
+          <span style="color: #CBD5E1;">• JDK 17 (Java Development Kit)</span><br>
+          <span style="color: #CBD5E1;">• Minimum SDK: 26 (Android 8.0 Oreo) | Target SDK: 34 (Android 14)</span><br>
+          <span style="color: #CBD5E1;">• Physical Android device with Biometric fingerprint sensor (or Biometric emulator)</span>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <h4>LOANZO PROTOCOL</h4>
+        <p>
+          Next-Generation Decentralized Peer-to-Peer Microfinance Protocol. Purpose-bound milestone payouts, multi-asset collateral escrow, and zero-scam compliance for India's MSME credit ecosystem.
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h5>Documentation Pages</h5>
+        <ul>
+          <li><a href="index.html">Executive Hub & Story</a></li>
+          <li><a href="problem-solution.html">Problem ➔ Solution Matrix</a></li>
+          <li><a href="architecture.html">Code-Level Architecture</a></li>
+          <li><a href="user-roles.html">4 Multi-Sided User Roles</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Legal & Technical</h5>
+        <ul>
+          <li><a href="legal-compliance.html">Statutory Laws & RBI Compliance</a></li>
+          <li><a href="legal-compliance.html#fmea">FMEA Failure Mode Analysis</a></li>
+          <li><a href="architecture.html#room-schema">19 Room v12 Entities</a></li>
+          <li><a href="simulator.html">Live LTV Simulator</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Official Artifacts</h5>
+        <ul>
+          <li><a href="LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf" download>Download 13-Slide PDF</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li><a href="https://github.com/Satya0810/Loanzo/blob/main/README.md" target="_blank" rel="noopener">Master README</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <div>&copy; 2026 Loanzo Protocol. Engineered under Apache 2.0 / MIT Open Source License.</div>
+      <div>Architect & Lead Engineer: <strong>Satyam Kumar (@satyam0810)</strong></div>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
