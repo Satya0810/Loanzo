@@ -220,7 +220,7 @@ private fun GuarantorCard(
                     ) {
                         Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Accept", fontWeight = FontWeight.Bold)
+                        Text("Accept", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                     OutlinedButton(
                         onClick = { onUpdateConsent("REJECTED") },
@@ -229,7 +229,7 @@ private fun GuarantorCard(
                     ) {
                         Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Reject")
+                        Text("Reject", maxLines = 1, softWrap = false)
                     }
                 }
             }

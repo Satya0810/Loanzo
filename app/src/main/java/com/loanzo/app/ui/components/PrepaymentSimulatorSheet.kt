@@ -103,7 +103,7 @@ fun PrepaymentSimulatorSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     Text(
                         text = "Debt Payoff Simulator",
                         style = MaterialTheme.typography.headlineSmall,

@@ -20,7 +20,8 @@ fun ExportReportBottomSheet(
     onDismiss: () -> Unit,
     onExportLoanSummaryPdf: () -> Unit,
     onExportInterestCertPdf: () -> Unit,
-    onExportRepaymentsCsv: () -> Unit
+    onExportRepaymentsCsv: () -> Unit,
+    onExportPitchDeckPdf: () -> Unit = {}
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -47,8 +48,8 @@ fun ExportReportBottomSheet(
 
             ExportOptionCard(
                 icon = Icons.Default.PictureAsPdf,
-                title = "Loan Summary Report (PDF)",
-                subtitle = "Complete loan terms, outstanding balance, and repayment table",
+                title = "Executive Portfolio Dossier (PDF)",
+                subtitle = "Visual loan report with Donut charts, recovery histogram & legal lifecycle",
                 tint = Gold500,
                 onClick = {
                     onExportLoanSummaryPdf()
@@ -63,6 +64,17 @@ fun ExportReportBottomSheet(
                 tint = Emerald400,
                 onClick = {
                     onExportInterestCertPdf()
+                    onDismiss()
+                }
+            )
+
+            ExportOptionCard(
+                icon = Icons.Default.TableChart,
+                title = "Startup Pitch & Executive Dossier (PDF)",
+                subtitle = "Hackathon presentation deck with market TAM, architecture & traction charts",
+                tint = Gold500,
+                onClick = {
+                    onExportPitchDeckPdf()
                     onDismiss()
                 }
             )

@@ -28,6 +28,7 @@ data class AuthUiState(
     val error: String? = null,
     val registrationSuccess: Boolean = false,
     val isUserIdVerified: Boolean = false,
+    val selectedRole: String = "Member",
     // Verifications
     val isEmailVerified: Boolean = false,
     val isCheckingEmailVerification: Boolean = false,
@@ -101,7 +102,14 @@ class AuthViewModel @Inject constructor(
             }
         }
 
-        // Auto-provisioning of App Owner was removed per user request
+        // Pre-populate comprehensive demo data across Member, Agent, and Admin roles
+        viewModelScope.launch {
+            try {
+                demoDataSeeder.seedGlobalDemoData()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     fun resetAuthState() {
@@ -130,7 +138,14 @@ class AuthViewModel @Inject constructor(
         _uiState.update { it.copy(isUserIdVerified = false, error = null) }
     }
 
-    fun verifyUserIdExists(loginId: String) {
+    fun setSelectedLoginRole(role: String) {
+        _uiState.update { it.copy(selectedRole = role) }
+    }
+
+    fun verifyUserIdExists(loginId: String, role: String? = null) {
+        if (role != null) {
+            _uiState.update { it.copy(selectedRole = role) }
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val cleanId = loginId.trim().lowercase()
@@ -533,7 +548,8 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun loginWithCredentials(loginId: String, pass: String) {
+    fun loginWithCredentials(loginId: String, pass: String, selectedRole: String? = null) {
+        val targetRole = selectedRole ?: _uiState.value.selectedRole
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
@@ -645,6 +661,21 @@ class AuthViewModel @Inject constructor(
                         profilePhotoUri = remoteUser?.profilePhotoUri?.ifBlank { finalUser.profilePhotoUri } ?: finalUser.profilePhotoUri
                     )
 
+                    if (!targetRole.isNullOrBlank()) {
+                        val mappedRole = when {
+                            targetRole.contains("admin", ignoreCase = true) -> "ADMIN"
+                            targetRole.contains("agent", ignoreCase = true) -> "AGENT"
+                            targetRole.contains("borrower", ignoreCase = true) -> "BORROWER"
+                            targetRole.contains("lender", ignoreCase = true) -> "LENDER"
+                            else -> "USER"
+                        }
+                        finalUser = finalUser.copy(
+                            role = mappedRole,
+                            agentStatus = if (mappedRole == "AGENT") "APPROVED" else finalUser.agentStatus,
+                            isOnDuty = if (mappedRole == "AGENT") true else finalUser.isOnDuty
+                        )
+                    }
+
                     userRepository.updateUser(finalUser)
                     firebaseManager.saveUserToFirestore(finalUser)
 
@@ -653,6 +684,9 @@ class AuthViewModel @Inject constructor(
                         userRepository.saveBiometricEnrollment("", false)
                     }
                     userRepository.saveSession(finalUser.userId, finalUser.role)
+                    try {
+                        demoDataSeeder.seedAllDemoData(finalUser.userId)
+                    } catch (_: Exception) {}
                     
                     syncUserOnline(finalUser)
                     downloadUserMediaLocally(finalUser)
@@ -923,7 +957,8 @@ class AuthViewModel @Inject constructor(
     /**
      * Handles Biometric (Fingerprint/Face) login.
      */
-    fun handleBiometricLogin() {
+    fun handleBiometricLogin(selectedRole: String? = null) {
+        val targetRole = selectedRole ?: _uiState.value.selectedRole
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
@@ -945,16 +980,32 @@ class AuthViewModel @Inject constructor(
                     ?: userRepository.getUserById(biometricUserId)
 
                 if (onlineUser != null) {
-                    userRepository.saveSession(onlineUser.userId, onlineUser.role)
-                    userRepository.saveBiometricEnrollment(onlineUser.userId, true)
-                    downloadUserMediaLocally(onlineUser)
+                    var finalUser = onlineUser
+                    if (!targetRole.isNullOrBlank()) {
+                        val mappedRole = when {
+                            targetRole.contains("admin", ignoreCase = true) -> "ADMIN"
+                            targetRole.contains("agent", ignoreCase = true) -> "AGENT"
+                            targetRole.contains("borrower", ignoreCase = true) -> "BORROWER"
+                            targetRole.contains("lender", ignoreCase = true) -> "LENDER"
+                            else -> "USER"
+                        }
+                        finalUser = finalUser.copy(
+                            role = mappedRole,
+                            agentStatus = if (mappedRole == "AGENT") "APPROVED" else finalUser.agentStatus,
+                            isOnDuty = if (mappedRole == "AGENT") true else finalUser.isOnDuty
+                        )
+                        userRepository.updateUser(finalUser)
+                    }
+                    userRepository.saveSession(finalUser.userId, finalUser.role)
+                    userRepository.saveBiometricEnrollment(finalUser.userId, true)
+                    downloadUserMediaLocally(finalUser)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             isLoggedIn = true,
-                            currentUserId = onlineUser.userId,
-                            currentRole = onlineUser.role,
-                            kycStatus = onlineUser.kycStatus
+                            currentUserId = finalUser.userId,
+                            currentRole = finalUser.role,
+                            kycStatus = finalUser.kycStatus
                         )
                     }
                 } else {

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loanzo.app.data.entity.LoanEntity
 import com.loanzo.app.data.entity.UserEntity
+import com.loanzo.app.ui.components.*
 import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.TelegramManager
 import com.loanzo.app.util.toInrString
@@ -319,7 +320,10 @@ fun ReportActionBottomSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Surface(
                         shape = CircleShape,
                         color = Red400.copy(alpha = 0.15f),
@@ -373,25 +377,36 @@ fun ReportActionBottomSheet(
                 }.distinct()
             }
 
-            if (counterpartyIds.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    counterpartyIds.take(3).forEach { id ->
-                        val isSelected = targetPerson == id
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { targetPerson = id },
-                            label = { Text("User #$id", fontSize = 12.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Red400.copy(alpha = 0.2f),
-                                selectedLabelColor = Red400
+            // Quick Counterparty selector chips with Golden Coin Box Coloring
+            val quickTransactors = listOf(
+                Triple("satyam0810", "👑 @satyam0810 (Admin)", "ADMIN"),
+                Triple("agent_demo", "🕵️ @agent_demo (Agent)", "AGENT"),
+                Triple("user_demo", "👤 @user_demo (Member)", "USER")
+            )
+            androidx.compose.foundation.lazy.LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(quickTransactors) { (tUser, tLabel, _) ->
+                    val isSelected = targetPerson == tUser
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { targetPerson = if (isSelected) "" else tUser },
+                        label = {
+                            Text(
+                                tLabel,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1,
+                                softWrap = false
                             )
-                        )
-                    }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = goldFilterChipColors(),
+                        border = goldFilterChipBorder(isSelected)
+                    )
                 }
             }
 

@@ -62,11 +62,11 @@ fun AgentDashboardScreen(
     val isOnDuty = user?.isOnDuty ?: true
     val totalEarnings = user?.totalAgentEarnings ?: 0.0
 
-    val darkBg = Color(0xFF0D1117)
-    val cardBg = Color(0xFF161B22)
-    val borderColor = Color(0xFF30363D)
-    val goldAccent = Color(0xFFFFB800)
-    val emeraldAccent = Color(0xFF10B981)
+    val darkBg = MaterialTheme.colorScheme.background
+    val cardBg = MaterialTheme.colorScheme.surface
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
+    val goldAccent = com.loanzo.app.ui.theme.Gold500
+    val emeraldAccent = com.loanzo.app.ui.theme.Emerald500
 
     val todayVisits = remember(visits) {
         visits.filter { it.scheduledDate.equals("Today", ignoreCase = true) }
@@ -86,9 +86,10 @@ fun AgentDashboardScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Surface(
-                color = Color(0xFF161B22),
+                color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
             ) {
                 Column(
@@ -132,7 +133,7 @@ fun AgentDashboardScreen(
                                     text = user?.name?.ifBlank { "Loanzo Agent" } ?: "Loanzo Agent",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     softWrap = false,
                                     overflow = TextOverflow.Ellipsis
@@ -174,7 +175,7 @@ fun AgentDashboardScreen(
                                 Icon(
                                     imageVector = Icons.Default.Logout,
                                     contentDescription = "Sign Out",
-                                    tint = Color(0xFF8B949E)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -245,8 +246,7 @@ fun AgentDashboardScreen(
                     }
                 }
             }
-        },
-        containerColor = darkBg
+        }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -282,7 +282,7 @@ fun AgentDashboardScreen(
                                     text = "Break Active — Duty Paused",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 1,
                                     softWrap = false
                                 )
@@ -336,7 +336,7 @@ fun AgentDashboardScreen(
                     text = "Scheduled Field Inspections",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 LazyRow(
@@ -377,7 +377,7 @@ fun AgentDashboardScreen(
                                 text = "No Inspections Found",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -473,7 +473,7 @@ fun AgentDashboardScreen(
     showPayoutSuccessDialog?.let { amount ->
         AlertDialog(
             onDismissRequest = { showPayoutSuccessDialog = null },
-            containerColor = Color(0xFF161B22),
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -485,7 +485,7 @@ fun AgentDashboardScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = "Inspection Verified!",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -532,7 +532,7 @@ fun AgentDashboardScreen(
     if (showRoleSwitchDialog) {
         AlertDialog(
             onDismissRequest = { showRoleSwitchDialog = false },
-            containerColor = Color(0xFF161B22),
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("👑", fontSize = 18.sp)
@@ -558,7 +558,7 @@ fun AgentDashboardScreen(
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = Color(0xFF21262D),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF30363D)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -575,13 +575,13 @@ fun AgentDashboardScreen(
                             Column {
                                 Text(
                                     text = "Normal Member Dashboard",
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
                                 Text(
                                     text = "P2P loans, wallet, marketplace feed",
-                                    color = Color(0xFF8B949E),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 11.sp
                                 )
                             }
@@ -594,7 +594,7 @@ fun AgentDashboardScreen(
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = Color(0xFF21262D),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF30363D)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -611,13 +611,13 @@ fun AgentDashboardScreen(
                             Column {
                                 Text(
                                     text = "Master Admin Hub",
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp
                                 )
                                 Text(
                                     text = "Empanelment approvals & verification tokens",
-                                    color = Color(0xFF8B949E),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 11.sp
                                 )
                             }
@@ -645,8 +645,8 @@ private fun StatCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF161B22),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF30363D))
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Icon(
@@ -660,14 +660,14 @@ private fun StatCard(
                 text = value,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 softWrap = false
             )
             Text(
                 text = title,
                 fontSize = 10.sp,
-                color = Color(0xFF8B949E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 softWrap = false
             )
@@ -684,10 +684,10 @@ private fun FilterChipItem(
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) Color(0xFFFFB800) else Color(0xFF161B22),
+        color = if (isSelected) Color(0xFFFFB800) else MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (isSelected) Color(0xFFFFB800) else Color(0xFF30363D)
+            if (isSelected) Color(0xFFFFB800) else MaterialTheme.colorScheme.outlineVariant
         ),
         modifier = Modifier.clickable { onSelect() }
     ) {
@@ -713,8 +713,8 @@ private fun AgentVisitCard(
     onWhatsAppLender: () -> Unit,
     onStartInspection: () -> Unit
 ) {
-    val cardBg = Color(0xFF161B22)
-    val borderColor = Color(0xFF30363D)
+    val cardBg = MaterialTheme.colorScheme.surface
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
     val goldAccent = Color(0xFFFFB800)
     val emeraldAccent = Color(0xFF10B981)
 
@@ -787,7 +787,7 @@ private fun AgentVisitCard(
                 text = visit.title,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -965,7 +965,7 @@ private fun CounterpartyRow(
                 Text(
                     text = roleLabel,
                     fontSize = 10.sp,
-                    color = Color(0xFF8B949E),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                     maxLines = 1,

@@ -29,6 +29,9 @@ interface ComplaintDao {
 
     @Query("UPDATE complaints SET status = :status, resolutionNotes = :notes, resolvedAt = :resolvedAt WHERE complaintId = :complaintId")
     suspend fun updateComplaintStatus(complaintId: String, status: String, notes: String?, resolvedAt: Long?)
+
+    @Query("DELETE FROM complaints WHERE complaintId LIKE 'comp_demo_%'")
+    suspend fun deleteDemoComplaints()
 }
 
 @Dao
@@ -53,6 +56,9 @@ interface MediationMeetingDao {
 
     @Query("UPDATE mediation_meetings SET status = :status, adminNotes = :notes WHERE meetingId = :meetingId")
     suspend fun updateMeetingStatus(meetingId: String, status: String, notes: String?)
+
+    @Query("DELETE FROM mediation_meetings WHERE meetingId LIKE 'meet_demo_%'")
+    suspend fun deleteDemoMeetings()
 }
 
 @Dao
@@ -80,6 +86,9 @@ interface CollateralVaultDao {
 
     @Query("UPDATE collateral_vault SET custodyStatus = :status, releaseDate = :releaseDate WHERE loanId = :loanId")
     suspend fun updateCustodyStatusByLoan(loanId: String, status: String, releaseDate: Long?)
+
+    @Query("DELETE FROM collateral_vault WHERE vaultItemId LIKE 'vault_demo_%'")
+    suspend fun deleteDemoVaultItems()
 }
 
 @Dao
@@ -98,4 +107,7 @@ interface NocCertificateDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNocs(nocs: List<NocCertificateEntity>)
+
+    @Query("DELETE FROM noc_certificates WHERE nocId LIKE 'noc_demo_%'")
+    suspend fun deleteDemoNocs()
 }

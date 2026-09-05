@@ -1,5 +1,8 @@
 package com.loanzo.app.ui.navigation
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.style.TextOverflow
+
 import androidx.compose.ui.res.stringResource
 import com.loanzo.app.R
 
@@ -155,13 +158,7 @@ fun LoanzoNavGraph(
             LaunchedEffect(authState.isSessionChecking, authState.isLoggedIn) {
                 if (!authState.isSessionChecking) {
                     val destination = if (authState.isLoggedIn) {
-                        val activeUserId = authState.currentUserId
-                        val user = if (!activeUserId.isNullOrBlank()) userRepository.getUserById(activeUserId) else null
-                        if (user?.role == "AGENT") {
-                            if (user.agentStatus == "APPROVED") Routes.AGENT_MAIN else Routes.AGENT_PENDING_APPROVAL
-                        } else {
-                            Routes.MAIN
-                        }
+                        Routes.MAIN
                     } else {
                         Routes.LOGIN
                     }
@@ -254,10 +251,11 @@ fun LoanzoNavGraph(
             var prefilledUsernameForBiometrics by remember { mutableStateOf("") }
             
             LoginScreen(
-                onLogin = { userId, pass ->
-                    authViewModel.loginWithCredentials(userId, pass)
+                onLogin = { userId, pass, role ->
+                    authViewModel.loginWithCredentials(userId, pass, role)
                 },
-                onBiometricLogin = { currentTypedUser ->
+                onBiometricLogin = { currentTypedUser, role ->
+                    authViewModel.setSelectedLoginRole(role)
                     val fragmentActivity = activity
                     fragmentActivity?.let { fa ->
                         authViewModel.checkBiometricEnrollment(
@@ -265,8 +263,8 @@ fun LoanzoNavGraph(
                                 com.loanzo.app.util.BiometricAuthManager.authenticate(
                                     activity = fa,
                                     title = "Biometric Login",
-                                    subtitle = "Scan your fingerprint or face to sign in",
-                                    onSuccess = { authViewModel.handleBiometricLogin() },
+                                    subtitle = "Scan fingerprint or face to sign in as $role",
+                                    onSuccess = { authViewModel.handleBiometricLogin(role) },
                                     onError = { err -> authViewModel.setError(err) }
                                 )
                             },
@@ -297,7 +295,10 @@ fun LoanzoNavGraph(
                 error = authState.error,
                 onClearError = { authViewModel.clearError() },
                 isUserIdVerified = authState.isUserIdVerified,
-                onVerifyUserId = { authViewModel.verifyUserIdExists(it) },
+                onVerifyUserId = { userId, role -> 
+                    authViewModel.setSelectedLoginRole(role)
+                    authViewModel.verifyUserIdExists(userId, role) 
+                },
                 onResetUserIdVerification = { authViewModel.resetUserIdVerification() }
             )
 
@@ -327,14 +328,7 @@ fun LoanzoNavGraph(
             val userRepository = com.loanzo.app.util.LocalUserRepository.current
             LaunchedEffect(authState.isLoggedIn) {
                 if (authState.isLoggedIn) {
-                    val activeUserId = authState.currentUserId
-                    val user = if (!activeUserId.isNullOrBlank()) userRepository.getUserById(activeUserId) else null
-                    val destination = if (user?.role == "AGENT") {
-                        if (user.agentStatus == "APPROVED") Routes.AGENT_MAIN else Routes.AGENT_PENDING_APPROVAL
-                    } else {
-                        Routes.MAIN
-                    }
-                    navController.navigate(destination) {
+                    navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
@@ -438,15 +432,6 @@ fun LoanzoNavGraph(
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                         launchSingleTop = true
-                    }
-                } else {
-                    val activeUserId = authState.currentUserId
-                    val user = if (!activeUserId.isNullOrBlank()) userRepository.getUserById(activeUserId) else null
-                    if (user?.role == "AGENT" && user.agentStatus == "APPROVED") {
-                        navController.navigate(Routes.AGENT_MAIN) {
-                            popUpTo(Routes.MAIN) { inclusive = true }
-                            launchSingleTop = true
-                        }
                     }
                 }
             }
@@ -628,6 +613,7 @@ fun LoanzoNavGraph(
                     onExportLoanSummaryPdf = { loanViewModel.exportLoanSummary(context) },
                     onExportInterestCertPdf = { loanViewModel.exportInterestCertificate(context) },
                     onExportRepaymentsCsv = { loanViewModel.exportRepaymentsCsv(context) },
+                    onExportPitchDeckPdf = { loanViewModel.exportPitchDeck(context) },
                     onWaivePenalty = { repayment -> loanViewModel.waivePenalty(repayment) },
                     onRestructureLoan = { newTenure, moratorium ->
                         loanViewModel.restructureLoan(loanId, newTenure, moratorium)
@@ -635,6 +621,11 @@ fun LoanzoNavGraph(
                     onAcceptProposal = { loanViewModel.acceptProposal(loanId) },
                     onDeclineProposal = { loanViewModel.declineProposal(loanId) },
                     onDisburseLoan = { amount, utr -> loanViewModel.disburseLoan(loanId, amount, utr) },
+                    onExportAgreementPdf = {
+                        loanState.selectedLoan?.let { loan ->
+                            loanViewModel.exportAgreementPdf(context, loan)
+                        }
+                    },
                     onDownloadNocCertificate = {
                         loanState.selectedLoan?.let { loan ->
                             loanViewModel.exportNocCertificate(context, loan)
@@ -992,7 +983,7 @@ fun MainScaffold(
     val innerNavController = rememberNavController()
     val navBackStackEntry by innerNavController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val hideBottomNav = currentRoute == Routes.PROFILE || currentRoute == Routes.NOTIFICATIONS
+    val hideBottomNav = false
 
     var isQuickActionMenuOpen by rememberSaveable { mutableStateOf(false) }
 
@@ -1014,6 +1005,10 @@ fun MainScaffold(
     val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
     val currentUser by (if (!currentUserId.isNullOrBlank()) userRepository.observeUser(currentUserId!!) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val isKycCompleted = currentUser?.kycStatus == "VERIFIED"
+
+    val userRole = currentUser?.role?.uppercase() ?: "USER"
+    val isAgent = userRole == "AGENT" && currentUser?.agentStatus == "APPROVED"
+    val isAdmin = userRole == "ADMIN" || com.loanzo.app.util.VerificationManager.isAppOwner(currentUser)
 
     var showKycRequiredDialog by remember { mutableStateOf(false) }
     var kycDialogMessage by remember { mutableStateOf("") }
@@ -1104,9 +1099,12 @@ fun MainScaffold(
                                 colors = navItemColors
                             )
 
-                            // 2. Loans
+                            // 2. Loans / Field Visits / Platform Ledger (Role Adaptive)
                             val loansItem = bottomNavItems[1]
                             val loansSelected = currentRoute == loansItem.route
+                            val loansLabel = if (isAgent) "Visits" else if (isAdmin) "Platform" else loansItem.label
+                            val loansSelectedIcon = if (isAgent) Icons.Filled.FactCheck else if (isAdmin) Icons.Filled.AccountBalance else loansItem.selectedIcon
+                            val loansUnselectedIcon = if (isAgent) Icons.Outlined.FactCheck else if (isAdmin) Icons.Outlined.AccountBalance else loansItem.unselectedIcon
                             NavigationBarItem(
                                 selected = loansSelected,
                                 onClick = {
@@ -1118,12 +1116,14 @@ fun MainScaffold(
                                         }
                                     }
                                 },
-                                icon = { Icon(if (loansSelected) loansItem.selectedIcon else loansItem.unselectedIcon, contentDescription = loansItem.label) },
-                                label = { Text(loansItem.label, fontWeight = if (loansSelected) FontWeight.Bold else FontWeight.Normal) },
+                                icon = { Icon(if (loansSelected) loansSelectedIcon else loansUnselectedIcon, contentDescription = loansLabel) },
+                                label = { Text(loansLabel, fontWeight = if (loansSelected) FontWeight.Bold else FontWeight.Normal) },
                                 colors = navItemColors
                             )
 
                             // 3. Center Cradle Slot (aligned beneath the floating action button)
+                            val centerCradleLabel = if (isAgent) "Inspect" else if (isAdmin) "Dispatch" else "Post"
+                            val centerCradleColor = if (isAgent) Emerald500 else if (isAdmin) Color(0xFF6366F1) else MaterialTheme.colorScheme.primary
                             NavigationBarItem(
                                 selected = false,
                                 onClick = {
@@ -1133,10 +1133,10 @@ fun MainScaffold(
                                 icon = { Spacer(modifier = Modifier.size(24.dp)) },
                                 label = {
                                     Text(
-                                        text = "Post",
+                                        text = centerCradleLabel,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = centerCradleColor
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
@@ -1196,7 +1196,9 @@ fun MainScaffold(
                         }
                     }
 
-                    // Round Center Plus Button with Adaptive Styling
+                    // Round Center Action Button with Role-Adaptive Styling
+                    val fabColor = if (isAgent) Emerald500 else if (isAdmin) Color(0xFF6366F1) else MaterialTheme.colorScheme.primary
+                    val fabIcon = if (isAgent) Icons.Default.QrCodeScanner else if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Add
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
@@ -1217,8 +1219,8 @@ fun MainScaffold(
                                 }
                             },
                             shape = CircleShape,
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = fabColor,
+                            contentColor = Color.White,
                             elevation = FloatingActionButtonDefaults.elevation(
                                 defaultElevation = 6.dp,
                                 pressedElevation = 10.dp
@@ -1226,12 +1228,12 @@ fun MainScaffold(
                             modifier = Modifier.size(55.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Quick Action",
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                imageVector = fabIcon,
+                                contentDescription = if (isAgent) "Agent Inspection" else if (isAdmin) "Admin Command" else "Quick Action",
+                                tint = Color.White,
                                 modifier = Modifier
                                     .size(28.dp)
-                                    .rotate(rotationAngle)
+                                    .rotate(if (isAgent || isAdmin) 0f else rotationAngle)
                             )
                         }
                     }
@@ -1324,7 +1326,10 @@ fun MainScaffold(
                                 kycDialogMessage = "You must complete identity verification (KYC) before borrowing or granting loans."
                                 showKycRequiredDialog = true
                             }
-                        }
+                        },
+                        userRole = userRole,
+                        user = currentUser,
+                        onNavigateToAdminHub = { navController.navigate(Routes.APP_OWNER_HUB) }
                     )
 
                     if (!loansGuideSeen) {
@@ -1475,74 +1480,169 @@ fun MainScaffold(
         )
     }
 
-    // Circular Radial Satellite Menu (Fan-out arc around the center yellow button)
+    // Circular Radial Satellite Menu (Role Adaptive)
     if (!hideBottomNav && radialProgress > 0.01f) {
+        val context = androidx.compose.ui.platform.LocalContext.current
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = 54.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
-            // Satellite 1: Top-Left (140°) - Post Loan Lending Offer (Lender)
-            CircularSatelliteItem(
-                icon = Icons.Default.Upload,
-                label = "Lend Offer",
-                containerColor = Gold500,
-                iconTint = Navy900,
-                progress = radialProgress,
-                offsetX = (-90 * radialProgress).dp,
-                offsetY = (-66 * radialProgress).dp,
-                onClick = {
-                    isQuickActionMenuOpen = false
-                    if (isKycCompleted) {
-                        navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=OFFER_TO_LEND")
-                    } else {
-                        kycDialogMessage = "You must complete identity verification (KYC) before posting lending offers."
-                        showKycRequiredDialog = true
+            if (isAgent) {
+                // Agent Satellite 1: Geotag Check-in
+                CircularSatelliteItem(
+                    icon = Icons.Default.PinDrop,
+                    label = "Check-in",
+                    containerColor = Emerald500,
+                    iconTint = Color.White,
+                    progress = radialProgress,
+                    offsetX = (-90 * radialProgress).dp,
+                    offsetY = (-66 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        android.widget.Toast.makeText(context, "📍 Agent GPS Geotag Check-in recorded at current location!", android.widget.Toast.LENGTH_SHORT).show()
                     }
-                }
-            )
+                )
 
-            // Satellite 2: Center Straight-Up (90°) - Direct P2P (Known Contact)
-            CircularSatelliteItem(
-                icon = Icons.Default.People,
-                label = "Direct P2P",
-                containerColor = Color(0xFF7C4DFF),
-                iconTint = Color.White,
-                size = 56.dp,
-                progress = radialProgress,
-                offsetX = 0.dp,
-                offsetY = (-120 * radialProgress).dp,
-                onClick = {
-                    isQuickActionMenuOpen = false
-                    if (isKycCompleted) {
-                        navController.navigate("${Routes.CREATE_LOAN}?mode=GRANT")
-                    } else {
-                        kycDialogMessage = "You must complete identity verification (KYC) before creating or granting direct loans."
-                        showKycRequiredDialog = true
+                // Agent Satellite 2: Start Inspection
+                CircularSatelliteItem(
+                    icon = Icons.Default.QrCodeScanner,
+                    label = "Inspect",
+                    containerColor = Gold500,
+                    iconTint = Navy900,
+                    size = 56.dp,
+                    progress = radialProgress,
+                    offsetX = 0.dp,
+                    offsetY = (-120 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        innerNavController.navigate(Routes.LOANS)
                     }
-                }
-            )
+                )
 
-            // Satellite 3: Top-Right (40°) - Post Loan Request (Borrower)
-            CircularSatelliteItem(
-                icon = Icons.Default.Download,
-                label = "Seek Loan",
-                containerColor = Emerald400,
-                iconTint = Navy900,
-                progress = radialProgress,
-                offsetX = (90 * radialProgress).dp,
-                offsetY = (-66 * radialProgress).dp,
-                onClick = {
-                    isQuickActionMenuOpen = false
-                    if (isKycCompleted) {
-                        navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=SEEKING_LOAN")
-                    } else {
-                        kycDialogMessage = "You must complete identity verification (KYC) before seeking or borrowing loans."
-                        showKycRequiredDialog = true
+                // Agent Satellite 3: Assigned Visits
+                CircularSatelliteItem(
+                    icon = Icons.Default.FactCheck,
+                    label = "Visits",
+                    containerColor = Color(0xFF6366F1),
+                    iconTint = Color.White,
+                    progress = radialProgress,
+                    offsetX = (90 * radialProgress).dp,
+                    offsetY = (-66 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        innerNavController.navigate(Routes.LOANS)
                     }
-                }
-            )
+                )
+            } else if (isAdmin) {
+                // Admin Satellite 1: KYC Desk
+                CircularSatelliteItem(
+                    icon = Icons.Default.VerifiedUser,
+                    label = "KYC Desk",
+                    containerColor = Gold500,
+                    iconTint = Navy900,
+                    progress = radialProgress,
+                    offsetX = (-90 * radialProgress).dp,
+                    offsetY = (-66 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        navController.navigate(Routes.APP_OWNER_HUB)
+                    }
+                )
+
+                // Admin Satellite 2: Agent Empanelment & Dispatch
+                CircularSatelliteItem(
+                    icon = Icons.Default.Badge,
+                    label = "Dispatch",
+                    containerColor = Emerald500,
+                    iconTint = Color.White,
+                    size = 56.dp,
+                    progress = radialProgress,
+                    offsetX = 0.dp,
+                    offsetY = (-120 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        navController.navigate(Routes.APP_OWNER_HUB)
+                    }
+                )
+
+                // Admin Satellite 3: Vault / Platform Management
+                CircularSatelliteItem(
+                    icon = Icons.Default.AccountBalance,
+                    label = "Vault",
+                    containerColor = Color(0xFF6366F1),
+                    iconTint = Color.White,
+                    progress = radialProgress,
+                    offsetX = (90 * radialProgress).dp,
+                    offsetY = (-66 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        navController.navigate(Routes.APP_OWNER_HUB)
+                    }
+                )
+            } else {
+                // Member Satellite 1: Lend Offer
+                CircularSatelliteItem(
+                    icon = Icons.Default.Upload,
+                    label = "Lend Offer",
+                    containerColor = Gold500,
+                    iconTint = Navy900,
+                    progress = radialProgress,
+                    offsetX = (-90 * radialProgress).dp,
+                    offsetY = (-66 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        if (isKycCompleted) {
+                            navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=OFFER_TO_LEND")
+                        } else {
+                            kycDialogMessage = "You must complete identity verification (KYC) before posting lending offers."
+                            showKycRequiredDialog = true
+                        }
+                    }
+                )
+
+                // Member Satellite 2: Direct P2P
+                CircularSatelliteItem(
+                    icon = Icons.Default.People,
+                    label = "Direct P2P",
+                    containerColor = Color(0xFF7C4DFF),
+                    iconTint = Color.White,
+                    size = 56.dp,
+                    progress = radialProgress,
+                    offsetX = 0.dp,
+                    offsetY = (-120 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        if (isKycCompleted) {
+                            navController.navigate("${Routes.CREATE_LOAN}?mode=GRANT")
+                        } else {
+                            kycDialogMessage = "You must complete identity verification (KYC) before creating or granting direct loans."
+                            showKycRequiredDialog = true
+                        }
+                    }
+                )
+
+                // Member Satellite 3: Seek Loan
+                CircularSatelliteItem(
+                    icon = Icons.Default.Download,
+                    label = "Seek Loan",
+                    containerColor = Emerald400,
+                    iconTint = Navy900,
+                    progress = radialProgress,
+                    offsetX = (90 * radialProgress).dp,
+                    offsetY = (-66 * radialProgress).dp,
+                    onClick = {
+                        isQuickActionMenuOpen = false
+                        if (isKycCompleted) {
+                            navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=SEEKING_LOAN")
+                        } else {
+                            kycDialogMessage = "You must complete identity verification (KYC) before seeking or borrowing loans."
+                            showKycRequiredDialog = true
+                        }
+                    }
+                )
+            }
         }
     }
 
@@ -1714,8 +1814,428 @@ fun LoanListScreen(
     currentUserId: String,
     isLoading: Boolean,
     onNavigateToLoanDetail: (String) -> Unit,
-    onNavigateToCreateLoan: (mode: String) -> Unit
+    onNavigateToCreateLoan: (mode: String) -> Unit,
+    userRole: String = "USER",
+    user: com.loanzo.app.data.entity.UserEntity? = null,
+    onNavigateToAdminHub: () -> Unit = {}
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val isAgent = userRole == "AGENT" && user?.agentStatus == "APPROVED"
+    val isAdmin = userRole == "ADMIN" || com.loanzo.app.util.VerificationManager.isAppOwner(user)
+
+    if (isAgent) {
+        // ==========================================
+        // 🕵️ FIELD AGENT: INSPECTION VISITS & TASKS
+        // ==========================================
+        val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+        val allVisits by agentRepository.getVisitsForAgent(currentUserId).collectAsStateWithLifecycle(initialValue = emptyList())
+        var agentTab by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) } // 0: Assigned, 1: Completed
+        var activeInspectionVisit by remember { mutableStateOf<com.loanzo.app.data.entity.AgentVisitEntity?>(null) }
+
+        val assignedVisits = remember(allVisits) { allVisits.filter { it.status != "COMPLETED" } }
+        val completedVisits = remember(allVisits) { allVisits.filter { it.status == "COMPLETED" } }
+        val currentVisits = if (agentTab == 0) assignedVisits else completedVisits
+
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🕵️", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Field Visits & Inspections", fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        android.widget.Toast.makeText(context, "📍 Agent GPS Geotag Check-in recorded at current location!", android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    containerColor = Emerald500,
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.PinDrop, contentDescription = "GPS Check-in", tint = Color.White)
+                }
+            }
+        ) { padding ->
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(bottom = 90.dp)
+            ) {
+                // Top Tab Selector
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    SegmentedCapsuleTab(
+                        tabs = listOf(
+                            "Assigned (${assignedVisits.size})",
+                            "Completed (${completedVisits.size})"
+                        ),
+                        selectedIndex = agentTab,
+                        onTabSelected = { agentTab = it },
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                // Agent Metrics Hero Card
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("AGENT EARNINGS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("₹${user?.totalAgentEarnings?.toInt() ?: 0}", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Emerald500)
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (user?.isOnDuty == true) Emerald500.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(1.dp, if (user?.isOnDuty == true) Emerald500.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (user?.isOnDuty == true) Emerald500 else TextSlateMuted)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (user?.isOnDuty == true) "ON DUTY 🟢" else "OFF DUTY ⚪",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (user?.isOnDuty == true) Emerald500 else TextSlateMuted
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                // Section Title
+                item {
+                    SectionHeader(
+                        title = if (agentTab == 0) "Pending Inspections (${currentVisits.size})" else "Completed Inspections (${currentVisits.size})",
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (currentVisits.isEmpty()) {
+                    item {
+                        EmptyState(
+                            icon = if (agentTab == 0) Icons.Default.FactCheck else Icons.Default.CheckCircle,
+                            title = if (agentTab == 0) "No pending visits" else "No completed visits yet",
+                            subtitle = if (agentTab == 0) "Keep your duty status ON to receive automated doorstep inspection assignments" else "Completed inspections will appear here"
+                        )
+                    }
+                } else {
+                    items(currentVisits.size) { index ->
+                        val visit = currentVisits[index]
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 6.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = Gold500.copy(alpha = 0.15f),
+                                        border = BorderStroke(0.5.dp, Gold500.copy(alpha = 0.4f))
+                                    ) {
+                                        Text(
+                                            text = visit.visitType.replace("_", " "),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Gold500,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = "+₹${visit.payoutAmount.toInt()} Payout",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Emerald500
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = visit.borrowerName,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "📍 ${visit.targetAddress}",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.6.dp)
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 1. Call
+                                    OutlinedButton(
+                                        onClick = {
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:${visit.borrowerPhone}"))
+                                            context.startActivity(intent)
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(vertical = 8.dp)
+                                    ) {
+                                        Icon(Icons.Default.Phone, contentDescription = "Call", modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Call", fontSize = 12.sp)
+                                    }
+
+                                    // 2. Maps
+                                    OutlinedButton(
+                                        onClick = {
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0?q=${android.net.Uri.encode(visit.targetAddress)}"))
+                                            context.startActivity(intent)
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(vertical = 8.dp)
+                                    ) {
+                                        Icon(Icons.Default.Navigation, contentDescription = "Map", modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Maps", fontSize = 12.sp)
+                                    }
+
+                                    // 3. Inspect Action
+                                    if (visit.status != "COMPLETED") {
+                                        Button(
+                                            onClick = { activeInspectionVisit = visit },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                            shape = RoundedCornerShape(10.dp),
+                                            modifier = Modifier.weight(1.3f),
+                                            contentPadding = PaddingValues(vertical = 8.dp)
+                                        ) {
+                                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Inspect", modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Inspect", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    } else {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = Emerald500.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                text = "COMPLETED ✓",
+                                                color = Emerald500,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Inspection Sheet
+        if (activeInspectionVisit != null) {
+            com.loanzo.app.ui.agent.AgentInspectionSheet(
+                visit = activeInspectionVisit!!,
+                onDismiss = { activeInspectionVisit = null },
+                onCompleteInspection = { remarks, collOk, bOk, lOk, proof ->
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        agentRepository.completeVisit(
+                            visitId = activeInspectionVisit!!.visitId,
+                            agentRemarks = remarks,
+                            isCollateralAuthentic = collOk,
+                            isBorrowerIdentityVerified = bOk,
+                            isLenderIdentityVerified = lOk,
+                            proofPhotoUris = proof
+                        )
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            android.widget.Toast.makeText(context, "Visit completed & ₹${activeInspectionVisit!!.payoutAmount.toInt()} payout credited!", android.widget.Toast.LENGTH_SHORT).show()
+                            activeInspectionVisit = null
+                        }
+                    }
+                }
+            )
+        }
+
+        return
+    }
+
+    if (isAdmin) {
+        // ==========================================
+        // 👑 MASTER ADMIN: PLATFORM LOANS & RISK DESK
+        // ==========================================
+        var adminTab by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) }
+        val lentLoans = remember(loans) { loans.filter { it.loanType == "GRANT" || it.lenderId.isNotBlank() } }
+        val borrowedLoans = remember(loans) { loans.filter { it.loanType == "REQUEST" || it.borrowerId.isNotBlank() } }
+        val currentList = if (adminTab == 0) loans else if (adminTab == 1) lentLoans else borrowedLoans
+
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("👑", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Platform Loans & Risk Desk", fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                    actions = {
+                        TextButton(onClick = onNavigateToAdminHub) {
+                            Text("Command Hub ↗", fontWeight = FontWeight.Bold, color = Gold500)
+                        }
+                    }
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = onNavigateToAdminHub,
+                    containerColor = Color(0xFF6366F1),
+                    contentColor = Color.White
+                ) {
+                    Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin Console", tint = Color.White)
+                }
+            }
+        ) { padding ->
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(bottom = 90.dp)
+            ) {
+                item {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    SegmentedCapsuleTab(
+                        tabs = listOf(
+                            "All Platform (${loans.size})",
+                            "Grants (${lentLoans.size})",
+                            "Requests (${borrowedLoans.size})"
+                        ),
+                        selectedIndex = adminTab,
+                        onTabSelected = { adminTab = it },
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, Gold500.copy(alpha = 0.6f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("MASTER PLATFORM PORTFOLIO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Gold500)
+                                Text("INSTITUTIONAL AUDIT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("₹${loans.sumOf { it.sanctionedAmount }.toInt()}", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Outstanding: ₹${loans.sumOf { it.outstandingAmount }.toInt()}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Active: ${loans.count { it.status == "ACTIVE" }} • Risk: ${loans.count { it.status == "DEFAULTED" }}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Emerald500)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
+                item {
+                    SectionHeader(
+                        title = "Platform Transactions (${currentList.size})",
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (currentList.isEmpty()) {
+                    item {
+                        EmptyState(
+                            icon = Icons.Default.Receipt,
+                            title = "No transactions found",
+                            subtitle = "Platform loans and escrow agreements will appear here"
+                        )
+                    }
+                } else {
+                    items(currentList.size) { index ->
+                        val loan = currentList[index]
+                        LoanSummaryCard(
+                            loanId = loan.loanId,
+                            purpose = loan.purpose,
+                            amount = loan.sanctionedAmount,
+                            outstanding = loan.outstandingAmount,
+                            status = loan.status,
+                            counterpartyName = "Borrower: ${loan.borrowerId.take(8)}...",
+                            date = loan.createdAt.toDateString(),
+                            onClick = { onNavigateToLoanDetail(loan.loanId) },
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                            loanType = loan.loanType
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+
+    // ==========================================
+    // 👤 STANDARD MEMBER: CONSUMER LENT / BORROWED
+    // ==========================================
     var selectedTab by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) } // 0: Lent, 1: Borrowed
     
     val lentLoans = remember(loans, currentUserId) {

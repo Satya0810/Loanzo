@@ -400,8 +400,8 @@ private fun AdminKpiRibbon(
 private fun KpiChip(label: String, value: String, accentColor: Color) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = Color(0xFF0F172A),
-        border = BorderStroke(1.dp, Color(0xFF1E293B))
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -457,7 +457,7 @@ private fun AgentsTab(
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Gold500,
-                unfocusedBorderColor = Color(0xFF1E293B),
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
             )
@@ -530,8 +530,8 @@ private fun AgentRosterCard(
 
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-        border = BorderStroke(1.dp, if (isApproved) Emerald400.copy(alpha = 0.4f) else if (isSuspended) Color(0xFFEF4444).copy(alpha = 0.4f) else Color(0xFF1E293B)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, if (isApproved) Emerald400.copy(alpha = 0.4f) else if (isSuspended) Color(0xFFEF4444).copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -723,8 +723,8 @@ private fun DocumentKycTab(
         items(sampleUserKyc) { doc ->
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                border = BorderStroke(1.dp, Color(0xFF1E293B)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -756,8 +756,8 @@ private fun DocumentKycTab(
         items(agentApplications) { agent ->
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                border = BorderStroke(1.dp, Color(0xFF1E293B)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -818,7 +818,7 @@ private fun DispatchTab(
             items(unassignedVisits) { visit ->
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = BorderStroke(1.dp, Color(0xFFF97316).copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -883,8 +883,8 @@ private fun VaultTab(
             val isSecured = item.custodyStatus == "SECURED_IN_VAULT"
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                border = BorderStroke(1.dp, if (isSecured) Gold500.copy(alpha = 0.4f) else Color(0xFF1E293B)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, if (isSecured) Gold500.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
@@ -936,7 +936,7 @@ private fun VaultTab(
                             onClick = { onAssignLocker(item) },
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = if (isSecured) Color(0xFF1E293B) else Gold500, contentColor = if (isSecured) Color.White else Navy900)
+                            colors = ButtonDefaults.buttonColors(containerColor = if (isSecured) MaterialTheme.colorScheme.surfaceVariant else Gold500, contentColor = if (isSecured) MaterialTheme.colorScheme.onSurface else Navy900)
                         ) {
                             Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
@@ -979,8 +979,8 @@ private fun ComplaintsTab(
                 val isOpen = cmp.status == "OPEN" || cmp.status == "INVESTIGATING"
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                    border = BorderStroke(1.dp, if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444) else Color(0xFF1E293B)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444) else MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -1134,7 +1134,7 @@ private fun NocTab(
         items(nocs) { noc ->
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.5f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -1190,8 +1190,8 @@ private fun HearingsTab(
                     val isScheduled = m.status == "SCHEDULED"
                     Card(
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                        border = BorderStroke(1.dp, if (isScheduled) Emerald400.copy(alpha = 0.4f) else Color(0xFF1E293B)),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, if (isScheduled) Emerald400.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -1235,16 +1235,16 @@ private fun HearingsTab(
                                         ) {
                                             Icon(Icons.Default.VideoCall, null, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Launch Google Meet", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("Launch Google Meet", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                         }
                                     }
                                     Button(
                                         onClick = { onMarkCompleted(m.meetingId) },
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.weight(1f),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B), contentColor = Color.White)
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface)
                                     ) {
-                                        Text("Mark Concluded", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Text("Mark Concluded", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                     }
                                 }
                             }
@@ -1268,8 +1268,8 @@ private fun SmsInterceptorTab(
     Column(modifier = Modifier.fillMaxSize()) {
         Card(
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-            border = BorderStroke(1.dp, Color(0xFF1E293B)),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -1284,7 +1284,7 @@ private fun SmsInterceptorTab(
                         modifier = Modifier.weight(1f),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Gold500,
-                            unfocusedBorderColor = Color(0xFF1E293B),
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White
                         )
@@ -1299,7 +1299,7 @@ private fun SmsInterceptorTab(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Navy900)
                     ) {
-                        Text("Verify", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("Verify", fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
                     }
                 }
             }
@@ -1317,7 +1317,7 @@ private fun SmsInterceptorTab(
                     val isVerified = item.status == "VERIFIED"
                     Card(
                         shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = BorderStroke(1.dp, if (isVerified) Emerald400.copy(alpha = 0.3f) else Gold500.copy(alpha = 0.3f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -1340,7 +1340,7 @@ private fun SmsInterceptorTab(
                                 }
                             }
                             Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(item.phone, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -1354,7 +1354,7 @@ private fun SmsInterceptorTab(
                                     shape = RoundedCornerShape(8.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Navy900)
                                 ) {
-                                    Text("Approve", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text("Approve", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                         }
@@ -1369,7 +1369,7 @@ private fun SmsInterceptorTab(
 private fun FilterChipItem(title: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) Gold500 else Color(0xFF1E293B),
+        color = if (selected) Gold500 else MaterialTheme.colorScheme.outlineVariant,
         border = BorderStroke(1.dp, if (selected) Gold500 else Color(0xFF334155)),
         modifier = Modifier.clickable { onClick() }
     ) {

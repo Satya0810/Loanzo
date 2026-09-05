@@ -392,13 +392,115 @@ app.post('/api/kyc/digilocker/verify', async (req, res) => {
 });
 
 // ==========================================
-// TELEGRAM BOT WEBHOOK & ALERT SYSTEM
+// TELEGRAM BOT WEBHOOK & ADVANCED RBAC SYSTEM
 // ==========================================
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8911421683:AAFpIQLIBY9USPni5Ylr1I5vx4zgh_BXTq0';
-const ADMIN_TELEGRAM_USERNAME = 'satyam_081';
-let satyamAdminChatId = 8234574147; // Default or updated dynamically when @satyam_081 messages
-const TELEGRAM_ADMIN_IDS = [8234574147];
+const SUPER_ADMIN_USERNAME = 'satyam_081';
+const SUPER_ADMIN_ALIAS = 'satyam@081';
+const SUPER_ADMIN_ID = 8234574147;
+let satyamAdminChatId = SUPER_ADMIN_ID;
 
+// Multi-Tier Role Hierarchy
+const ROLES = {
+    SUPER_ADMIN: 'super_admin',
+    ADMIN: 'admin',
+    VERIFIED_USER: 'verified_user',
+    USER: 'user',
+    BANNED: 'banned'
+};
+
+// In-Memory Dynamic Protected Content Store
+const botContent = {
+    about: "Loanzo is an institutional-grade microfinance and peer-to-peer (P2P) lending platform engineered with purpose-bound tranche disbursements, automated penalty engines, and DigiLocker biometric e-Sign.",
+    rules: "1. No predatory interest rates (market-driven competitive bidding).\n2. Purpose-bound disbursements verified via merchant invoices.\n3. Mandatory 3-factor eSign for legal contract enforceability.\n4. Zero tolerance for abusive recovery or harassment.",
+    help: "For support, contact @satyam_081 or email support@loanzo.app. Use /myloans to view active portfolios and /repay for instant UPI payment instructions."
+};
+
+// In-Memory User Role Store (Key: string chatId or lowercase username)
+const telegramRolesDb = new Map();
+
+// Initialize Super Admin credentials
+telegramRolesDb.set(String(SUPER_ADMIN_ID), {
+    role: ROLES.SUPER_ADMIN,
+    username: SUPER_ADMIN_USERNAME,
+    name: 'Satyam Kumar',
+    updatedAt: new Date().toISOString()
+});
+telegramRolesDb.set(SUPER_ADMIN_USERNAME.toLowerCase(), {
+    role: ROLES.SUPER_ADMIN,
+    username: SUPER_ADMIN_USERNAME,
+    name: 'Satyam Kumar',
+    updatedAt: new Date().toISOString()
+});
+telegramRolesDb.set(SUPER_ADMIN_ALIAS.toLowerCase(), {
+    role: ROLES.SUPER_ADMIN,
+    username: SUPER_ADMIN_USERNAME,
+    name: 'Satyam Kumar',
+    updatedAt: new Date().toISOString()
+});
+
+// Verification Requests Store (Key: requestId)
+const verificationQueue = new Map();
+
+// Tamper-Resistant Security Audit Trail (Array of last 200 logs)
+const telegramAuditLog = [];
+
+function logAudit(actorId, actorUsername, action, targetId, details) {
+    const entry = {
+        id: 'aud_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        timestamp: new Date().toISOString(),
+        actorId: String(actorId || 'SYSTEM'),
+        actorUsername: actorUsername || 'unknown',
+        action,
+        targetId: String(targetId || ''),
+        details
+    };
+    telegramAuditLog.unshift(entry);
+    if (telegramAuditLog.length > 200) telegramAuditLog.pop();
+    console.log(`[Telegram Audit] [${action}] by @${actorUsername} -> Target: ${targetId}: ${details}`);
+    return entry;
+}
+
+// Role Resolution Helper
+function getUserRole(chatId, username) {
+    const cleanUsername = (username || '').toLowerCase().replace('@', '');
+
+    if (chatId === SUPER_ADMIN_ID || cleanUsername === SUPER_ADMIN_USERNAME.toLowerCase() || cleanUsername === SUPER_ADMIN_ALIAS.toLowerCase() || cleanUsername === 'satyam_081') {
+        return ROLES.SUPER_ADMIN;
+    }
+
+    if (telegramRolesDb.has(String(chatId))) {
+        return telegramRolesDb.get(String(chatId)).role;
+    }
+
+    if (cleanUsername && telegramRolesDb.has(cleanUsername)) {
+        return telegramRolesDb.get(cleanUsername).role;
+    }
+
+    return ROLES.USER;
+}
+
+function isUserSuperAdmin(chatId, username) {
+    return getUserRole(chatId, username) === ROLES.SUPER_ADMIN;
+}
+
+function isUserAdminOrHigher(chatId, username) {
+    const role = getUserRole(chatId, username);
+    return role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN;
+}
+
+function getAdminChatIds() {
+    const adminIds = new Set([SUPER_ADMIN_ID]);
+    if (satyamAdminChatId) adminIds.add(satyamAdminChatId);
+    for (const [key, val] of telegramRolesDb.entries()) {
+        if ((val.role === ROLES.ADMIN || val.role === ROLES.SUPER_ADMIN) && /^\d+$/.test(key)) {
+            adminIds.add(Number(key));
+        }
+    }
+    return Array.from(adminIds);
+}
+
+// Telegram API Communication Helpers
 async function sendTelegramMessage(chatId, text, replyMarkup = null) {
     try {
         const payload = {
@@ -407,84 +509,705 @@ async function sendTelegramMessage(chatId, text, replyMarkup = null) {
             parse_mode: 'HTML'
         };
         if (replyMarkup) payload.reply_markup = replyMarkup;
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, payload);
-        return true;
+        const res = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, payload);
+        return res.data?.result || true;
     } catch (err) {
         console.error(`[Telegram send error for ${chatId}]:`, err.response?.data || err.message);
         return false;
     }
 }
 
-// Telegram Webhook Handler
+async function editTelegramMessage(chatId, messageId, text, replyMarkup = null) {
+    try {
+        const payload = {
+            chat_id: chatId,
+            message_id: messageId,
+            text: text,
+            parse_mode: 'HTML'
+        };
+        if (replyMarkup) payload.reply_markup = replyMarkup;
+        const res = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, payload);
+        return res.data?.result || true;
+    } catch (err) {
+        console.error(`[Telegram edit error for ${chatId}:${messageId}]:`, err.response?.data || err.message);
+        return false;
+    }
+}
+
+async function answerTelegramCallbackQuery(callbackQueryId, text = null, showAlert = false) {
+    try {
+        const payload = { callback_query_id: callbackQueryId };
+        if (text) payload.text = text;
+        if (showAlert) payload.show_alert = showAlert;
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, payload);
+        return true;
+    } catch (err) {
+        console.error(`[Telegram answerCallbackQuery error]:`, err.response?.data || err.message);
+        return false;
+    }
+}
+
+// Central Telegram Webhook Handler (Handles both messages and inline button callback queries)
 app.post('/api/telegram/webhook', async (req, res) => {
     try {
         const update = req.body;
-        if (!update || !update.message) {
-            return res.sendStatus(200);
+        if (!update) return res.sendStatus(200);
+
+        // ==========================================
+        // 1. INLINE BUTTON CALLBACK QUERY HANDLER
+        // ==========================================
+        if (update.callback_query) {
+            const cq = update.callback_query;
+            const cqId = cq.id;
+            const fromId = cq.from.id;
+            const fromUser = cq.from.username || cq.from.first_name || 'unknown';
+            const data = cq.data || '';
+            const message = cq.message;
+            const msgChatId = message?.chat?.id;
+            const msgId = message?.message_id;
+
+            const isCallerAdmin = isUserAdminOrHigher(fromId, fromUser);
+
+            if (!isCallerAdmin) {
+                await answerTelegramCallbackQuery(cqId, "⛔ Access Denied: Admin privileges required to review requests.", true);
+                return res.sendStatus(200);
+            }
+
+            if (data.startsWith('verify_req_')) {
+                const reqId = data.replace('verify_req_', '');
+                const reqItem = verificationQueue.get(reqId);
+
+                if (!reqItem) {
+                    await answerTelegramCallbackQuery(cqId, "Verification request not found or expired.", true);
+                    return res.sendStatus(200);
+                }
+
+                if (reqItem.status !== 'PENDING') {
+                    await answerTelegramCallbackQuery(cqId, `This request is already ${reqItem.status}.`, true);
+                    return res.sendStatus(200);
+                }
+
+                reqItem.status = 'VERIFIED';
+                reqItem.reviewedBy = `@${fromUser}`;
+                reqItem.reviewedAt = new Date().toISOString();
+
+                // Elevate user role to VERIFIED_USER
+                telegramRolesDb.set(String(reqItem.userId), {
+                    role: ROLES.VERIFIED_USER,
+                    username: reqItem.username,
+                    name: reqItem.name,
+                    updatedAt: new Date().toISOString()
+                });
+                if (reqItem.username) {
+                    telegramRolesDb.set(reqItem.username.toLowerCase(), {
+                        role: ROLES.VERIFIED_USER,
+                        username: reqItem.username,
+                        name: reqItem.name,
+                        updatedAt: new Date().toISOString()
+                    });
+                }
+
+                logAudit(fromId, fromUser, 'REQUEST_VERIFIED', reqItem.userId, `Verified applicant ${reqItem.name} (@${reqItem.username}) - Request #${reqId}`);
+
+                const updatedCard = `✅ <b>NOTIFICATION: VERIFICATION APPROVED</b>\n\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `👤 <b>Applicant:</b> ${reqItem.name} (@${reqItem.username || 'n/a'})\n` +
+                    `🆔 <b>User ID:</b> <code>${reqItem.userId}</code>\n` +
+                    `📝 <b>Details:</b> ${reqItem.details}\n` +
+                    `📅 <b>Submitted:</b> ${reqItem.createdAt}\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `🟢 <b>Status:</b> <b>VERIFIED</b> by @${fromUser}\n` +
+                    `⏱️ <b>Verified At:</b> ${reqItem.reviewedAt}`;
+
+                await editTelegramMessage(msgChatId, msgId, updatedCard, null);
+                await answerTelegramCallbackQuery(cqId, `Approved verification for ${reqItem.name}!`);
+
+                // Send live alert to applicant
+                await sendTelegramMessage(reqItem.userId,
+                    `🎉 <b>Congratulations ${reqItem.name}!</b>\n\n` +
+                    `Your Loanzo verification request has been approved by our Admin desk (@${fromUser})!\n\n` +
+                    `✨ You are now a <b>Verified User</b> on Loanzo.\n` +
+                    `Enjoy higher borrowing limits, zero escrow listing fees, and priority tranche releases.\n\n` +
+                    `Type /perks to view your verified privileges!`
+                );
+                return res.sendStatus(200);
+
+            } else if (data.startsWith('reject_req_')) {
+                const reqId = data.replace('reject_req_', '');
+                const reqItem = verificationQueue.get(reqId);
+
+                if (!reqItem) {
+                    await answerTelegramCallbackQuery(cqId, "Verification request not found or expired.", true);
+                    return res.sendStatus(200);
+                }
+
+                if (reqItem.status !== 'PENDING') {
+                    await answerTelegramCallbackQuery(cqId, `This request is already ${reqItem.status}.`, true);
+                    return res.sendStatus(200);
+                }
+
+                reqItem.status = 'REJECTED';
+                reqItem.reviewedBy = `@${fromUser}`;
+                reqItem.reviewedAt = new Date().toISOString();
+
+                logAudit(fromId, fromUser, 'REQUEST_REJECTED', reqItem.userId, `Rejected applicant ${reqItem.name} (@${reqItem.username}) - Request #${reqId}`);
+
+                const updatedCard = `❌ <b>NOTIFICATION: VERIFICATION REJECTED</b>\n\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `👤 <b>Applicant:</b> ${reqItem.name} (@${reqItem.username || 'n/a'})\n` +
+                    `🆔 <b>User ID:</b> <code>${reqItem.userId}</code>\n` +
+                    `📝 <b>Details:</b> ${reqItem.details}\n` +
+                    `📅 <b>Submitted:</b> ${reqItem.createdAt}\n` +
+                    `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                    `🔴 <b>Status:</b> <b>REJECTED</b> by @${fromUser}\n` +
+                    `⏱️ <b>Reviewed At:</b> ${reqItem.reviewedAt}`;
+
+                await editTelegramMessage(msgChatId, msgId, updatedCard, null);
+                await answerTelegramCallbackQuery(cqId, `Rejected request #${reqId}.`);
+
+                // Send live alert to applicant
+                await sendTelegramMessage(reqItem.userId,
+                    `⚠️ <b>Verification Request Update</b>\n\n` +
+                    `Your Loanzo verification request was reviewed by our Admin desk (@${fromUser}) and could not be approved at this time.\n\n` +
+                    `Please verify your profile details and re-apply using /verify_me <details>.`
+                );
+                return res.sendStatus(200);
+
+            } else if (data.startsWith('view_user_')) {
+                const targetUserId = data.replace('view_user_', '');
+                const role = getUserRole(targetUserId, '');
+                await answerTelegramCallbackQuery(cqId, `User ID: ${targetUserId} | Role: ${role.toUpperCase()}`, true);
+                return res.sendStatus(200);
+            }
         }
+
+        // ==========================================
+        // 2. INCOMING MESSAGE / COMMAND HANDLER
+        // ==========================================
+        if (!update.message) return res.sendStatus(200);
 
         const message = update.message;
         const chatId = message.chat.id;
         const text = (message.text || '').trim();
         const fromUsername = (message.from?.username || message.chat?.username || '').toLowerCase().replace('@', '');
+        const fromName = `${message.from?.first_name || ''} ${message.from?.last_name || ''}`.trim() || 'User';
 
-        // Dynamically capture @satyam_081's chatId when they message the bot
-        if (fromUsername === ADMIN_TELEGRAM_USERNAME.toLowerCase()) {
+        // Auto-detect Super Admin
+        if (fromUsername === SUPER_ADMIN_USERNAME.toLowerCase() || fromUsername === 'satyam@081' || chatId === SUPER_ADMIN_ID) {
             satyamAdminChatId = chatId;
-            console.log(`[Telegram Admin Identified]: Registered chat ID ${chatId} for @${ADMIN_TELEGRAM_USERNAME}`);
+            telegramRolesDb.set(String(chatId), { role: ROLES.SUPER_ADMIN, username: SUPER_ADMIN_USERNAME, name: 'Satyam Kumar' });
         }
 
-        const isAdmin = fromUsername === ADMIN_TELEGRAM_USERNAME.toLowerCase() || chatId === satyamAdminChatId;
+        const userRole = getUserRole(chatId, fromUsername);
 
-        console.log(`[Telegram received from ${chatId} (@${fromUsername})]:`, text);
+        // Check if Banned
+        if (userRole === ROLES.BANNED) {
+            await sendTelegramMessage(chatId, `🚫 <b>Access Restricted</b>\n\nYour Telegram account has been banned from interacting with the Loanzo Bot due to policy violations. Contact support@loanzo.app if you believe this is an error.`);
+            return res.sendStatus(200);
+        }
 
-        // Normalize command (strip @Loanzo_bot if present)
+        const isAdmin = isUserAdminOrHigher(chatId, fromUsername);
+        const isSuperAdmin = isUserSuperAdmin(chatId, fromUsername);
+
+        console.log(`[Telegram received from ${chatId} (@${fromUsername}) | Role: ${userRole}]:`, text);
+
         const lowerText = text.toLowerCase();
-        const cmd = lowerText.split(' ')[0].replace(/@\w+$/, '');
+        const tokens = text.split(' ');
+        const cmd = tokens[0].toLowerCase().replace(/@\w+$/, '');
+        const args = text.substring(tokens[0].length).trim();
 
+        // ----------------------------------------------------
+        // COMMAND: /start
+        // ----------------------------------------------------
         if (cmd === '/start') {
-            const adminSection = isAdmin ? (
-                `\n🛡️ <b>Admin Commands (@${ADMIN_TELEGRAM_USERNAME}):</b>\n` +
-                `• /stats — Platform business snapshot & live metrics\n` +
-                `• /pendingkyc — Review pending user verifications\n` +
-                `• /admin — Open admin control panel\n`
-            ) : '';
-
-            const parts = text.split(' ');
-            if (parts.length > 1 && parts[1].startsWith('user_')) {
-                const userId = parts[1].replace('user_', '');
+            if (tokens.length > 1 && tokens[1].startsWith('user_')) {
+                const appUserId = tokens[1].replace('user_', '');
+                telegramRolesDb.set(String(chatId), {
+                    role: userRole,
+                    username: fromUsername,
+                    name: fromName,
+                    appUserId: appUserId,
+                    updatedAt: new Date().toISOString()
+                });
                 await sendTelegramMessage(
                     chatId,
-                    `🎉 <b>Loanzo Account Connected!</b>\n\n` +
-                    `✅ Your Telegram account is now linked to user <code>${userId}</code>.\n\n` +
-                    `You will receive:\n` +
-                    `• 🔔 Instant EMI deadline reminders\n` +
-                    `• 💰 Loan disbursal & approval notices\n` +
-                    `• 📜 Repayment receipts & agreement alerts\n\n` +
-                    `<b>Available Commands:</b>\n` +
-                    `• /start — Restart or reconnect your Loanzo assistant\n` +
-                    `• /myloans — View active loans & next EMI due date\n` +
-                    `• /repay — Repayment guide & UPI payment options\n` +
-                    `• /statement — Summary of recent repayments & penalty status\n` +
-                    `• /help — Customer support contacts & FAQs\n` +
-                    adminSection +
-                    `\n<i>Type any command or tap from the Menu below!</i>`
+                    `🔗 <b>Loanzo Account Connected!</b>\n\n` +
+                    `✅ Your Telegram account is now securely linked to Loanzo user <code>${appUserId}</code>.\n` +
+                    `Current Role: <b>${userRole.toUpperCase()}</b>\n\n` +
+                    `You will receive real-time updates for:\n` +
+                    `• ⏰ Milestone EMI deadline alerts\n` +
+                    `• 💰 Loan disbursals & bids\n` +
+                    `• 📑 Executed 3-factor eSign agreements\n\n` +
+                    `Type /about to learn about Loanzo, or /profile to view your role card!`
+                );
+                return res.sendStatus(200);
+            }
+
+            let menuContent = `👋 <b>Welcome to Loanzo Bot!</b>\n\n` +
+                `I am your 24/7 personal microfinance and verification assistant.\n` +
+                `Role: <b>${userRole.toUpperCase()}</b>\n\n` +
+                `<b>Common Commands:</b>\n` +
+                `• /about - Official platform overview\n` +
+                `• /profile - Your role, badge & verification status\n` +
+                `• /verify_me &lt;details&gt; - Submit verification application\n` +
+                `• /perks - View verified user privileges\n` +
+                `• /myloans - View active loans & upcoming EMI\n` +
+                `• /repay - Repayment instructions & UPI links\n` +
+                `• /statement - Repayment history & penalty ledger\n` +
+                `• /help - Support and bot guide\n`;
+
+            if (isAdmin) {
+                menuContent += `\n🛡️ <b>Admin Commands:</b>\n` +
+                    `• /admin - Administrative command dashboard\n` +
+                    `• /pending - View interactive verification queue ([✓] / [✗])\n` +
+                    `• /ban &lt;user_id&gt; - Restrict abusive user\n` +
+                    `• /unban &lt;user_id&gt; - Restore user access\n` +
+                    `• /broadcast &lt;msg&gt; - Broadcast announcement\n` +
+                    `• /stats - Live business snapshot\n`;
+            }
+
+            if (isSuperAdmin) {
+                menuContent += `\n👑 <b>Super Admin Exclusive Commands (@${SUPER_ADMIN_USERNAME}):</b>\n` +
+                    `• /edit_about &lt;new content&gt; - Update official About section (Strict Lock)\n` +
+                    `• /edit_section &lt;key&gt; &lt;new content&gt; - Update core sections\n` +
+                    `• /set_admin &lt;chat_id&gt; - Appoint new admin\n` +
+                    `• /demote_admin &lt;chat_id&gt; - Demote admin to user\n` +
+                    `• /audit - View tamper-resistant audit logs\n` +
+                    `• /superadmin - Super Admin overview\n`;
+            }
+
+            await sendTelegramMessage(chatId, menuContent);
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /about (Dynamic Platform Content)
+        // ----------------------------------------------------
+        } else if (cmd === '/about') {
+            await sendTelegramMessage(
+                chatId,
+                `📖 <b>About Loanzo Platform</b>\n\n` +
+                `${botContent.about}\n\n` +
+                `<i>Managed securely under Super Admin authority (@${SUPER_ADMIN_USERNAME}).</i>`
+            );
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /profile (Personal Identity & Role Card)
+        // ----------------------------------------------------
+        } else if (cmd === '/profile') {
+            const roleBadge = userRole === ROLES.SUPER_ADMIN ? '👑 SUPER ADMIN' :
+                              userRole === ROLES.ADMIN ? '🛡️ ADMIN' :
+                              userRole === ROLES.VERIFIED_USER ? '⭐ VERIFIED USER' : '👤 MEMBER';
+
+            await sendTelegramMessage(
+                chatId,
+                `💳 <b>Your Loanzo Profile Card</b>\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `👤 <b>Name:</b> ${fromName}\n` +
+                `🏷️ <b>Username:</b> @${fromUsername || 'n/a'}\n` +
+                `🆔 <b>Telegram ID:</b> <code>${chatId}</code>\n` +
+                `🎖️ <b>Role:</b> <b>${roleBadge}</b>\n` +
+                `🔐 <b>Status:</b> ${userRole === ROLES.VERIFIED_USER || isAdmin ? 'Verified Citizen ✅' : 'Standard Member (Unverified) ⚠️'}\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `${userRole === ROLES.USER ? '💡 <i>Tip: Submit a verification request using /verify_me to unlock verified perks!</i>' : ''}`
+            );
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /verify_me <details> (Submits to Admin Queue)
+        // ----------------------------------------------------
+        } else if (cmd === '/verify_me') {
+            if (userRole === ROLES.VERIFIED_USER || isAdmin) {
+                await sendTelegramMessage(chatId, `✅ You are already a verified member with full privileges! Type /perks to see your benefits.`);
+                return res.sendStatus(200);
+            }
+
+            if (!args) {
+                await sendTelegramMessage(
+                    chatId,
+                    `📝 <b>How to Submit Verification:</b>\n\n` +
+                    `Please provide your verification credentials with the command:\n` +
+                    `<code>/verify_me Aadhaar/PAN Details, City, Purpose of Membership</code>\n\n` +
+                    `<i>Example:</i> <code>/verify_me PAN ABCDE1234F, Delhi, Business Retailer</code>`
+                );
+                return res.sendStatus(200);
+            }
+
+            const reqId = 'req_' + Date.now().toString().slice(-6);
+            const reqItem = {
+                id: reqId,
+                userId: String(chatId),
+                username: fromUsername,
+                name: fromName,
+                details: args,
+                status: 'PENDING',
+                createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
+                reviewedBy: null,
+                reviewedAt: null
+            };
+            verificationQueue.set(reqId, reqItem);
+
+            logAudit(chatId, fromUsername, 'VERIFICATION_REQUEST_SUBMITTED', reqId, `Applicant ${fromName} submitted request with details: ${args}`);
+
+            // Acknowledge user
+            await sendTelegramMessage(
+                chatId,
+                `📨 <b>Verification Request Submitted!</b>\n\n` +
+                `Request Reference: <code>#${reqId}</code>\n` +
+                `Status: <b>PENDING REVIEW ⏳</b>\n\n` +
+                `Our verification desk has received your application. You will be notified here immediately once approved.`
+            );
+
+            // Dispatch interactive decision card to Admins with [✓ Verify] and [✗ Reject] buttons
+            const notificationCard = `🔔 <b>NOTIFICATION: VERIFICATION REQUEST #${reqId}</b>\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `👤 <b>Applicant:</b> ${fromName} (@${fromUsername || 'n/a'})\n` +
+                `🆔 <b>User ID:</b> <code>${chatId}</code>\n` +
+                `📋 <b>Request Type:</b> Role & KYC Verification\n` +
+                `📝 <b>Details:</b> ${args}\n` +
+                `📅 <b>Submitted At:</b> ${reqItem.createdAt}\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `⏳ <b>Status:</b> <b>PENDING REVIEW</b>`;
+
+            const inlineKeyboard = {
+                inline_keyboard: [
+                    [
+                        { text: '✅ Verify / Approve', callback_data: `verify_req_${reqId}` },
+                        { text: '❌ Reject', callback_data: `reject_req_${reqId}` }
+                    ],
+                    [
+                        { text: '👤 View Profile', callback_data: `view_user_${chatId}` }
+                    ]
+                ]
+            };
+
+            const adminIds = getAdminChatIds();
+            for (const adminId of adminIds) {
+                await sendTelegramMessage(adminId, notificationCard, inlineKeyboard);
+            }
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /perks (Verified User Privileges)
+        // ----------------------------------------------------
+        } else if (cmd === '/perks') {
+            const hasPerks = userRole === ROLES.VERIFIED_USER || isAdmin;
+            if (!hasPerks) {
+                await sendTelegramMessage(
+                    chatId,
+                    `🔒 <b>Verified User Perks</b>\n\n` +
+                    `Exclusive perks are reserved for verified citizens:\n` +
+                    `• 🚀 Priority P2P loan listing on Marketplace\n` +
+                    `• 💳 0% platform escrow listing fees\n` +
+                    `• ⚡ Instant milestone tranche disbursals\n` +
+                    `• 📞 24/7 Priority Admin concierge\n\n` +
+                    `👉 Submit your application now using: <code>/verify_me &lt;details&gt;</code>`
                 );
             } else {
                 await sendTelegramMessage(
                     chatId,
-                    `👋 <b>Welcome to Loanzo Bot!</b>\n\n` +
-                    `I am your 24/7 personal loan and EMI notification assistant.\n\n` +
-                    `<b>Available Working Commands:</b>\n` +
-                    `• /start — Welcome message & bot initialization\n` +
-                    `• /myloans — View your active loans & next EMI due date\n` +
-                    `• /repay — Repayment instructions & UPI payment links\n` +
-                    `• /statement — Summary of recent repayments & penalty ledger\n` +
-                    `• /help — Customer support, FAQs & bot guide\n` +
-                    adminSection +
-                    `\n<i>Tip: Link your account from the Loanzo Android app for personalized alerts!</i>`
+                    `⭐ <b>Active Verified User Perks</b>\n\n` +
+                    `As a recognized member with <b>${userRole.toUpperCase()}</b> status, you have unlocked:\n` +
+                    `✅ Priority Marketplace Bidding Placement\n` +
+                    `✅ 0% Platform Escrow Listing Fees\n` +
+                    `✅ Accelerated Tranche Invoice Verification\n` +
+                    `✅ Direct Telegram Admin Support Line`
                 );
             }
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /edit_about <text> (STRICT SUPER ADMIN LOCK)
+        // ----------------------------------------------------
+        } else if (cmd === '/edit_about') {
+            if (!isSuperAdmin) {
+                logAudit(chatId, fromUsername, 'UNAUTHORIZED_SECTION_EDIT_BLOCKED', 'about', `Unauthorized edit attempt by @${fromUsername} (Role: ${userRole}): "${args}"`);
+                await sendTelegramMessage(
+                    chatId,
+                    `⛔ <b>ACCESS DENIED: STRICT SECURITY LOCK</b>\n\n` +
+                    `Only the designated Super Admin (@${SUPER_ADMIN_USERNAME}) is authorized to edit the platform About section.\n\n` +
+                    `⚠️ <i>This unauthorized attempt has been permanently logged to the security audit trail.</i>`
+                );
+                return res.sendStatus(200);
+            }
+
+            if (!args) {
+                await sendTelegramMessage(chatId, `⚠️ Please provide the new About content: <code>/edit_about &lt;new content&gt;</code>`);
+                return res.sendStatus(200);
+            }
+
+            botContent.about = args;
+            logAudit(chatId, fromUsername, 'CONTENT_UPDATED', 'about', `Updated About content to: "${args.substring(0, 60)}..."`);
+
+            await sendTelegramMessage(
+                chatId,
+                `✅ <b>About Section Updated Successfully!</b>\n\n` +
+                `New Content:\n${args}\n\n` +
+                `<i>Changes are now live across all user sessions.</i>`
+            );
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /edit_section <key> <text> (STRICT SUPER ADMIN LOCK)
+        // ----------------------------------------------------
+        } else if (cmd === '/edit_section') {
+            if (!isSuperAdmin) {
+                logAudit(chatId, fromUsername, 'UNAUTHORIZED_SECTION_EDIT_BLOCKED', tokens[1] || 'unknown', `Unauthorized edit attempt by @${fromUsername}: "${args}"`);
+                await sendTelegramMessage(
+                    chatId,
+                    `⛔ <b>ACCESS DENIED</b>\n\nOnly Super Admin (@${SUPER_ADMIN_USERNAME}) can edit core sections.`
+                );
+                return res.sendStatus(200);
+            }
+
+            const sectionKey = (tokens[1] || '').toLowerCase();
+            const sectionContent = text.substring(tokens[0].length + (tokens[1] || '').length + 1).trim();
+
+            if (!sectionKey || !sectionContent) {
+                await sendTelegramMessage(chatId, `⚠️ Usage: <code>/edit_section &lt;rules|help&gt; &lt;new text&gt;</code>`);
+                return res.sendStatus(200);
+            }
+
+            botContent[sectionKey] = sectionContent;
+            logAudit(chatId, fromUsername, 'CONTENT_UPDATED', sectionKey, `Updated ${sectionKey} section`);
+
+            await sendTelegramMessage(chatId, `✅ <b>Section '${sectionKey}' updated successfully!</b>`);
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /set_admin <id_or_username> (SUPER ADMIN ONLY)
+        // ----------------------------------------------------
+        } else if (cmd === '/set_admin') {
+            if (!isSuperAdmin) {
+                await sendTelegramMessage(chatId, `⛔ Access Denied: Super Admin exclusive command.`);
+                return res.sendStatus(200);
+            }
+
+            const target = (args.split(' ')[0] || '').replace('@', '');
+            if (!target) {
+                await sendTelegramMessage(chatId, `⚠️ Usage: <code>/set_admin &lt;telegram_id_or_username&gt;</code>`);
+                return res.sendStatus(200);
+            }
+
+            telegramRolesDb.set(target.toLowerCase(), {
+                role: ROLES.ADMIN,
+                username: target,
+                updatedAt: new Date().toISOString()
+            });
+            logAudit(chatId, fromUsername, 'ROLE_PROMOTED_ADMIN', target, `Promoted ${target} to ADMIN`);
+
+            await sendTelegramMessage(chatId, `🛡️ <b>User ${target} has been appointed as an ADMIN!</b>`);
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /demote_admin <id_or_username> (SUPER ADMIN ONLY)
+        // ----------------------------------------------------
+        } else if (cmd === '/demote_admin') {
+            if (!isSuperAdmin) {
+                await sendTelegramMessage(chatId, `⛔ Access Denied: Super Admin exclusive command.`);
+                return res.sendStatus(200);
+            }
+
+            const target = (args.split(' ')[0] || '').replace('@', '');
+            if (!target || target === SUPER_ADMIN_USERNAME.toLowerCase() || target === String(SUPER_ADMIN_ID)) {
+                await sendTelegramMessage(chatId, `⚠️ Cannot demote Super Admin.`);
+                return res.sendStatus(200);
+            }
+
+            telegramRolesDb.set(target.toLowerCase(), {
+                role: ROLES.USER,
+                username: target,
+                updatedAt: new Date().toISOString()
+            });
+            logAudit(chatId, fromUsername, 'ROLE_DEMOTED_USER', target, `Demoted ${target} to USER`);
+
+            await sendTelegramMessage(chatId, `👤 <b>Admin ${target} has been demoted to standard USER.</b>`);
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /pending (ADMIN DECISION QUEUE)
+        // ----------------------------------------------------
+        } else if (cmd === '/pending') {
+            if (!isAdmin) {
+                await sendTelegramMessage(chatId, `⛔ Access Denied: Admin privileges required.`);
+                return res.sendStatus(200);
+            }
+
+            const pendingList = Array.from(verificationQueue.values()).filter(r => r.status === 'PENDING');
+            if (pendingList.length === 0) {
+                await sendTelegramMessage(chatId, `🎉 <b>No Pending Requests!</b>\n\nAll verification submissions have been reviewed and processed.`);
+                return res.sendStatus(200);
+            }
+
+            await sendTelegramMessage(chatId, `📋 <b>Pending Verification Queue (${pendingList.length} items):</b>`);
+
+            for (const reqItem of pendingList) {
+                const card = `🔔 <b>REQUEST #${reqItem.id}</b>\n` +
+                    `👤 <b>Applicant:</b> ${reqItem.name} (@${reqItem.username || 'n/a'})\n` +
+                    `🆔 <b>User ID:</b> <code>${reqItem.userId}</code>\n` +
+                    `📝 <b>Details:</b> ${reqItem.details}\n` +
+                    `📅 <b>Submitted:</b> ${reqItem.createdAt}`;
+
+                const buttons = {
+                    inline_keyboard: [
+                        [
+                            { text: '✅ Verify / Approve', callback_data: `verify_req_${reqItem.id}` },
+                            { text: '❌ Reject', callback_data: `reject_req_${reqItem.id}` }
+                        ],
+                        [
+                            { text: '👤 View User', callback_data: `view_user_${reqItem.userId}` }
+                        ]
+                    ]
+                };
+
+                await sendTelegramMessage(chatId, card, buttons);
+            }
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /ban <id> & /unban <id> (ADMIN MODERATION)
+        // ----------------------------------------------------
+        } else if (cmd === '/ban') {
+            if (!isAdmin) {
+                await sendTelegramMessage(chatId, `⛔ Access Denied: Admin privileges required.`);
+                return res.sendStatus(200);
+            }
+
+            const target = (args.split(' ')[0] || '').replace('@', '');
+            if (!target || target === SUPER_ADMIN_USERNAME.toLowerCase() || target === String(SUPER_ADMIN_ID)) {
+                await sendTelegramMessage(chatId, `⚠️ Cannot ban Super Admin.`);
+                return res.sendStatus(200);
+            }
+
+            telegramRolesDb.set(target.toLowerCase(), {
+                role: ROLES.BANNED,
+                username: target,
+                updatedAt: new Date().toISOString()
+            });
+            logAudit(chatId, fromUsername, 'USER_BANNED', target, `Banned by @${fromUsername}`);
+
+            await sendTelegramMessage(chatId, `🚫 <b>User ${target} has been BANNED from interacting with the bot.</b>`);
+            return res.sendStatus(200);
+
+        } else if (cmd === '/unban') {
+            if (!isAdmin) {
+                await sendTelegramMessage(chatId, `⛔ Access Denied: Admin privileges required.`);
+                return res.sendStatus(200);
+            }
+
+            const target = (args.split(' ')[0] || '').replace('@', '');
+            if (!target) {
+                await sendTelegramMessage(chatId, `⚠️ Usage: <code>/unban &lt;user_id&gt;</code>`);
+                return res.sendStatus(200);
+            }
+
+            telegramRolesDb.set(target.toLowerCase(), {
+                role: ROLES.USER,
+                username: target,
+                updatedAt: new Date().toISOString()
+            });
+            logAudit(chatId, fromUsername, 'USER_UNBANNED', target, `Unbanned by @${fromUsername}`);
+
+            await sendTelegramMessage(chatId, `✅ <b>User ${target} has been UNBANNED and restored to standard USER.</b>`);
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /audit (INSPECT SECURITY AUDIT TRAIL)
+        // ----------------------------------------------------
+        } else if (cmd === '/audit') {
+            if (!isAdmin) {
+                await sendTelegramMessage(chatId, `⛔ Access Denied: Admin privileges required.`);
+                return res.sendStatus(200);
+            }
+
+            if (telegramAuditLog.length === 0) {
+                await sendTelegramMessage(chatId, `📜 <b>Security Audit Trail is currently empty.</b>`);
+                return res.sendStatus(200);
+            }
+
+            const recentLogs = telegramAuditLog.slice(0, 8);
+            let logReport = `📜 <b>Security & RBAC Audit Trail (Last ${recentLogs.length} events):</b>\n\n`;
+
+            recentLogs.forEach((log, idx) => {
+                logReport += `<b>#${idx + 1} [${log.action}]</b>\n` +
+                    `⏰ ${log.timestamp.replace('T', ' ').substring(0, 19)}\n` +
+                    `👤 Actor: @${log.actorUsername} (<code>${log.actorId}</code>)\n` +
+                    `🎯 Target: <code>${log.targetId}</code>\n` +
+                    `📝 Details: ${log.details}\n\n`;
+            });
+
+            await sendTelegramMessage(chatId, logReport);
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /broadcast <message> (ADMIN BROADCAST)
+        // ----------------------------------------------------
+        } else if (cmd === '/broadcast') {
+            if (!isAdmin) {
+                await sendTelegramMessage(chatId, `⛔ Access Denied: Admin privileges required.`);
+                return res.sendStatus(200);
+            }
+
+            if (!args) {
+                await sendTelegramMessage(chatId, `⚠️ Usage: <code>/broadcast &lt;announcement message&gt;</code>`);
+                return res.sendStatus(200);
+            }
+
+            const broadcastText = `📢 <b>LOANZO OFFICIAL ANNOUNCEMENT</b>\n\n${args}\n\n<i>Dispatched by Platform Admin Desk (@${fromUsername})</i>`;
+
+            // Broadcast to known numeric chat IDs
+            let count = 0;
+            const targetIds = new Set([chatId]);
+            if (satyamAdminChatId) targetIds.add(satyamAdminChatId);
+            for (const [key] of telegramRolesDb.entries()) {
+                if (/^\d+$/.test(key)) targetIds.add(Number(key));
+            }
+
+            for (const targetChatId of targetIds) {
+                await sendTelegramMessage(targetChatId, broadcastText);
+                count++;
+            }
+
+            logAudit(chatId, fromUsername, 'BROADCAST_SENT', `${count}_recipients`, `Message: ${args.substring(0, 40)}...`);
+            await sendTelegramMessage(chatId, `✅ Announcement broadcast dispatched to ${count} active session(s).`);
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMAND: /superadmin (SUPER ADMIN COCKPIT)
+        // ----------------------------------------------------
+        } else if (cmd === '/superadmin') {
+            if (!isSuperAdmin) {
+                await sendTelegramMessage(chatId, `⛔ Access Denied: Reserved exclusively for Super Admin (@${SUPER_ADMIN_USERNAME}).`);
+                return res.sendStatus(200);
+            }
+
+            const pendingCount = Array.from(verificationQueue.values()).filter(r => r.status === 'PENDING').length;
+            const verifiedCount = Array.from(telegramRolesDb.values()).filter(r => r.role === ROLES.VERIFIED_USER).length;
+            const adminCount = Array.from(telegramRolesDb.values()).filter(r => r.role === ROLES.ADMIN || r.role === ROLES.SUPER_ADMIN).length;
+
+            await sendTelegramMessage(
+                chatId,
+                `👑 <b>LOANZO SUPER ADMIN COMMAND COCKPIT</b>\n\n` +
+                `<b>Authority:</b> @${SUPER_ADMIN_USERNAME} (<code>${SUPER_ADMIN_ID}</code>)\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `• ⏳ Pending Verifications: <b>${pendingCount}</b>\n` +
+                `• ⭐ Verified Members: <b>${verifiedCount}</b>\n` +
+                `• 🛡️ Active Admins: <b>${adminCount}</b>\n` +
+                `• 📜 Total Audit Events: <b>${telegramAuditLog.length}</b>\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+                `<b>Master Control Commands:</b>\n` +
+                `• /edit_about &lt;text&gt; - Update About section (Strict Lock)\n` +
+                `• /edit_section &lt;key&gt; &lt;text&gt; - Update core rules/help\n` +
+                `• /set_admin &lt;chat_id&gt; - Appoint admin\n` +
+                `• /demote_admin &lt;chat_id&gt; - Demote admin\n` +
+                `• /pending - View interactive verification queue\n` +
+                `• /audit - View security audit log`
+            );
+            return res.sendStatus(200);
+
+        // ----------------------------------------------------
+        // COMMANDS: LOAN SERVICING & EXISTING ENDPOINTS
+        // ----------------------------------------------------
         } else if (cmd === '/myloans') {
             await sendTelegramMessage(
                 chatId,
@@ -493,86 +1216,108 @@ app.post('/api/telegram/webhook', async (req, res) => {
                 `Total Outstanding: ₹25,000\n` +
                 `Next EMI Due: <b>₹2,500 on 10th of this month</b>\n` +
                 `Status: In Good Standing ✅\n\n` +
-                `Open the Loanzo app to view full schedule or make an instant repayment.`
+                `Open the Loanzo app to view your amortization schedule or make an instant repayment.`
             );
+            return res.sendStatus(200);
+
         } else if (cmd === '/repay') {
             await sendTelegramMessage(
                 chatId,
                 `💳 <b>Loan Repayment Assistance</b>\n\n` +
                 `To repay your active loan EMI:\n` +
                 `1. Open the <b>Loanzo App</b>\n` +
-                `2. Navigate to <b>Loans</b> > Select your loan\n` +
+                `2. Navigate to <b>Loans</b> &gt; Select your loan\n` +
                 `3. Tap <b>"Pay Now"</b> or use UPI (GPay, PhonePe, Paytm)\n\n` +
-                `💡 Repayments logged in the app are verified in real-time.`
+                `✨ Repayments logged in the app are verified in real-time with instant digital receipt issuance.`
             );
+            return res.sendStatus(200);
+
         } else if (cmd === '/statement') {
             await sendTelegramMessage(
                 chatId,
-                `📜 <b>Repayment Statement</b>\n\n` +
+                `📑 <b>Repayment Statement</b>\n\n` +
                 `• Last Payment: ₹2,500 on 10th Aug (Paid on time ✅)\n` +
                 `• Current Due: ₹2,500 (Due 10th Sep)\n` +
                 `• Accrued Penalties: ₹0 (No late fees)\n\n` +
-                `Download complete PDF statements in the Loanzo app under Loan Details.`
+                `Download complete signed PDF statements in the Loanzo app under Loan Details.`
             );
+            return res.sendStatus(200);
+
         } else if (cmd === '/help') {
             await sendTelegramMessage(
                 chatId,
-                `ℹ️ <b>Loanzo Support & Help</b>\n\n` +
-                `Loanzo is a secure peer-to-peer (P2P) lending platform.\n\n` +
+                `ℹ️ <b>Loanzo Support & Help Guide</b>\n\n` +
+                `${botContent.help}\n\n` +
                 `• Bot: @Loanzo_bot\n` +
-                `• Support: @satyam_081\n` +
-                `• Android App: Loanzo v1.0\n\n` +
-                `Type /myloans to view your loans or /repay for payment assistance.`
+                `• Master Admin: @${SUPER_ADMIN_USERNAME}\n` +
+                `• Android App: Loanzo v1.0 (Build 34)`
             );
+            return res.sendStatus(200);
+
         } else if (cmd === '/stats') {
             if (isAdmin) {
                 await sendTelegramMessage(
                     chatId,
-                    `📈 <b>Loanzo Platform Live Stats (Admin: @${ADMIN_TELEGRAM_USERNAME})</b>\n\n` +
-                    `• Total Registered Users: <b>${usersDb.size}</b>\n` +
-                    `• Active Webhook: <code>Operational ✅</code>\n` +
-                    `• Server Status: <code>Healthy</code>\n` +
-                    `• Pending KYCs: 0\n` +
-                    `• Overdue Loans: 0`
+                    `📈 <b>Loanzo Platform Live Metrics (Admin Desk)</b>\n\n` +
+                    `• Registered App Users: <b>${usersDb.size}</b>\n` +
+                    `• Telegram Roles Tracked: <b>${telegramRolesDb.size}</b>\n` +
+                    `• Pending Verification Requests: <b>${Array.from(verificationQueue.values()).filter(r => r.status === 'PENDING').length}</b>\n` +
+                    `• Webhook Engine: <code>Operational (v2.0 RBAC) ✅</code>\n` +
+                    `• Server Status: <code>Healthy (Vercel)</code>`
                 );
             } else {
-                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved exclusively for Loanzo Admin (@${ADMIN_TELEGRAM_USERNAME}).</i>`);
+                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved exclusively for Loanzo Admins.</i>`);
             }
+            return res.sendStatus(200);
+
         } else if (cmd === '/pendingkyc') {
             if (isAdmin) {
+                const pendingCount = Array.from(verificationQueue.values()).filter(r => r.status === 'PENDING').length;
                 await sendTelegramMessage(
                     chatId,
-                    `📋 <b>Pending KYC Review Queue (Admin: @${ADMIN_TELEGRAM_USERNAME})</b>\n\n` +
-                    `All submitted documents are currently up-to-date! No pending items.\n` +
-                    `New submissions will be alerted here in real-time.`
+                    `📂 <b>Pending Verification Queue</b>\n\n` +
+                    `Current pending queue count: <b>${pendingCount}</b>\n` +
+                    `Use /pending to interactively approve or reject incoming verification requests.`
                 );
             } else {
-                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved exclusively for Loanzo Admin (@${ADMIN_TELEGRAM_USERNAME}).</i>`);
+                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved exclusively for Loanzo Admins.</i>`);
             }
+            return res.sendStatus(200);
+
         } else if (cmd === '/admin') {
             if (isAdmin) {
                 await sendTelegramMessage(
                     chatId,
-                    `🛡️ <b>Loanzo Admin Control Panel (@${ADMIN_TELEGRAM_USERNAME})</b>\n\n` +
-                    `Welcome Admin! Available controls:\n` +
-                    `• /stats — Platform business snapshot\n` +
-                    `• /pendingkyc — Review pending user verifications\n` +
-                    `• Server: Node.js / Vercel (Online)`
+                    `🛡️ <b>Loanzo Admin Command Dashboard</b>\n\n` +
+                    `Welcome Admin! Available administrative tools:\n` +
+                    `• /pending - Review interactive verification queue\n` +
+                    `• /stats - Live platform statistics\n` +
+                    `• /broadcast &lt;msg&gt; - Send announcement\n` +
+                    `• /ban &lt;user_id&gt; - Suspend user\n` +
+                    `• /unban &lt;user_id&gt; - Restore user\n` +
+                    `• /audit - Inspect security audit trail`
                 );
             } else {
-                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved exclusively for Loanzo Admin (@${ADMIN_TELEGRAM_USERNAME}).</i>`);
+                await sendTelegramMessage(chatId, `⛔ <i>Unauthorized: This command is reserved for Loanzo Admins.</i>`);
             }
+            return res.sendStatus(200);
+
         } else if (text.length > 0) {
-            // Friendly fallback for any unrecognized message so the bot is NEVER inactive
-            await sendTelegramMessage(
-                chatId,
-                `🤖 I didn't recognize that command.\n\n` +
-                `Here are the commands you can use:\n` +
-                `• /myloans — View active loans\n` +
-                `• /repay — Repayment guide\n` +
-                `• /statement — Repayment summary\n` +
-                `• /help — Support & FAQs`
-            );
+            // Intelligent role-aware fallback
+            let guidance = `❓ I didn't recognize that command.\n\nAvailable commands:\n` +
+                `• /about - Official platform information\n` +
+                `• /profile - Your role & verification status\n` +
+                `• /verify_me - Submit verification application\n` +
+                `• /myloans - View active loans\n` +
+                `• /repay - Repayment assistance\n` +
+                `• /help - Support and FAQs`;
+
+            if (isAdmin) {
+                guidance += `\n\nAdmin Tools:\n• /pending - Verification queue\n• /admin - Admin dashboard`;
+            }
+
+            await sendTelegramMessage(chatId, guidance);
+            return res.sendStatus(200);
         }
 
         res.sendStatus(200);
@@ -582,16 +1327,35 @@ app.post('/api/telegram/webhook', async (req, res) => {
     }
 });
 
-// Admin Broadcast / Notify endpoint - Exclusively delivers to @satyam_081
+// Admin Broadcast / Notify endpoint
 app.post('/api/telegram/notify', async (req, res) => {
-    const { title, message, type, url } = req.body;
+    const { title, message, type, url, requestId } = req.body;
     const formatted = `🔔 <b>${title || 'Loanzo Notification'}</b> (Admin Desk)\n\n${message || ''}`;
-    const replyMarkup = url ? {
-        inline_keyboard: [[{ text: '🔗 View in Loanzo', url: url }]]
-    } : null;
+    
+    let replyMarkup = null;
+    if (requestId) {
+        replyMarkup = {
+            inline_keyboard: [
+                [
+                    { text: '✅ Verify / Approve', callback_data: `verify_req_${requestId}` },
+                    { text: '❌ Reject', callback_data: `reject_req_${requestId}` }
+                ]
+            ]
+        };
+    } else if (url) {
+        replyMarkup = {
+            inline_keyboard: [[{ text: '📄 View in Loanzo', url: url }]]
+        };
+    }
 
-    const ok = await sendTelegramMessage(satyamAdminChatId, formatted, replyMarkup);
-    res.json({ success: ok, deliveredTo: `@${ADMIN_TELEGRAM_USERNAME}`, chatId: satyamAdminChatId });
+    const adminIds = getAdminChatIds();
+    let delivered = 0;
+    for (const id of adminIds) {
+        const ok = await sendTelegramMessage(id, formatted, replyMarkup);
+        if (ok) delivered++;
+    }
+
+    res.json({ success: delivered > 0, deliveredCount: delivered, adminRecipients: adminIds });
 });
 
 // ==========================================

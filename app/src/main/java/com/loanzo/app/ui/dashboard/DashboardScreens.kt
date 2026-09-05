@@ -74,7 +74,9 @@ fun DashboardScreen(
     var showReportSheet by remember { mutableStateOf(false) }
     var showAcademySimulator by remember { mutableStateOf(false) }
     var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
+    var selectedVisitForInspection by remember { mutableStateOf<com.loanzo.app.data.entity.AgentVisitEntity?>(null) }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
     val dashboardGuideSeen by userRepository.isGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_DASHBOARD_SEEN)
         .collectAsStateWithLifecycle(initialValue = true)
@@ -88,6 +90,9 @@ fun DashboardScreen(
     val questDismissed by userRepository.isQuestCardDismissed()
         .collectAsStateWithLifecycle(initialValue = false)
     val scope = rememberCoroutineScope()
+    val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+    val agentVisits by (if (state.user != null) agentRepository.getVisitsForAgent(state.user.userId) else kotlinx.coroutines.flow.flowOf(emptyList()))
+        .collectAsStateWithLifecycle(initialValue = emptyList())
 
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -358,224 +363,619 @@ fun DashboardScreen(
         }
     }
 
-        // Gamified Getting Started Quest Card
-        if (!questDismissed) {
+        val userRole = state.user?.role?.uppercase() ?: "USER"
+        val isAgent = userRole == "AGENT" && state.user?.agentStatus == "APPROVED"
+        val isAdmin = userRole == "ADMIN" || com.loanzo.app.util.VerificationManager.isAppOwner(state.user)
+
+        if (isAgent) {
+            // ==========================================
+            // 🕵️ CERTIFIED AGENT COCKPIT & DOORSTEP VISITS
+            // ==========================================
+            val pendingAgentVisits = agentVisits.filter { it.status != "COMPLETED" }
+            val completedAgentVisits = agentVisits.filter { it.status == "COMPLETED" }
+
             item {
-                InteractiveGettingStartedQuestCard(
-                    isCommunityDone = questCommunityDone,
-                    isCalculatorDone = questCalculatorDone,
-                    isKycDone = questKycDone,
-                    isDemoDone = questDemoDone,
-                    onExploreCommunity = {
-                        scope.launch {
-                            userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_COMMUNITY_EXPLORED)
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.2.dp, Emerald500.copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Emerald500.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Icon(Icons.Default.Security, contentDescription = null, tint = Emerald500, modifier = Modifier.padding(8.dp))
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text("AGENT CONTROL COCKPIT", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Emerald500)
+                                    Text("Field Officer Active Desk", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            
+                            val isOnDuty = state.user?.isOnDuty ?: true
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isOnDuty) Emerald500.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                                border = BorderStroke(1.dp, if (isOnDuty) Emerald500.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant),
+                                modifier = Modifier.clickable {
+                                    scope.launch {
+                                        userRepository.updateUser(state.user!!.copy(isOnDuty = !isOnDuty))
+                                        agentRepository.setDutyStatus(state.user.userId, !isOnDuty)
+                                        android.widget.Toast.makeText(context, if (!isOnDuty) "🟢 You are now ON DUTY for Doorstep Visits" else "⚪ Duty set to OFF", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isOnDuty) Emerald500 else TextSlateMuted)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isOnDuty) "ON DUTY" else "OFF DUTY",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isOnDuty) Emerald500 else TextSlateMuted
+                                    )
+                                }
+                            }
                         }
-                    },
-                    onOpenCalculator = {
-                        scope.launch {
-                            userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_CALCULATOR_TRIED)
-                        }
-                        showAcademySimulator = true
-                    },
-                    onVerifyKyc = {
-                        onNavigateToKyc()
-                    },
-                    onSeedDemo = {
-                        scope.launch {
-                            userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_DEMO_SEEDED)
-                        }
-                        onPushDemoData()
-                    },
-                    onDismiss = {
-                        scope.launch {
-                            userRepository.dismissQuestCard()
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("EARNINGS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("₹${state.user?.totalAgentEarnings?.toInt() ?: 0}", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = Emerald500)
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("PENDING", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${pendingAgentVisits.size}", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = Gold500)
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("COMPLETED", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${completedAgentVisits.size}", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
                         }
                     }
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
-        }
 
-        // Unified Financial Portfolio Card on Home (Executive Obsidian Dark Hero Box matching Live Loan Simulator)
-        item {
-            ExecutiveHeroCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            ) {
-                // 1. Header: Emblem + Title + Active Pill
+            // Doorstep Inspections Section Header
+            item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = CircleShape,
-                            color = GoldCoinRich.copy(alpha = 0.2f),
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.AccountBalanceWallet,
-                                contentDescription = null,
-                                tint = GoldCoinRich,
-                                modifier = Modifier.padding(9.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Portfolio Overview",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Real-time capital balance",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Gray400
-                            )
-                        }
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Emerald400.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            text = "ACTIVE",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Emerald400,
-                            fontWeight = FontWeight.Bold
-                        )
+                    Text(
+                        text = "Assigned Doorstep Inspections (${pendingAgentVisits.size})",
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    TextButton(onClick = onNavigateToLoansTab) {
+                        Text("View All ↗", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // 2. Main Metric (Golden Coin Yellow) + Interactive Donut Ring
-                val totalVolume = state.totalLentDisbursed + state.totalBorrowedDisbursed
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Active Portfolio Value",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Gray300
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = totalVolume.toInrString(),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = GoldCoinBright
-                        )
-                    }
-
-                    // Mini Interactive Donut Gauge (Emerald Lent vs Golden Coin Borrowed)
-                    Box(
-                        modifier = Modifier.size(72.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val lentAngle = if (totalVolume > 0) ((state.totalLentDisbursed / totalVolume) * 360f).toFloat() else 180f
-                        val borrowedAngle = if (totalVolume > 0) ((state.totalBorrowedDisbursed / totalVolume) * 360f).toFloat() else 180f
-
-                        Canvas(modifier = Modifier.size(64.dp)) {
-                            drawArc(
-                                color = Emerald400,
-                                startAngle = -90f,
-                                sweepAngle = lentAngle,
-                                useCenter = false,
-                                style = Stroke(width = 16f, cap = StrokeCap.Round)
-                            )
-                            drawArc(
-                                color = GoldCoinRich,
-                                startAngle = -90f + lentAngle,
-                                sweepAngle = borrowedAngle,
-                                useCenter = false,
-                                style = Stroke(width = 16f, cap = StrokeCap.Round)
-                            )
-                        }
-                        Icon(Icons.Default.PieChart, contentDescription = null, tint = Gray400, modifier = Modifier.size(20.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = Gray700.copy(alpha = 0.5f))
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // 3. Bottom 3-Column Breakdown (Lent, Borrowed, Net)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(Emerald400))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Total Lent", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
-                        }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(state.totalLentDisbursed.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
-                    }
-
-                    Column(modifier = Modifier.weight(1.1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(GoldCoinRich))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Total Borrowed", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
-                        }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(state.totalBorrowedDisbursed.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinRich, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
-                    }
-
-                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Text("Outstanding Net", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text((state.totalLentOutstanding - state.totalBorrowedOutstanding).toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 4. Quick Action Button inside Hero Box
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToLoansTab() }
-                ) {
-                    Row(
+            if (pendingAgentVisits.isEmpty()) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 10.dp, horizontal = 14.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 20.dp)
                     ) {
-                        Text(
-                            text = "Manage All Loans in Loans Tab",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = GoldCoinBright,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("🎉", fontSize = 28.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("All doorstep visits completed!", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Keep On-Duty toggle ON to receive automated dispatch alerts when borrowers nearby request physical verification.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            } else {
+                items(pendingAgentVisits.take(3).size) { idx ->
+                    val visit = pendingAgentVisits[idx]
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 5.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Gold500.copy(alpha = 0.15f),
+                                    border = BorderStroke(0.5.dp, Gold500.copy(alpha = 0.4f))
+                                ) {
+                                    Text(
+                                        text = visit.visitType.replace("_", " "),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Gold500,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Text("+₹${visit.payoutAmount.toInt()} Payout", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = Emerald500)
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(visit.borrowerName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Text("📍 ${visit.targetAddress}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:${visit.borrowerPhone}"))
+                                        context.startActivity(intent)
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(vertical = 6.dp)
+                                ) {
+                                    Text("Call", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("geo:0,0?q=${android.net.Uri.encode(visit.targetAddress)}"))
+                                        context.startActivity(intent)
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(vertical = 6.dp)
+                                ) {
+                                    Text("Map", fontSize = 11.sp, maxLines = 1, softWrap = false)
+                                }
+                                Button(
+                                    onClick = { selectedVisitForInspection = visit },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1.2f),
+                                    contentPadding = PaddingValues(vertical = 6.dp)
+                                ) {
+                                    Text("Inspect", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                }
+                            }
+                        }
                     }
                 }
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
-            Spacer(modifier = Modifier.height(20.dp))
-        }
+        } else if (isAdmin) {
+            // ==========================================
+            // 👑 MASTER ADMIN EXECUTIVE HUB CARD
+            // ==========================================
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.2.dp, Gold500.copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Gold500.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Text("👑", fontSize = 20.sp, modifier = Modifier.padding(8.dp))
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text("APP OWNER & MASTER ADMIN", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Gold500)
+                                    Text("@${state.user?.username?.ifBlank { "satyam0810" }}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Gold500.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.4f)),
+                                modifier = Modifier.clickable { onNavigateToLoansTab() }
+                            ) {
+                                Text("PLATFORM ACTIVE", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Gold500, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+                            }
+                        }
 
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val totalVol = state.totalLentDisbursed + state.totalBorrowedDisbursed
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("PLATFORM VOL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(totalVol.toInrString(), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("ACTIVE LOANS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${state.loansAsLender.count { it.status == "ACTIVE" } + state.loansAsBorrower.count { it.status == "ACTIVE" }}", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = Emerald500)
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("ESCROW VAULT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("SECURED 🛡️", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF6366F1), modifier = Modifier.padding(top = 4.dp))
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        OutlinedButton(
+                            onClick = onNavigateToLoansTab,
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Gold500, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Manage Platform Loans & Custody Ledger", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        } else {
+            // ==========================================
+            // 👤 STANDARD MEMBER CONSUMER HERO
+            // ==========================================
+            if (!questDismissed) {
+                item {
+                    InteractiveGettingStartedQuestCard(
+                        isCommunityDone = questCommunityDone,
+                        isCalculatorDone = questCalculatorDone,
+                        isKycDone = questKycDone,
+                        isDemoDone = questDemoDone,
+                        onExploreCommunity = {
+                            scope.launch {
+                                userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_COMMUNITY_EXPLORED)
+                            }
+                        },
+                        onOpenCalculator = {
+                            scope.launch {
+                                userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_CALCULATOR_TRIED)
+                            }
+                            showAcademySimulator = true
+                        },
+                        onVerifyKyc = {
+                            onNavigateToKyc()
+                        },
+                        onSeedDemo = {
+                            scope.launch {
+                                userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_DEMO_SEEDED)
+                            }
+                            onPushDemoData()
+                        },
+                        onDismiss = {
+                            scope.launch {
+                                userRepository.dismissQuestCard()
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
+
+            item {
+                ExecutiveHeroCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = GoldCoinRich.copy(alpha = 0.2f),
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountBalanceWallet,
+                                    contentDescription = null,
+                                    tint = GoldCoinRich,
+                                    modifier = Modifier.padding(9.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Portfolio Overview",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Real-time capital balance",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Gray400
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Emerald400.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "ACTIVE",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Emerald400,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    val totalVolume = state.totalLentDisbursed + state.totalBorrowedDisbursed
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "Active Portfolio Value",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Gray300
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = totalVolume.toInrString(),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GoldCoinBright
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier.size(72.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val lentAngle = if (totalVolume > 0) ((state.totalLentDisbursed / totalVolume) * 360f).toFloat() else 180f
+                            val borrowedAngle = if (totalVolume > 0) ((state.totalBorrowedDisbursed / totalVolume) * 360f).toFloat() else 180f
+
+                            Canvas(modifier = Modifier.size(64.dp)) {
+                                drawArc(
+                                    color = Emerald400,
+                                    startAngle = -90f,
+                                    sweepAngle = lentAngle,
+                                    useCenter = false,
+                                    style = Stroke(width = 16f, cap = StrokeCap.Round)
+                                )
+                                drawArc(
+                                    color = GoldCoinRich,
+                                    startAngle = -90f + lentAngle,
+                                    sweepAngle = borrowedAngle,
+                                    useCenter = false,
+                                    style = Stroke(width = 16f, cap = StrokeCap.Round)
+                                )
+                            }
+
+                            Icon(
+                                imageVector = Icons.Default.PieChart,
+                                contentDescription = null,
+                                tint = GoldCoinRich,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = SurfaceDarkElevated,
+                            border = BorderStroke(0.8.dp, Emerald400.copy(alpha = 0.3f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onNavigateToLoansTab() }
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(Emerald400)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Lent Out",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Gray400
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = state.totalLentDisbursed.toInrString(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Emerald400
+                                )
+                                Text(
+                                    text = "${state.loansAsLender.count { it.status == "ACTIVE" }} Active Loans",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Gray400
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = SurfaceDarkElevated,
+                            border = BorderStroke(0.8.dp, GoldCoinRich.copy(alpha = 0.3f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { onNavigateToLoansTab() }
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(GoldCoinRich)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Borrowed",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Gray400
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = state.totalBorrowedDisbursed.toInrString(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldCoinBright
+                                )
+                                Text(
+                                    text = "${state.loansAsBorrower.count { it.status == "ACTIVE" }} Active Debts",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Gray400
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White.copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToLoansTab() }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp, horizontal = 14.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Manage All Loans in Loans Tab",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = GoldCoinBright,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+        }
         // ─── COMMUNITY LOAN WALL (LIVE & OPEN DIRECTLY ON HOME) ────────────────
         item {
             Column(
@@ -991,6 +1391,31 @@ fun DashboardScreen(
             currentUser = state.user,
             loans = allLoans,
             onDismiss = { showReportSheet = false }
+        )
+    }
+
+    selectedVisitForInspection?.let { visit ->
+        val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+        val context = androidx.compose.ui.platform.LocalContext.current
+        com.loanzo.app.ui.agent.AgentInspectionSheet(
+            visit = visit,
+            onDismiss = { selectedVisitForInspection = null },
+            onCompleteInspection = { remarks, collOk, bOk, lOk, proof ->
+                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    agentRepository.completeVisit(
+                        visitId = visit.visitId,
+                        agentRemarks = remarks,
+                        isCollateralAuthentic = collOk,
+                        isBorrowerIdentityVerified = bOk,
+                        isLenderIdentityVerified = lOk,
+                        proofPhotoUris = proof
+                    )
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Inspection completed & ₹${visit.payoutAmount.toInt()} payout credited!", android.widget.Toast.LENGTH_SHORT).show()
+                        selectedVisitForInspection = null
+                    }
+                }
+            }
         )
     }
 

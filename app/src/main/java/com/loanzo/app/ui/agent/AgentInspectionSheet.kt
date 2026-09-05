@@ -1,5 +1,9 @@
 package com.loanzo.app.ui.agent
 
+import com.loanzo.app.ui.theme.Gold500
+import com.loanzo.app.ui.theme.Emerald500
+import com.loanzo.app.ui.theme.Navy900
+
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,19 +54,19 @@ fun AgentInspectionSheet(
         mutableStateOf(visit.collateralEstimatedValue?.toInt()?.toString() ?: "")
     }
 
-    val darkBg = Color(0xFF0D1117)
-    val cardBg = Color(0xFF161B22)
-    val borderColor = Color(0xFF30363D)
-    val goldAccent = Color(0xFFFFB800)
-    val emeraldAccent = Color(0xFF10B981)
+    val darkBg = MaterialTheme.colorScheme.surface
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
+    val goldAccent = Gold500
+    val emeraldAccent = Emerald500
 
     val canSubmit = geoCheckedIn && idVerified && (photoTaken1 || photoTaken2)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = darkBg,
+        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = {
-            BottomSheetDefaults.DragHandle(color = Color(0xFF4B5563))
+            BottomSheetDefaults.DragHandle(color = MaterialTheme.colorScheme.outlineVariant)
         }
     ) {
         Column(
@@ -111,7 +115,7 @@ fun AgentInspectionSheet(
                         text = visit.title,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -136,7 +140,7 @@ fun AgentInspectionSheet(
                             text = "₹${visit.payoutAmount.toInt()}",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -167,7 +171,7 @@ fun AgentInspectionSheet(
                             text = if (geoCheckedIn) "GPS Geofence Match (Verified)" else "Physical Geolocation Check-in",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = if (geoCheckedIn) "Latitude: ${visit.targetLatitude} | Longitude: ${visit.targetLongitude}" else visit.targetAddress,
@@ -209,7 +213,7 @@ fun AgentInspectionSheet(
                 text = "Field Inspection Verification Checklist",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -255,7 +259,7 @@ fun AgentInspectionSheet(
                     text = "Collateral Valuation Appraisal",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -286,7 +290,7 @@ fun AgentInspectionSheet(
                 text = "Geotagged Photo Proof",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -403,14 +407,14 @@ private fun InspectionCheckItem(
                 text = title,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 softWrap = false
             )
             Text(
                 text = desc,
                 fontSize = 11.sp,
-                color = Color(0xFF8B949E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 15.sp
             )
         }
@@ -425,8 +429,8 @@ private fun PhotoProofBox(
     onCapture: () -> Unit
 ) {
     val emeraldAccent = Color(0xFF10B981)
-    val cardBg = Color(0xFF161B22)
-    val borderColor = Color(0xFF30363D)
+    val cardBg = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
 
     Surface(
         modifier = modifier
@@ -461,7 +465,7 @@ private fun PhotoProofBox(
             Text(
                 text = if (isCaptured) "Geotagged & Signed" else "Tap to snap",
                 fontSize = 10.sp,
-                color = Color(0xFF8B949E)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

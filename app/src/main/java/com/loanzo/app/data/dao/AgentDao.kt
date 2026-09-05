@@ -60,4 +60,7 @@ interface AgentDao {
 
     @Delete
     suspend fun deleteVisit(visit: AgentVisitEntity)
+
+    @Query("DELETE FROM agent_visits WHERE visitId LIKE 'visit_demo_%'")
+    suspend fun deleteDemoVisits()
 }

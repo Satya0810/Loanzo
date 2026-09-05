@@ -140,6 +140,12 @@ fun ProfileScreen(
         com.loanzo.app.util.VerificationManager.isAppOwner(user)
     }
 
+    // Role Switcher Simulator is STRICTLY EXCLUSIVE to username satyam0810
+    val canSwitchRoles = remember(user.username, user.phone) {
+        val u = user.username.trim().lowercase()
+        u == "satyam0810" || u == "satyam_081" || u == "satyam" || user.phone == "+917061559039" || user.phone == "7061559039"
+    }
+
     val profilePhotoPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             scope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -326,14 +332,14 @@ fun ProfileScreen(
                         }
 
                         // ==========================================
-                        // 👑 MASTER ROLE SWITCHER (Exclusive for App Owner / @satyam0810)
+                        // 👑 IN-APP ROLE SWITCHER (Strictly Exclusive to @satyam0810)
                         // ==========================================
-                        if (isOwner) {
+                        if (canSwitchRoles) {
                             Spacer(modifier = Modifier.height(14.dp))
                             Card(
                                 shape = RoundedCornerShape(18.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = BorderStroke(1.5.dp, Gold500.copy(alpha = 0.7f)),
+                                border = BorderStroke(1.5.dp, Gold500.copy(alpha = 0.8f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
@@ -346,10 +352,10 @@ fun ProfileScreen(
                                             Text("👑", fontSize = 16.sp)
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
-                                                text = "Super Admin Role Switcher",
+                                                text = "In-App Role Switcher",
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 14.sp,
-                                                color = Gold400,
+                                                color = MaterialTheme.colorScheme.primary,
                                                 maxLines = 1,
                                                 softWrap = false,
                                                 overflow = TextOverflow.Ellipsis
@@ -358,13 +364,13 @@ fun ProfileScreen(
                                         Surface(
                                             shape = RoundedCornerShape(8.dp),
                                             color = Gold500.copy(alpha = 0.15f),
-                                            border = BorderStroke(0.5.dp, Gold500.copy(alpha = 0.4f))
+                                            border = BorderStroke(0.5.dp, Gold500.copy(alpha = 0.5f))
                                         ) {
                                             Text(
                                                 text = "@${user.username.ifBlank { "satyam0810" }}",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Gold400,
+                                                color = Gold500,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                             )
                                         }
@@ -372,9 +378,9 @@ fun ProfileScreen(
 
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        text = "Switch active view instantly between Consumer Member, Certified Field Agent, and Master Admin console.",
+                                        text = "Switch active role seamlessly. Core navigation (Home, Loans, Alerts, Profile) stays unified while features dynamically adapt.",
                                         fontSize = 12.sp,
-                                        color = Gray400,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         lineHeight = 16.sp
                                     )
                                     Spacer(modifier = Modifier.height(14.dp))
@@ -396,14 +402,13 @@ fun ProfileScreen(
                                                     if (!isNormalSelected) {
                                                         scope.launch {
                                                             userRepository.updateUser(user.copy(role = "USER"))
-                                                            Toast.makeText(context, "Switched to Normal Member role", Toast.LENGTH_SHORT).show()
-                                                            onBack()
+                                                            Toast.makeText(context, "Switched to Member role", Toast.LENGTH_SHORT).show()
                                                         }
                                                     }
                                                 },
                                             shape = RoundedCornerShape(12.dp),
-                                            color = if (isNormalSelected) Gold500 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                            border = BorderStroke(1.dp, if (isNormalSelected) Gold500 else MaterialTheme.colorScheme.outlineVariant)
+                                            color = if (isNormalSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            border = BorderStroke(1.dp, if (isNormalSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
                                         ) {
                                             Column(
                                                 modifier = Modifier.padding(vertical = 10.dp),
@@ -415,7 +420,7 @@ fun ProfileScreen(
                                                     text = "Member",
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (isNormalSelected) DarkNavy else MaterialTheme.colorScheme.onSurface,
+                                                    color = if (isNormalSelected) Color.White else MaterialTheme.colorScheme.onSurface,
                                                     maxLines = 1,
                                                     softWrap = false
                                                 )
@@ -431,8 +436,7 @@ fun ProfileScreen(
                                                     scope.launch {
                                                         agentRepository.seedSampleVisits(user.userId)
                                                         userRepository.updateUser(user.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true))
-                                                        Toast.makeText(context, "Switched to Certified Field Agent", Toast.LENGTH_SHORT).show()
-                                                        onNavigateToAgent()
+                                                        Toast.makeText(context, "Switched to Field Agent role", Toast.LENGTH_SHORT).show()
                                                     }
                                                 },
                                             shape = RoundedCornerShape(12.dp),
@@ -449,7 +453,7 @@ fun ProfileScreen(
                                                     text = "Agent",
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (isAgentSelected) DarkNavy else MaterialTheme.colorScheme.onSurface,
+                                                    color = if (isAgentSelected) Color.White else MaterialTheme.colorScheme.onSurface,
                                                     maxLines = 1,
                                                     softWrap = false
                                                 )
@@ -464,8 +468,7 @@ fun ProfileScreen(
                                                 .clickable {
                                                     scope.launch {
                                                         userRepository.updateUser(user.copy(role = "ADMIN"))
-                                                        Toast.makeText(context, "Switched to Master Admin", Toast.LENGTH_SHORT).show()
-                                                        onNavigateToAdminHub()
+                                                        Toast.makeText(context, "Switched to Master Admin role", Toast.LENGTH_SHORT).show()
                                                     }
                                                 },
                                             shape = RoundedCornerShape(12.dp),

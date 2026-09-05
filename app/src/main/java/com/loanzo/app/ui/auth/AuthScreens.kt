@@ -38,14 +38,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import com.loanzo.app.R
+import com.loanzo.app.ui.components.*
 import com.loanzo.app.ui.theme.*
 import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    onLogin: (userId: String, pass: String) -> Unit,
-    onBiometricLogin: (typedUserId: String) -> Unit,
+    onLogin: (userId: String, pass: String, role: String) -> Unit,
+    onBiometricLogin: (typedUserId: String, role: String) -> Unit,
     onGoogleLogin: (typedUserId: String) -> Unit = {},
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit,
@@ -54,10 +55,12 @@ fun LoginScreen(
     error: String? = null,
     onClearError: () -> Unit = {},
     isUserIdVerified: Boolean = false,
-    onVerifyUserId: (String) -> Unit = {},
+    onVerifyUserId: (userId: String, role: String) -> Unit = { _, _ -> },
     onResetUserIdVerification: () -> Unit = {}
 ) {
     var userId by remember { mutableStateOf("") }
+    var userRole by rememberSaveable { mutableStateOf("Member") }
+    var roleDropdownExpanded by remember { mutableStateOf(false) }
     var password by remember { mutableStateOf("") }
     var loginStep by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(1) }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
@@ -158,6 +161,181 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     if (loginStep == 1) {
+                        // User Role Selection & Entry (Directly above Username)
+                        Text(
+                            text = "Select User Role",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 6.dp)
+                        )
+
+                        // Quick Role Chips with Golden Coin Box Coloring
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val roleChips = listOf(
+                                Triple("Member", "👤 Member", "USER"),
+                                Triple("Field Agent", "🕵️ Agent", "AGENT"),
+                                Triple("Master Admin", "👑 Admin", "ADMIN")
+                            )
+                            roleChips.forEach { (roleName, label, _) ->
+                                val isSelected = userRole.trim().equals(roleName, ignoreCase = true) ||
+                                        (roleName == "Member" && (userRole.trim().equals("USER", ignoreCase = true) || userRole.trim().equals("Borrower", ignoreCase = true) || userRole.trim().equals("Lender", ignoreCase = true))) ||
+                                        (roleName == "Field Agent" && userRole.trim().equals("AGENT", ignoreCase = true)) ||
+                                        (roleName == "Master Admin" && userRole.trim().equals("ADMIN", ignoreCase = true))
+
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        userRole = roleName
+                                        onClearError()
+                                    },
+                                    label = {
+                                        Text(
+                                            label,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 12.sp,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = goldFilterChipColors(),
+                                    border = goldFilterChipBorder(isSelected),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        // User Role Text Field with Dropdown Menu
+                        ExposedDropdownMenuBox(
+                            expanded = roleDropdownExpanded,
+                            onExpandedChange = { roleDropdownExpanded = !roleDropdownExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = userRole,
+                                onValueChange = {
+                                    userRole = it
+                                    onClearError()
+                                },
+                                label = { Text("User Role") },
+                                placeholder = { Text("e.g. Member, Field Agent, Master Admin") },
+                                leadingIcon = {
+                                    Icon(
+                                        when {
+                                            userRole.contains("admin", ignoreCase = true) -> Icons.Default.AdminPanelSettings
+                                            userRole.contains("agent", ignoreCase = true) -> Icons.Default.Engineering
+                                            else -> Icons.Default.Badge
+                                        },
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = roleDropdownExpanded)
+                                },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    cursorColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                                )
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = roleDropdownExpanded,
+                                onDismissRequest = { roleDropdownExpanded = false }
+                            ) {
+                                val dropdownRoles = listOf("Member", "Field Agent", "Master Admin")
+                                dropdownRoles.forEach { roleOption ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    when (roleOption) {
+                                                        "Master Admin" -> "👑 Master Admin (Full Control)"
+                                                        "Field Agent" -> "🕵️ Field Agent (Inspections & Duty)"
+                                                        else -> "👤 Member (Borrower & Lender)"
+                                                    },
+                                                    fontWeight = if (userRole.equals(roleOption, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            userRole = roleOption
+                                            roleDropdownExpanded = false
+                                            onClearError()
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = "Quick Select Account:",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Gray400,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                        )
+
+                        // Quick Selectable User Accounts with Golden Coin Box Coloring
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val demoAccounts = listOf(
+                                Triple("satyam0810", "👑 satyam0810", "Master Admin"),
+                                Triple("agent_demo", "🕵️ agent_demo", "Field Agent"),
+                                Triple("user_demo", "👤 user_demo", "Member")
+                            )
+                            demoAccounts.forEach { (uName, uLabel, uRole) ->
+                                val isSelected = userId.trim().equals(uName, ignoreCase = true)
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        userId = uName
+                                        userRole = uRole
+                                        onClearError()
+                                    },
+                                    label = {
+                                        Text(
+                                            uLabel,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = goldFilterChipColors(),
+                                    border = goldFilterChipBorder(isSelected),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+
+                        // Username Input Field (the option to enter username)
                         OutlinedTextField(
                             value = userId,
                             onValueChange = { userId = it; onClearError() },
@@ -180,8 +358,9 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
+                        // Next Button
                         Button(
-                            onClick = { onVerifyUserId(userId) },
+                            onClick = { onVerifyUserId(userId.trim(), userRole.trim()) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(52.dp),
@@ -190,17 +369,21 @@ fun LoginScreen(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
-                            enabled = userId.isNotBlank()
+                            enabled = userId.isNotBlank() && userRole.isNotBlank() && !isLoading
                         ) {
-                            Text("Next", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Default.ArrowForward, contentDescription = "Next", modifier = Modifier.size(18.dp))
+                            if (isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            } else {
+                                Text("Next", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(Icons.Default.ArrowForward, contentDescription = "Next", modifier = Modifier.size(18.dp))
+                            }
                         }
 
                         if (isBiometricAvailable) {
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedButton(
-                                onClick = { onBiometricLogin(userId.trim()) },
+                                onClick = { onBiometricLogin(userId.trim(), userRole.trim()) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(50.dp),
@@ -217,17 +400,32 @@ fun LoginScreen(
                     } else {
                         // Step 2: Password & Biometrics
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(text = userId, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                Text(text = userId, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "Role: ${userRole.ifBlank { "Member" }}",
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                             TextButton(onClick = { 
                                 loginStep = 1
                                 password = ""
                                 onResetUserIdVerification()
                             }) {
-                                Text("Edit", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Edit", color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
                             }
                         }
 
@@ -268,7 +466,7 @@ fun LoginScreen(
 
                         Button(
                             onClick = {
-                                onLogin(userId.trim(), password)
+                                onLogin(userId.trim(), password, userRole.trim())
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -291,7 +489,7 @@ fun LoginScreen(
                         if (isBiometricAvailable) {
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedButton(
-                                onClick = { onBiometricLogin(userId.trim()) },
+                                onClick = { onBiometricLogin(userId.trim(), userRole.trim()) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(50.dp),

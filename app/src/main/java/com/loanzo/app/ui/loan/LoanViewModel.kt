@@ -566,6 +566,34 @@ class LoanViewModel @Inject constructor(
     }
 
     // Export Reports (Feature 13)
+    fun exportAgreementPdf(context: android.content.Context, loan: LoanEntity) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val lender = userRepository.getUserById(loan.lenderId)
+                ?: com.loanzo.app.data.entity.UserEntity(userId = loan.lenderId, name = "Lender", email = "", phone = "", role = "LENDER", kycStatus = "VERIFIED")
+            val borrower = userRepository.getUserById(loan.borrowerId)
+                ?: com.loanzo.app.data.entity.UserEntity(userId = loan.borrowerId, name = "Borrower", email = "", phone = "", role = "BORROWER", kycStatus = "VERIFIED")
+            val file = com.loanzo.app.util.AgreementGenerator.generateAgreementPdf(context, loan, lender, borrower)
+            if (file != null) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    com.loanzo.app.util.ReportExporter.shareFile(context, file, "application/pdf")
+                    _uiState.update { it.copy(message = "Agreement PDF opened successfully!") }
+                }
+            } else {
+                _uiState.update { it.copy(message = "Failed to generate Agreement PDF.") }
+            }
+        }
+    }
+
+    fun exportPitchDeck(context: android.content.Context) {
+        val file = com.loanzo.app.util.ReportExporter.generatePlatformPitchReportPdf(context)
+        if (file != null) {
+            com.loanzo.app.util.ReportExporter.shareFile(context, file, "application/pdf", "Export Startup Pitch Dossier")
+            _uiState.update { it.copy(message = "Startup Pitch Dossier generated successfully!") }
+        } else {
+            _uiState.update { it.copy(message = "Failed to generate Pitch Deck PDF") }
+        }
+    }
+
     fun exportLoanSummary(context: android.content.Context) {
         val loan = _uiState.value.selectedLoan ?: return
         val repayments = _uiState.value.repayments

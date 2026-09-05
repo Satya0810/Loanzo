@@ -328,30 +328,180 @@ fun CreateLoanScreen(
                     shape = RoundedCornerShape(14.dp)
                 )
 
-                // 1. Quick Pick Transactor chips (if any)
-                if (counterpartyUserId.isEmpty() && registeredUsers.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Quick Pick Transactor:", style = MaterialTheme.typography.labelSmall, color = Gray400)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(registeredUsers.take(6)) { user ->
-                            FilterChip(
-                                selected = counterpartyUserId == user.userId,
-                                onClick = { counterpartyUserId = user.userId },
-                                leadingIcon = { Icon(Icons.Default.AccountCircle, null, tint = if (counterpartyUserId == user.userId) GoldCoinAmber else GoldCoinRich, modifier = Modifier.size(16.dp)) },
-                                label = { Text(user.name.split(" ").firstOrNull() ?: user.phone, fontWeight = if (counterpartyUserId == user.userId) FontWeight.Bold else FontWeight.Normal) },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = goldFilterChipColors(),
-                                border = goldFilterChipBorder(counterpartyUserId == user.userId)
-                            )
+                // 1. Comprehensive Candidate Transactors with Role & Username Mapping
+                val allCandidateUsers = remember(registeredUsers) {
+                    val defaultSeedList = listOf(
+                        UserEntity(
+                            userId = "usr_satyam_owner",
+                            name = "Satyam Kumar",
+                            email = "satyam@loanzo.app",
+                            phone = "+91 70615 59039",
+                            username = "satyam0810",
+                            role = "ADMIN",
+                            kycStatus = "VERIFIED"
+                        ),
+                        UserEntity(
+                            userId = "usr_agent_field_01",
+                            name = "Vikas Sharma",
+                            email = "vikas.agent@loanzo.app",
+                            phone = "+91 98100 12345",
+                            username = "agent_demo",
+                            role = "AGENT",
+                            kycStatus = "VERIFIED"
+                        ),
+                        UserEntity(
+                            userId = "usr_demo_consumer",
+                            name = "Arjun Mehta",
+                            email = "arjun.mehta@demo.loanzo.app",
+                            phone = "+91 98200 54321",
+                            username = "user_demo",
+                            role = "USER",
+                            kycStatus = "VERIFIED"
+                        ),
+                        UserEntity(
+                            userId = "usr_rahul_borrower",
+                            name = "Rahul Sharma",
+                            email = "rahul.sharma@demo.loanzo.app",
+                            phone = "+91 98765 43210",
+                            username = "rahul_sharma",
+                            role = "BORROWER",
+                            kycStatus = "VERIFIED"
+                        ),
+                        UserEntity(
+                            userId = "usr_priya_lender",
+                            name = "Priya Patel",
+                            email = "priya.patel@demo.loanzo.app",
+                            phone = "+91 91234 56789",
+                            username = "priya_invest",
+                            role = "LENDER",
+                            kycStatus = "VERIFIED"
+                        )
+                    )
+                    (registeredUsers + defaultSeedList).distinctBy { it.userId }
+                }
+
+                var transactorRoleFilter by remember { mutableStateOf("ALL") }
+                val transactorRoles = listOf("ALL", "ADMIN", "AGENT", "MEMBER", "BORROWER", "LENDER")
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Quick Pick Transactor & Role:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (counterpartyUserId.isNotBlank()) {
+                        Text(
+                            text = "Clear ✕",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Red400,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { counterpartyUserId = "" }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Role Category Filter with Golden Coin Box Coloring
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(transactorRoles) { rRole ->
+                        val isRoleSelected = transactorRoleFilter == rRole
+                        FilterChip(
+                            selected = isRoleSelected,
+                            onClick = { transactorRoleFilter = rRole },
+                            label = {
+                                Text(
+                                    when (rRole) {
+                                        "ADMIN" -> "👑 Admin"
+                                        "AGENT" -> "🕵️ Agent"
+                                        "MEMBER" -> "👤 Member"
+                                        "BORROWER" -> "Borrower"
+                                        "LENDER" -> "Lender"
+                                        else -> "🌟 All Roles"
+                                    },
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isRoleSelected) FontWeight.Bold else FontWeight.Normal,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = goldFilterChipColors(),
+                            border = goldFilterChipBorder(isRoleSelected)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Transactor User Chips with username (@satyam0810, etc.) and role badges
+                val filteredTransactors = remember(allCandidateUsers, transactorRoleFilter) {
+                    if (transactorRoleFilter == "ALL") allCandidateUsers
+                    else allCandidateUsers.filter {
+                        when (transactorRoleFilter) {
+                            "ADMIN" -> it.role.equals("ADMIN", ignoreCase = true)
+                            "AGENT" -> it.role.equals("AGENT", ignoreCase = true)
+                            "MEMBER" -> it.role.equals("USER", ignoreCase = true) || it.role.equals("MEMBER", ignoreCase = true)
+                            "BORROWER" -> it.role.equals("BORROWER", ignoreCase = true)
+                            "LENDER" -> it.role.equals("LENDER", ignoreCase = true)
+                            else -> true
                         }
                     }
                 }
 
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(filteredTransactors) { user ->
+                        val isUserSelected = counterpartyUserId == user.userId || counterpartyUserId == user.username
+                        val roleTag = when (user.role.uppercase()) {
+                            "ADMIN" -> "👑 Admin"
+                            "AGENT" -> "🕵️ Agent"
+                            "BORROWER" -> "Borrower"
+                            "LENDER" -> "Lender"
+                            else -> "Member"
+                        }
+                        val userChipLabel = if (user.username.isNotBlank()) "@${user.username} ($roleTag)" else "${user.name.split(" ").firstOrNull() ?: user.phone} ($roleTag)"
+
+                        FilterChip(
+                            selected = isUserSelected,
+                            onClick = {
+                                counterpartyUserId = if (isUserSelected) "" else user.userId
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    when (user.role.uppercase()) {
+                                        "ADMIN" -> Icons.Default.AdminPanelSettings
+                                        "AGENT" -> Icons.Default.Engineering
+                                        else -> Icons.Default.AccountCircle
+                                    },
+                                    contentDescription = null,
+                                    tint = if (isUserSelected) GoldCoinAmber else GoldCoinRich,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            },
+                            label = {
+                                Text(
+                                    userChipLabel,
+                                    fontWeight = if (isUserSelected) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = goldFilterChipColors(),
+                            border = goldFilterChipBorder(isUserSelected)
+                        )
+                    }
+                }
+
                 // 2. Real-time matching suggestions
-                val matchedUsers = remember(counterpartyUserId, registeredUsers) {
+                val matchedUsers = remember(counterpartyUserId, allCandidateUsers) {
                     if (counterpartyUserId.length >= 2) {
-                        registeredUsers.filter {
+                        allCandidateUsers.filter {
                             it.name.contains(counterpartyUserId, ignoreCase = true) ||
                             it.phone.contains(counterpartyUserId, ignoreCase = true) ||
                             it.username.contains(counterpartyUserId, ignoreCase = true) ||
@@ -755,12 +905,14 @@ fun LoanDetailScreen(
     onExportLoanSummaryPdf: () -> Unit = {},
     onExportInterestCertPdf: () -> Unit = {},
     onExportRepaymentsCsv: () -> Unit = {},
+    onExportPitchDeckPdf: () -> Unit = {},
     onWaivePenalty: (RepaymentEntity) -> Unit = {},
     onRestructureLoan: (Int, Int) -> Unit = { _, _ -> },
     onAcceptProposal: () -> Unit = {},
     onDeclineProposal: () -> Unit = {},
     onDisburseLoan: (amount: Double, utr: String) -> Unit = { _, _ -> },
-    onDownloadNocCertificate: () -> Unit = {}
+    onDownloadNocCertificate: () -> Unit = {},
+    onExportAgreementPdf: () -> Unit = {}
 ) {
     val loan = state.selectedLoan
     val snackbarHostState = remember { SnackbarHostState() }
@@ -844,21 +996,23 @@ fun LoanDetailScreen(
                                     onClick = onAcceptProposal,
                                     colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
                                     shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                 ) {
                                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Accept Terms", fontWeight = FontWeight.Bold)
+                                    Text("Accept Terms", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                                 OutlinedButton(
                                     onClick = onDeclineProposal,
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
                                     shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                 ) {
                                     Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Decline", fontWeight = FontWeight.Bold)
+                                    Text("Decline", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                         }
@@ -964,7 +1118,11 @@ fun LoanDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 12.dp)
+                            ) {
                                 Text(
                                     if (isOverdue) "Payment Overdue" else "Next Payment Due",
                                     style = MaterialTheme.typography.labelMedium,
@@ -988,6 +1146,7 @@ fun LoanDetailScreen(
                             Button(
                                 onClick = if (isLender) onSendReminder else onMakeRepayment,
                                 shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (isOverdue) Color.White else GoldCoinRich,
                                     contentColor = if (isOverdue) Red500 else Color.White
@@ -1001,7 +1160,9 @@ fun LoanDetailScreen(
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     if (isLender) "Remind" else stringResource(R.string.pay_now), 
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -1372,7 +1533,12 @@ fun LoanDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Surface(
                                     shape = CircleShape,
                                     color = when (repayment.status) {
@@ -1406,7 +1572,7 @@ fun LoanDetailScreen(
                                                     onClick = { onWaivePenalty(repayment) },
                                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                                                 ) {
-                                                    Text("Waive", style = MaterialTheme.typography.labelSmall, color = Gold500, fontWeight = FontWeight.Bold)
+                                                    Text("Waive", style = MaterialTheme.typography.labelSmall, color = Gold500, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                                 }
                                             }
                                         }
@@ -1444,7 +1610,11 @@ fun LoanDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 12.dp)
+                            ) {
                                 Text(stringResource(R.string.no_collateral_pledged), style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(stringResource(R.string.adding_pledges_can_improve_loan_terms), style = MaterialTheme.typography.bodySmall,
@@ -1452,11 +1622,12 @@ fun LoanDetailScreen(
                             }
                             OutlinedButton(
                                 onClick = onAddPledge,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                             ) {
                                 Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(stringResource(R.string.add))
+                                Text(stringResource(R.string.add), maxLines = 1, softWrap = false)
                             }
                         }
                     }
@@ -1539,7 +1710,12 @@ fun LoanDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Surface(
                                     shape = CircleShape,
                                     color = when (pledge.assetType) {
@@ -1572,7 +1748,7 @@ fun LoanDetailScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
-                            Text(pledge.estimatedValue.toInrString(), fontWeight = FontWeight.Bold)
+                            Text(pledge.estimatedValue.toInrString(), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         }
                     }
                 }
@@ -1589,7 +1765,11 @@ fun LoanDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 12.dp)
+                        ) {
                             Text(
                                 if (state.guarantors.isNotEmpty()) "${state.guarantors.size} Guarantor(s) Attached" else "No Guarantor Added",
                                 style = MaterialTheme.typography.titleSmall,
@@ -1605,11 +1785,12 @@ fun LoanDetailScreen(
                         }
                         OutlinedButton(
                             onClick = onNavigateToGuarantors,
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Icon(Icons.Default.People, null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Manage")
+                            Text("Manage", maxLines = 1, softWrap = false)
                         }
                     }
                 }
@@ -1631,11 +1812,11 @@ fun LoanDetailScreen(
                     DocumentVaultItem(
                         icon = Icons.Default.Description,
                         title = if (loan.isAgreementSigned) "Digital Loan Agreement (Signed)" else "Sign Loan Agreement",
-                        subtitle = if (loan.isAgreementSigned) "Signed digitally" else "Action Required",
+                        subtitle = if (loan.isAgreementSigned) "Signed digitally • Tap to View PDF" else "Action Required",
                         accentColor = if (loan.isAgreementSigned) Emerald400 else Blue400,
                         onClick = {
                             if (loan.isAgreementSigned) {
-                                scope.launch { snackbarHostState.showSnackbar("Opening signed document...") }
+                                onExportAgreementPdf()
                             } else {
                                 onSignAgreement(loan.loanId)
                             }
@@ -1643,12 +1824,10 @@ fun LoanDetailScreen(
                     )
                     DocumentVaultItem(
                         icon = Icons.Default.Assignment,
-                        title = "Sanction Letter",
-                        subtitle = "${loan.sanctionedAmount.toInrString()} sanctioned",
+                        title = "Sanction Letter & Summary",
+                        subtitle = "${loan.sanctionedAmount.toInrString()} sanctioned • Tap for Report",
                         accentColor = Emerald400,
-                        onClick = {
-                            scope.launch { snackbarHostState.showSnackbar("Document generation coming soon") }
-                        }
+                        onClick = onExportLoanSummaryPdf
                     )
                     DocumentVaultItem(
                         icon = Icons.Default.Gavel,
@@ -1697,7 +1876,7 @@ fun LoanDetailScreen(
                     ) {
                         Icon(Icons.Default.Send, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.tranche), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.tranche), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                     OutlinedButton(
                         onClick = onMakeRepayment,
@@ -1707,7 +1886,7 @@ fun LoanDetailScreen(
                     ) {
                         Icon(Icons.Default.Payment, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.repay))
+                        Text(stringResource(R.string.repay), maxLines = 1, softWrap = false)
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
@@ -1722,7 +1901,7 @@ fun LoanDetailScreen(
                     ) {
                         Icon(Icons.Default.Security, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.pledge))
+                        Text(stringResource(R.string.pledge), maxLines = 1, softWrap = false)
                     }
                     OutlinedButton(
                         onClick = onViewAuditTrail,
@@ -1731,7 +1910,7 @@ fun LoanDetailScreen(
                     ) {
                         Icon(Icons.Default.History, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.audit))
+                        Text(stringResource(R.string.audit), maxLines = 1, softWrap = false)
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
@@ -1746,7 +1925,7 @@ fun LoanDetailScreen(
                     ) {
                         Icon(Icons.Default.Chat, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Chat with Lender")
+                        Text("Chat with Lender", maxLines = 1, softWrap = false)
                     }
                 }
                 if (isLender) {
@@ -1763,7 +1942,7 @@ fun LoanDetailScreen(
                         ) {
                             Icon(Icons.Default.Tune, null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Restructure Loan / Moratorium", fontWeight = FontWeight.Bold)
+                            Text("Restructure Loan / Moratorium", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         }
                     }
                 }
