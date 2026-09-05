@@ -268,6 +268,28 @@ classDiagram
 
 ---
 
+
+### 🛡️ Multi-Asset Collateral Vault & Escrow Architecture
+Unlike traditional mono-asset pawn systems, Loanzo supports **5 distinct collateral categories** tracked in SQLite Room v12 (`CollateralVaultEntity`):
+1. **Precious Bullion (`GOLD`)**: 22K/24K Hallmarked Gold Jewelry & Bullion with certified touchstone/XRF assay and tamper-sealed barcode pouches (`TS-891024`).
+2. **Property Title Deeds (`PROPERTY_DEED`)**: Original commercial and residential property title deeds, Khata extracts, and non-encumbrance certificates.
+3. **Commercial IT Equipment (`EQUIPMENT`)**: High-value enterprise laptops (e.g., Apple MacBook Pro M2), cameras, and lab hardware with serial tagging and MDM unlock verification.
+4. **Vehicles & Fleet (`VEHICLE`)**: Two-wheelers and commercial vehicles with Vahan RC Book physical custody and Form 34 hypothecation endorsement.
+5. **Trade Receivables & Invoices (`INVOICE`)**: B2B GSTIN-verified purchase orders and trade invoices with direct wholesaler disbursement to prevent cash diversion.
+
+---
+
+### 📚 Authoritative Research, Statutory & Regulatory Sources
+Every benchmark, regulatory directive, and macroeconomic statistic in Loanzo is derived from official verified sources:
+- **$350B+ MSME Financing Gap**: *International Finance Corporation (IFC) & NITI Aayog ("Financing India's MSMEs") and RBI Expert Committee on MSMEs (U.K. Sinha Report).*
+- **36%–120% Informal Usury**: *Reserve Bank of India Internal Working Group on Agricultural Credit; NSSO 77th Round All-India Debt and Investment Survey (AIDIS).*
+- **Household Gold Holding**: *World Gold Council ("India's Gold Market - Evolution & Innovation") & CRISIL Research.*
+- **Enforceable Legal Contracts**: *Section 4 & Section 138, Negotiable Instruments Act, 1881; Order 37, Code of Civil Procedure (CPC), 1908.*
+- **Electronic Evidence Admissibility**: *Section 65B, Indian Evidence Act, 1872 / Section 63, Bharatiya Sakshya Adhiniyam, 2023.*
+- **Fair Lending Practice (Penal Charges)**: *Reserve Bank of India Circular RBI/2023-24/53 (dated August 18, 2023).*
+- **Digital Lending & Direct Disbursal**: *Reserve Bank of India Guidelines on Digital Lending (September 2, 2022).*
+- **P2P Platform Governance**: *RBI Master Directions - Non-Banking Financial Company - Peer to Peer Lending Platform Directions, 2017 (Updated Aug 2024).*
+
 ## 📚 Publications & Engineering Reports
 
 All project research, master documentation, system architectural blueprints, and full graphic novel comic books are committed directly to this repository:
