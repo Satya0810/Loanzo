@@ -18,10 +18,11 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
 
 [🌟 Highlights](#-key-innovations--core-features) •
+[📱 Screenshots](#-application-visual-showcase--screenshots) •
 [🛡️ Scam-Free Guarantee](#️-institutional-scam-free-guarantee) •
 [🏗️ Architecture](#️-system-architecture) •
 [🔄 Lifecycle](#-loan-lifecycle-state-machine) •
-[🗄️ Database](#️-database-architecture-room-v11) •
+[🗄️ Database](#️-database-architecture-room-v12) •
 [📚 Docs & Comics](#-publications--engineering-reports) •
 [⚡ Quickstart](#-quickstart--developer-setup)
 
@@ -31,9 +32,27 @@
 
 ## 📖 Executive Summary
 
-**Loanzo** is an enterprise-grade Android microfinance platform engineered to bridge the gap between credit-worthy borrowers and private retail lenders. By combining **direct peer-to-peer social bidding (Lenme style)**, **purpose-bound merchant disbursements**, **physical collateral assaying**, **DigiLocker biometric e-Sign**, and an **automated Telegram & FCM alert desk**, Loanzo completely eliminates fraudulent loan scams, predatory interest traps, and unmonitored fund diversion.
+**Loanzo** is an enterprise-grade Android microfinance platform engineered to bridge the gap between credit-worthy borrowers and private retail lenders. By combining **direct peer-to-peer social bidding (Lenme style)**, **purpose-bound merchant disbursements**, **multi-asset collateral vaulting (Gold, Property, Hardware, Vehicles, Invoices)**, **DigiLocker biometric e-Sign**, and an **automated Telegram & FCM alert desk**, Loanzo completely eliminates fraudulent loan scams, predatory interest traps, and unmonitored fund diversion.
 
 Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12, Kotlin Coroutines & Flow)**, Loanzo provides offline-first resiliency, military-grade client-side encryption, and seamless cloud synchronization with both Google Drive and Firebase.
+
+---
+
+## 📱 Application Visual Showcase & Screenshots
+
+<div align="center">
+<p><i>Live production interfaces captured from the Loanzo Android client, demonstrating biometric authentication, peer-to-peer social bidding, legal promissory note execution, and UPI escrow disbursement.</i></p>
+</div>
+
+| 🔐 **Authentication & Biometric Vault** | 📊 **Executive Dashboard & P2P Feed** | 🔔 **Activity & Real-Time Alerts Hub** |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/screen_vault_modal.png" width="240" alt="Auth and Biometric Gate" /> | <img src="docs/screenshots/screen_home_dashboard.png" width="240" alt="Home Dashboard" /> | <img src="docs/screenshots/screen_activity_alerts.png" width="240" alt="Activity Alerts" /> |
+| **Hardware Biometrics & KYC Vault**<br/>Protected by Android KeyStore RSA-2048 & BiometricPrompt | **Social P2P Marketplace**<br/>Live loan bids, repayment trackers, & portfolio health metrics | **Automated Alert Desk**<br/>Instant Telegram Bot (@Loanzo_bot) & FCM push notifications |
+
+| 📜 **Promissory Note & Legal Lien** | ⚙️ **Radial Action Controller** | 🏦 **Verified Bank Accounts** | 📲 **Instant Dynamic UPI Payment** |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/screen_loan_agreement.png" width="210" alt="Loan Agreement" /> | <img src="docs/screenshots/screen_radial_menu.png" width="210" alt="Radial Menu" /> | <img src="docs/screenshots/screen_bank_accounts.png" width="210" alt="Bank Accounts" /> | <img src="docs/screenshots/screen_upi_qr.png" width="210" alt="UPI QR" /> |
+| **Section 4 NI Act 1881**<br/>4-page automated promissory note with legal stamp & audit hash | **Radial Navigation**<br/>One-touch satellite menu for borrow, lend, and valuer dispatch | **NPCI Penny Drop Validation**<br/>Automated IFSC & bank account verification with zero fraud | **Direct Merchant Escrow**<br/>Dynamic QR code with checksum audit for distributor tranches |
 
 ---
 
@@ -51,7 +70,7 @@ Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12,
 ### 3. ⚖️ Mathematical Compound Penalty Engine
 - Fully automated, deterministic penalty calculation with zero human discretion.
 - **Grace Period**: 3-day grace period with zero compounding fees.
-- **Penalty Formula**: Transparent daily compound fee capped at 50% of the overdue installment to prevent predatory debt cycles.
+- **Fair Lending Compliance (RBI/2023-24/53)**: Transparent daily charge capped at RBI 2% monthly ceiling without capitalizing into principal to prevent predatory debt traps.
 
 ### 4. 🧭 Interactive Onboarding & Step-by-Step Guided Tours
 - **Welcome Onboarding Carousel**: 4-slide interactive overview with progress pill indicators and smooth swiping.
@@ -75,9 +94,17 @@ Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12,
 
 ### 8. 🕵️ Certified Field Agent & Doorstep Verification Network
 - **Post-KYC Role Partitioning**: Choose between **Normal Member** (borrowing & lending) or apply to become a **Loanzo Certified Agent** (earning ₹500 – ₹1,500/visit).
-- **Bank-Grade Empanelment Form**: Captures verification background, Police Clearance Certificate (PCC) verification, operational city & territory radius slider (5 km - 50 km), and vehicle details with a formal legal clean-record declaration.
-- **Master Admin Approval Console**: Direct review queue in the App Owner Hub (`@satyam_081`) with one-tap empanelment approvals, rejections, and automatic visit seeding.
-- **Isolated Field Agent Control Center**: Strict role isolation prevents agent access to consumer borrowing/lending features; provides live on-duty/break toggles with break timers, daily earnings meters, categorized visits feeds (*Collateral Assaying, Borrower Residence, Lender Verification*), direct Call/WhatsApp/Maps navigation, and an in-app appraisal checklist with live photo audit capture.
+- **Bank-Grade Empanelment Form**: Captures verification background, Police Clearance Certificate (PCC) verification, operational territory radius (5 km - 50 km), and vehicle details with a formal legal clean-record declaration.
+- **Master Admin Approval Console**: Direct review queue in the App Owner Hub (`@satyam0810`) with one-tap empanelment approvals, rejections, and automatic visit seeding.
+- **Isolated Field Agent Control Center**: Strict role isolation prevents agent access to consumer borrowing/lending features; provides live on-duty/break toggles, daily earnings meters, categorized visits feeds (*Collateral Assaying, Borrower Residence, Lender Verification*), direct Call/WhatsApp/Maps navigation, and an in-app appraisal checklist with live photo audit capture.
+
+### 9. 🛡️ Multi-Asset Collateral Vault & Escrow Architecture
+Unlike single-asset pawn systems, Loanzo supports **5 distinct collateral categories** tracked in SQLite Room v12 (`CollateralVaultEntity`):
+- **Precious Bullion (`GOLD`)**: 22K/24K Hallmarked Gold Jewelry (48.5g), Coins, certified touchstone/density assay (75% LTV ceiling benchmarked to IBJA 30-day average).
+- **Property Title Deeds (`PROPERTY_DEED`)**: Registered Commercial & Residential Deeds, Khata extracts, Non-Encumbrance Certificate & legal search audit (50%–60% LTV).
+- **Commercial IT Equipment (`EQUIPMENT`)**: Apple MacBook Pro M2, studio cameras, lab workstations, serial inspection, MDM unlock, and purchase invoice encumbrance (40%–50% LTV).
+- **Vehicles & Fleet (`VEHICLE`)**: Two-wheelers (Yamaha FZ-S), light commercial vehicles, Vahan RC Book custody & Form 34 hypothecation endorsement (55%–65% LTV).
+- **Trade Receivables & Invoices (`INVOICE`)**: B2B GSTIN tax invoices with direct wholesaler UPI payment (`distributor@bank`) to prevent fund diversion (70%–80% LTV).
 
 ---
 
@@ -91,7 +118,7 @@ Traditional lending and predatory instant-loan apps suffer from fake lenders, up
 | **Fund Misuse / Gambling**| ❌ Lump sum sent directly to borrower | ⚠️ High administrative delays and checks | 🎯 **Purpose-Bound Tranches**. Direct settlement to verified merchants |
 | **Harassment & Defamation**| 🚨 Contact book scraping and shaming calls | Formal recovery, civil suits | ⚖️ **In-App Dispute Center**. Automated Telegram legal alerts & arbitration |
 | **Interest Rate Traps** | 🚨 100%–300% annualized hidden rates | Rigid 12%–18% fixed parameters | 🤝 **P2P Marketplace Bidding**. Market forces drive competitive low APRs |
-| **Collateral Fraud** | ❌ Unverified verbal pledges | Tedious branch physical custody | 🔍 **Doorstep Valuer Protocol**. Barcoded tamper-evident seal & live IBJA rates |
+| **Collateral Fraud** | ❌ Unverified verbal pledges | Tedious branch physical custody | 🔍 **Multi-Asset Valuer Protocol**. Barcoded tamper-evident seal & live IBJA rates |
 | **Identity Theft** | ❌ Uploaded plain photos stored insecurely | Physical KYC photocopy collection | 🔐 **DigiLocker e-Sign**. Cryptographically signed tamper-proof contract |
 
 ---
@@ -149,7 +176,7 @@ stateDiagram-v2
     DRAFT --> MARKETPLACE: Submitted to Bidding Feed
     MARKETPLACE --> BID_ACCEPTED: Borrower Accepts Lender's APR Offer
     BID_ACCEPTED --> COLLATERAL_VALUATION: Physical Collateral Assigned (If Required)
-    COLLATERAL_VALUATION --> CONTRACT_SIGNING: Doorstep Assayer Seals Gold/Asset
+    COLLATERAL_VALUATION --> CONTRACT_SIGNING: Doorstep Assayer Seals Asset
     BID_ACCEPTED --> CONTRACT_SIGNING: No Collateral Required
     CONTRACT_SIGNING --> TRANCHE_DISBURSEMENT: Biometric DigiLocker e-Sign Executed
     TRANCHE_DISBURSEMENT --> ACTIVE_SERVICING: Milestone Verified & UPI Sent to Payee
@@ -183,7 +210,7 @@ Loanzo uses an offline-first **Room Database v12** with 13 relational entities e
 | `MarketplaceBidEntity` | `bidId` | Lender offers submitted against marketplace posts (proposed APR, tenure, collateral terms) |
 | `VerificationEntity` | `verificationId` | DigiLocker KYC certificates, Aadhaar / PAN hash validations, and status flags |
 | `NotificationEntity` | `notificationId` | In-app notification center alerts, EMI reminders, bid alerts, and settlement logs |
-| `CollateralEntity` | `collateralId` | Physical collateral metadata (carat, gross weight, net weight, tamper-evident barcode seal) |
+| `CollateralVaultEntity` | `vaultItemId` | Multi-asset physical collateral metadata (Gold, Property, Hardware, Vehicles, Invoices, barcode seal) |
 | `GuarantorEntity` | `guarantorId` | Co-borrower and joint-liability guarantor verification records and signatures |
 | `AuditLogEntity` | `logId` | Immutable audit trail capturing every system event, balance transfer, and dispute submission |
 
@@ -228,7 +255,7 @@ classDiagram
 
     class DoorstepValuer {
         +Perform Physical Assaying
-        +Log Live IBJA Gold Rates
+        +Log Live Asset Valuation
         +Scan Tamper-Proof Barcode Seals
     }
 
@@ -253,7 +280,8 @@ All project research, master documentation, system architectural blueprints, and
 
 | Document / Asset | Format | Size | Description |
 | :--- | :--- | :--- | :--- |
-| **[Loanzo Full Project Report](Loanzo_Full_Project_Report.pdf)** | `PDF` | 1.0 MB | **12-Page Master Technical Engineering Document** covering SRS, IEEE 829 testing strategy, RBAC, Room v11 ERDs, and mathematical models |
+| **[Loanzo Master Pitch & Project Report](LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf)** | `PDF` | 5.5 MB | **12-Page Executive Master Pitch Deck & Regulatory System Report** covering multi-asset collateral, verified data sources, RBAC, and FMEA risk matrix |
+| **[Loanzo Full Project Report](Loanzo_Full_Project_Report.pdf)** | `PDF` | 5.5 MB | **12-Page Master Technical Engineering Document** covering SRS, IEEE 829 testing strategy, RBAC, Room v12 ERDs, and mathematical models |
 | **[Loanzo Master Presentation](Loanzo_Master_Presentation.pptx)** | `PPTX` | 11.1 MB | **Executive Pitch Deck & System Walkthrough** for investors, bankers, and regulatory reviewers |
 | **[Loanzo Unified Master Comic Book](Loanzo_Unified_Master_Comic_Book.pdf)** | `PDF` | 13.7 MB | **Complete Graphic Novel Edition** illustrating user stories, fraud mitigation, and tranche disbursements |
 | **[Loanzo Manga Edition](Loanzo_Manga_Edition.pdf)** | `PDF` | 14.0 MB | **Stylized Manga Narrative** detailing the journey of micro-entrepreneurs escaping loan sharks |
@@ -279,7 +307,7 @@ cd Loanzo
 ### 2. Configure Environment Keys
 Create or verify your `local.properties` file in the root directory:
 ```properties
-sdk.dir=C:\\Users\\<your-username>\\AppData\\Local\\Android\\Sdk
+sdk.dir=C:\Users\<your-username>\AppData\Local\Android\Sdk
 ```
 
 ### 3. Build & Assemble Debug APK
@@ -313,7 +341,7 @@ app/build/outputs/apk/debug/app-debug.apk
 | **UI Framework** | Jetpack Compose (BOM `2024.09.00`), Material 3, Accompanist Navigation Animation |
 | **Asynchronous** | Kotlin Coroutines `1.8.0`, Flow, StateFlow, SharedFlow |
 | **Dependency Injection** | Dagger Hilt `2.51.1`, Hilt Navigation Compose `1.2.0` |
-| **Local Persistence** | AndroidX Room Database `2.6.1` (SQLite v11), Encrypted DataStore Preferences |
+| **Local Persistence** | AndroidX Room Database `2.6.1` (SQLite v12), Encrypted DataStore Preferences |
 | **Background Processing**| AndroidX WorkManager `2.9.0` (Periodic Background Sync Worker) |
 | **Biometrics & Security**| AndroidX Biometric `1.1.0`, Android KeyStore AES-256-GCM |
 | **Cloud & Realtime** | Firebase Firestore, Firebase Cloud Messaging (FCM), Firebase Authentication |
@@ -338,7 +366,7 @@ com.loanzo.app
 │   ├── notification      # Real-time System Notification Center & Audit Alert Logs
 │   └── navigation        # NavGraph, Shared-Axis Horizontal Slide Specs, Routes Definition
 ├── domain                # Penalty Engine, Restructuring Engine, Purpose-Linked Rule Engine
-├── data                  # Room v11 Database, DAOs, Entities, Firebase Sync, Drive Cloud Backup
+├── data                  # Room v12 Database, DAOs, Entities, Firebase Sync, Drive Cloud Backup
 └── util                  # Agreement Generator, BiometricAuthManager, ReportExporter, TelegramManager
 ```
 
