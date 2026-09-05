@@ -128,40 +128,40 @@ Traditional lending and predatory instant-loan apps suffer from fake lenders, up
 Loanzo is built strictly adhering to **Clean Architecture** principles and the **MVI / MVVM** design pattern.
 
 ```mermaid
-graph TD
-    subgraph Presentation Layer
-        A1[Jetpack Compose UI Screens]
-        A2[Material 3 Dynamic Theme]
-        A3[Navigation Graph & Shared-Axis Transitions]
-        A4[ViewModels StateFlow / SharedFlow]
-        A5[Onboarding & Contextual Guides Engine]
+flowchart TD
+    subgraph Presentation_Layer ["Presentation Layer"]
+        A1["Jetpack Compose UI Screens"]
+        A2["Material 3 Dynamic Theme"]
+        A3["Navigation Graph & Transitions"]
+        A4["ViewModels StateFlow / SharedFlow"]
+        A5["Onboarding & Guided Tours"]
     end
 
-    subgraph Domain Layer
-        B1[Penalty Engine - Compound Interest]
-        B2[Restructuring Engine - EMI Extension]
-        B3[Rule Engine - Purpose & Tranche Validation]
-        B4[Use Cases & Business Workflows]
+    subgraph Domain_Layer ["Domain Layer"]
+        B1["Penalty Engine - Fair Lending"]
+        B2["Restructuring Engine - EMI Extension"]
+        B3["Rule Engine - Purpose Validation"]
+        B4["Use Cases & Business Workflows"]
     end
 
-    subgraph Data Layer
-        C1[Loanzo Database - Room v12 SQLite]
-        C2[11 Data Access Objects - DAOs]
-        C3[Encrypted DataStore Preferences]
-        C4[Offline-First Repositories]
+    subgraph Data_Layer ["Data Layer"]
+        C1["Loanzo Database - Room v12 SQLite"]
+        C2["13 Data Access Objects (DAOs)"]
+        C3["Encrypted DataStore Preferences"]
+        C4["Offline-First Repositories"]
     end
 
-    subgraph External Services Layer
-        D1[Firebase Firestore & Realtime Sync]
-        D2[Firebase Cloud Messaging - FCM]
-        D3[Google Drive Cloud Backup API v3]
-        D4[DigiLocker Verification Gateway]
-        D5[Telegram Bot Alert Dispatch Desk]
+    subgraph External_Layer ["External Services Layer"]
+        D1["Firebase Firestore & Sync"]
+        D2["Firebase Cloud Messaging (FCM)"]
+        D3["Google Drive Cloud Backup API v3"]
+        D4["DigiLocker Verification Gateway"]
+        D5["Telegram Bot Alert Desk"]
     end
 
-    Presentation Layer --> Domain Layer
-    Domain Layer --> Data Layer
-    Data Layer --> External Services Layer
+    Presentation_Layer --> Domain_Layer
+    Domain_Layer --> Data_Layer
+    Data_Layer --> External_Layer
 ```
 
 ---
@@ -172,19 +172,19 @@ Each loan navigates through a strictly governed state machine preventing any una
 
 ```mermaid
 stateDiagram-v2
-    [*] --> DRAFT: Borrower Creates Post
-    DRAFT --> MARKETPLACE: Submitted to Bidding Feed
-    MARKETPLACE --> BID_ACCEPTED: Borrower Accepts Lender's APR Offer
-    BID_ACCEPTED --> COLLATERAL_VALUATION: Physical Collateral Assigned (If Required)
-    COLLATERAL_VALUATION --> CONTRACT_SIGNING: Doorstep Assayer Seals Asset
+    [*] --> DRAFT: Borrower Creates Request
+    DRAFT --> MARKETPLACE: Listed on Bidding Feed
+    MARKETPLACE --> BID_ACCEPTED: Borrower Accepts Offer
+    BID_ACCEPTED --> COLLATERAL_VALUATION: Collateral Verification (If Required)
+    COLLATERAL_VALUATION --> CONTRACT_SIGNING: Field Valuer Seals Asset
     BID_ACCEPTED --> CONTRACT_SIGNING: No Collateral Required
-    CONTRACT_SIGNING --> TRANCHE_DISBURSEMENT: Biometric DigiLocker e-Sign Executed
-    TRANCHE_DISBURSEMENT --> ACTIVE_SERVICING: Milestone Verified & UPI Sent to Payee
-    ACTIVE_SERVICING --> RESTRUCTURED: Restructure Request Approved
-    RESTRUCTURED --> ACTIVE_SERVICING: New EMI Schedule Active
-    ACTIVE_SERVICING --> DELINQUENT: Due Date Passed + 3-Day Grace Over
-    DELINQUENT --> LEGAL_DISPUTE: Compound Penalty Accrued & Telegram Admin Alert Dispatched
-    ACTIVE_SERVICING --> COMPLETED: All EMIs Settled
+    CONTRACT_SIGNING --> TRANCHE_DISBURSEMENT: DigiLocker e-Sign Executed
+    TRANCHE_DISBURSEMENT --> ACTIVE_SERVICING: Verified Milestone UPI Tranche Sent
+    ACTIVE_SERVICING --> RESTRUCTURED: Restructure Approved
+    RESTRUCTURED --> ACTIVE_SERVICING: New Schedule Active
+    ACTIVE_SERVICING --> DELINQUENT: Due Date + Grace Period Passed
+    DELINQUENT --> LEGAL_DISPUTE: Penalty Accrued and Admin Alert Sent
+    ACTIVE_SERVICING --> COMPLETED: All EMIs Cleared
     LEGAL_DISPUTE --> COMPLETED: Arbitrated Settlement
     COMPLETED --> [*]: Tamper-Proof Digital NOC Issued
 ```
@@ -234,35 +234,35 @@ classDiagram
     }
 
     class UnifiedUser {
-        +Switch Borrower / Lender mode
-        +View Personal Dashboard
-        +Access Document Vault
+        +switchRole(role)
+        +viewPersonalDashboard()
+        +accessDocumentVault()
     }
 
     class PrimaryBorrower {
-        +Post Marketplace Listing
-        +Request Tranche Disbursement
-        +Execute DigiLocker e-Sign
-        +Apply for EMI Restructure
+        +postMarketplaceListing()
+        +requestTrancheDisbursement()
+        +executeDigiLockerESign()
+        +applyForEMIRestructure()
     }
 
     class VerifiedLender {
-        +Browse Marketplace Feed
-        +Submit Competitive APR Bids
-        +Verify Payee Disbursal UTR
-        +Track Investment Portfolio
+        +browseMarketplaceFeed()
+        +submitCompetitiveBids()
+        +verifyPayeeDisbursal()
+        +trackInvestmentPortfolio()
     }
 
     class DoorstepValuer {
-        +Perform Physical Assaying
-        +Log Live Asset Valuation
-        +Scan Tamper-Proof Barcode Seals
+        +performPhysicalAssaying()
+        +logLiveAssetValuation()
+        +scanTamperProofSeals()
     }
 
     class PlatformAdmin {
-        +Monitor Delinquency & Disputes
-        +Receive Real-time Telegram Alerts
-        +Freeze Bad Actors & Override States
+        +monitorDelinquencyAndDisputes()
+        +receiveTelegramAlerts()
+        +freezeBadActors()
     }
 
     UserEntity <|-- UnifiedUser
