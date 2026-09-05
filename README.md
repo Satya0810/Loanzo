@@ -44,10 +44,10 @@ Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12,
 <p><i>Live production interfaces captured from the Loanzo Android client, demonstrating biometric authentication, peer-to-peer social bidding, legal promissory note execution, and UPI escrow disbursement.</i></p>
 </div>
 
-| 🔐 **Authentication & Biometric Vault** | 📊 **Executive Dashboard & P2P Feed** | 🔔 **Activity & Real-Time Alerts Hub** |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/screen_vault_modal.png" width="240" alt="Auth and Biometric Gate" /> | <img src="docs/screenshots/screen_home_dashboard.png" width="240" alt="Home Dashboard" /> | <img src="docs/screenshots/screen_activity_alerts.png" width="240" alt="Activity Alerts" /> |
-| **Hardware Biometrics & KYC Vault**<br/>Protected by Android KeyStore RSA-2048 & BiometricPrompt | **Social P2P Marketplace**<br/>Live loan bids, repayment trackers, & portfolio health metrics | **Automated Alert Desk**<br/>Instant Telegram Bot (@Loanzo_bot) & FCM push notifications |
+| 🔐 **Multi-Role Login & Biometrics** | 🛡️ **Encrypted Document Vault Gate** | 📊 **Executive Dashboard & P2P Feed** | 🔔 **Activity & Alerts Hub** |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/screen_login_auth.png" width="210" alt="Login and Role Selection" /> | <img src="docs/screenshots/screen_vault_modal.png" width="210" alt="Auth and Biometric Gate" /> | <img src="docs/screenshots/screen_home_dashboard.png" width="210" alt="Home Dashboard" /> | <img src="docs/screenshots/screen_activity_alerts.png" width="210" alt="Activity Alerts" /> |
+| **Multi-Role Authentication**<br/>Member, Agent, Admin role selection with BiometricPrompt | **Hardware KeyStore Vault**<br/>AES-256 encrypted KYC & biometric security gate | **Social P2P Marketplace**<br/>Live loan bids, repayment trackers, & portfolio health metrics | **Automated Alert Desk**<br/>Instant Telegram Bot (@Loanzo_bot) & FCM push notifications |
 
 | 📜 **Promissory Note & Legal Lien** | ⚙️ **Radial Action Controller** | 🏦 **Verified Bank Accounts** | 📲 **Instant Dynamic UPI Payment** |
 |:---:|:---:|:---:|:---:|
