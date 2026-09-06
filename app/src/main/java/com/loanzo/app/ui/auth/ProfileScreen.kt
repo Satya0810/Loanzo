@@ -1,5 +1,9 @@
 package com.loanzo.app.ui.auth
 
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.loanzo.app.ui.vault.DocumentVaultViewModel
+import com.loanzo.app.data.entity.VaultDocumentEntity
+
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -94,7 +98,8 @@ fun ProfileScreen(
     onClearUploadMessage: () -> Unit = {},
     onNavigateToAgent: () -> Unit = {},
     onLogout: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    vaultViewModel: DocumentVaultViewModel = hiltViewModel()
 ) {
     var currentSubPage by remember { mutableStateOf(ProfileSubPage.MAIN) }
     var showBankDialog by remember { mutableStateOf(false) }
@@ -109,6 +114,7 @@ fun ProfileScreen(
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
     val profileGuideSeen by userRepository.isGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_PROFILE_SEEN)
         .collectAsStateWithLifecycle(initialValue = true)
+    val vaultState by vaultViewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
     var isGuideMeExpanded by remember { mutableStateOf(false) }
     var showAcademySheet by remember { mutableStateOf(false) }
@@ -980,10 +986,17 @@ fun ProfileScreen(
                 // ==========================================
                 // 2. ENCRYPTED DOCUMENT VAULT SUB-PAGE
                 // ==========================================
+                val dateFormat = remember { java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault()) }
+
                 Scaffold(
                     topBar = {
                         TopAppBar(
-                            title = { Text("Document Vault", fontWeight = FontWeight.Bold) },
+                            title = {
+                                Column {
+                                    Text("Encrypted Document Vault", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                                    Text("Official Certifications, Dossiers & Legal Archives", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            },
                             navigationIcon = {
                                 IconButton(onClick = { currentSubPage = ProfileSubPage.MAIN }) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -1011,7 +1024,7 @@ fun ProfileScreen(
                             .padding(horizontal = 20.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Security Banner
+                        // 1. Hardware Encryption & Security Banner
                         Surface(
                             shape = RoundedCornerShape(14.dp),
                             color = Emerald400.copy(alpha = 0.12f),
@@ -1022,14 +1035,265 @@ fun ProfileScreen(
                                 modifier = Modifier.padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.VerifiedUser, null, tint = Emerald400, modifier = Modifier.size(24.dp))
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text("AES-256 Verified Session Active", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-                                    Text("Decrypted for this active session only. Documents will re-encrypt when you leave.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                Icon(Icons.Default.VerifiedUser, null, tint = Emerald400, modifier = Modifier.size(26.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("AES-256 Vault Session Active", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
+                                    Text("Cryptographically sealed with SHA-256 tamper-evident checksums. All documents carry official Loanzo institution branding.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                                 }
                             }
                         }
+
+                        // 2. Master Dossier Generator Card (OpenPDF Engine with App Logo)
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            border = BorderStroke(1.5.dp, Gold500.copy(alpha = 0.6f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(18.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Gold500.copy(alpha = 0.15f),
+                                        modifier = Modifier.size(44.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Gold500, modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(14.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Master Financial & Legal Dossier",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            "Official Loanzo crested PDF documenting your KYC, CIBIL rating, loans, repayments & custody.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                Button(
+                                    onClick = {
+                                        if (user != null) {
+                                            vaultViewModel.generateMasterDossier(user.userId)
+                                        }
+                                    },
+                                    enabled = !vaultState.isGenerating,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    if (vaultState.isGenerating) {
+                                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Navy900, strokeWidth = 2.dp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Generating Certified Dossier...", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    } else {
+                                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Generate Complete Financial Dossier (PDF)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Message Banner if any
+                        vaultState.message?.let { msg ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (vaultState.isSuccess) Emerald400.copy(alpha = 0.15f) else Gold500.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, if (vaultState.isSuccess) Emerald400 else Gold500),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = msg,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.weight(1f),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    IconButton(onClick = { vaultViewModel.clearMessage() }, modifier = Modifier.size(20.dp)) {
+                                        Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+
+                        // 3. Section: Archived Vault Documents
+                        ProfileSectionHeader(title = "ARCHIVED VAULT DOCUMENTS (${vaultState.documents.size})")
+
+                        if (vaultState.documents.isEmpty()) {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(Icons.Default.FolderOpen, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp))
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text("No Documents Vaulted Yet", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "Tap 'Generate Complete Financial Dossier' above, or sign digital loan agreements to store certified copies in your vault.",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                        } else {
+                            for (doc in vaultState.documents) {
+                                Card(
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            val badgeColor = when (doc.documentType) {
+                                                "FINANCIAL_DOSSIER" -> Gold500
+                                                "LOAN_AGREEMENT" -> Emerald400
+                                                "NOC_CERTIFICATE" -> Blue400
+                                                else -> MaterialTheme.colorScheme.primary
+                                            }
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = badgeColor.copy(alpha = 0.15f),
+                                                border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.3f))
+                                            ) {
+                                                Text(
+                                                    text = doc.documentType.replace("_", " "),
+                                                    color = badgeColor,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.weight(1f))
+
+                                            Text(
+                                                text = dateFormat.format(java.util.Date(doc.generatedAt)),
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        Text(
+                                            text = doc.title,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+
+                                        if (doc.description.isNotBlank()) {
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = doc.description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontSize = 11.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        // Meta row: size + SHA256
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "${(doc.fileSizeBytes / 1024).coerceAtLeast(1)} KB",
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("•", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald400, modifier = Modifier.size(12.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text(
+                                                text = "SHA-256: ${doc.checksumSha256.take(12)}...",
+                                                fontSize = 10.sp,
+                                                color = Emerald400,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.6.dp)
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        // Action buttons
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            IconButton(
+                                                onClick = { vaultViewModel.deleteDocument(doc.documentId) },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                                            }
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            OutlinedButton(
+                                                onClick = { vaultViewModel.shareDocument(context, doc) },
+                                                shape = RoundedCornerShape(8.dp),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                                modifier = Modifier.height(32.dp)
+                                            ) {
+                                                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Share", fontSize = 11.sp)
+                                            }
+
+                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Button(
+                                                onClick = { vaultViewModel.openDocument(context, doc) },
+                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                                shape = RoundedCornerShape(8.dp),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                                modifier = Modifier.height(32.dp)
+                                            ) {
+                                                Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("View PDF", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // 4. Section: Statutory KYC & Identity Documents
+                        ProfileSectionHeader(title = "STATUTORY KYC & IDENTITY VERIFICATION")
 
                         // PAN Card
                         VaultDocumentCard(

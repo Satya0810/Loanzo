@@ -73,7 +73,8 @@ class LoanViewModel @Inject constructor(
     private val payeeDao: PayeeDao,
     private val ruleEngine: RuleEngine,
     private val leegalityService: LeegalityService,
-    private val googleDriveManager: GoogleDriveManager
+    private val googleDriveManager: GoogleDriveManager,
+    private val documentVaultRepository: com.loanzo.app.data.repository.DocumentVaultRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoanUiState())
@@ -574,9 +575,17 @@ class LoanViewModel @Inject constructor(
                 ?: com.loanzo.app.data.entity.UserEntity(userId = loan.borrowerId, name = "Borrower", email = "", phone = "", role = "BORROWER", kycStatus = "VERIFIED")
             val file = com.loanzo.app.util.AgreementGenerator.generateAgreementPdf(context, loan, lender, borrower)
             if (file != null) {
+                documentVaultRepository.archiveDocument(
+                    userId = loan.borrowerId,
+                    loanId = loan.loanId,
+                    title = "Digital Loan Agreement - ${loan.loanId.take(8).uppercase()}",
+                    documentType = "LOAN_AGREEMENT",
+                    sourceFile = file,
+                    description = "Legally signed peer-to-peer agreement with e-signatures & KYC certifications."
+                )
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     com.loanzo.app.util.ReportExporter.shareFile(context, file, "application/pdf")
-                    _uiState.update { it.copy(message = "Agreement PDF opened successfully!") }
+                    _uiState.update { it.copy(message = "Agreement archived to Vault & opened successfully!") }
                 }
             } else {
                 _uiState.update { it.copy(message = "Failed to generate Agreement PDF.") }
@@ -759,6 +768,14 @@ class LoanViewModel @Inject constructor(
             val borrower = userRepository.getUserById(loan.borrowerId) ?: UserEntity(userId = loan.borrowerId, name = "Borrower", email = "", phone = "", role = "BORROWER", kycStatus = "VERIFIED")
             val file = com.loanzo.app.util.AgreementGenerator.generateLoanNocCertificate(context, loan, lender, borrower)
             if (file != null) {
+                documentVaultRepository.archiveDocument(
+                    userId = loan.borrowerId,
+                    loanId = loan.loanId,
+                    title = "No Objection Certificate (NOC) - ${loan.loanId.take(8).uppercase()}",
+                    documentType = "NOC_CERTIFICATE",
+                    sourceFile = file,
+                    description = "Official debt satisfaction clearance confirming zero balance."
+                )
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     try {
                         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
