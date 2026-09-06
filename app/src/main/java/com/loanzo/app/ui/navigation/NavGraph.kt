@@ -372,12 +372,19 @@ fun LoanzoNavGraph(
                 resetUserEmail = authState.resetUserEmail,
                 resetUserPhone = authState.resetUserPhone,
                 isEmailVerified = authState.isEmailVerified,
+                isUntrustedDevice = authState.isUntrustedDevice,
+                registeredDeviceModel = authState.registeredDeviceModel,
+                currentDeviceModel = authState.currentDeviceModel,
+                recoveryGrievanceTicket = authState.recoveryGrievanceTicket,
                 onInitiate = { authViewModel.initiateForgotPassword(it) },
                 onAddFactor = { authViewModel.add2FAFactor(it) },
                 onResetPassword = { authViewModel.resetPassword(it) },
                 onSendEmailVerification = { authViewModel.sendEmailVerification(it) },
                 onVerifyEmailOtp = { authViewModel.verifyEmailOtp(it) },
                 onSetPhoneVerified = { authViewModel.setPhoneVerified(it) },
+                onSubmitGrievance = { fullName, phone, idLast4, reason, remarks ->
+                    authViewModel.submitAccountRecoveryGrievance(fullName, phone, idLast4, reason, remarks)
+                },
                 onResetAuthState = { authViewModel.resetAuthState() },
                 isLoading = authState.isLoading,
                 error = authState.error,
@@ -457,7 +464,13 @@ fun LoanzoNavGraph(
                     }
                 },
                 onSelectAgent = {
-                    navController.navigate(Routes.AGENT_APPLICATION)
+                    if (user?.role == "AGENT" && user?.agentStatus == "APPROVED") {
+                        navController.navigate(Routes.AGENT_MAIN)
+                    } else if (user?.agentStatus == "PENDING") {
+                        navController.navigate(Routes.AGENT_PENDING_APPROVAL)
+                    } else {
+                        navController.navigate(Routes.AGENT_APPLICATION)
+                    }
                 }
             )
         }

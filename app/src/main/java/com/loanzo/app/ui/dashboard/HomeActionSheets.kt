@@ -460,7 +460,26 @@ fun ReportActionBottomSheet(
                     .padding(top = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                categories.drop(2).forEach { cat ->
+                categories.slice(2..3).forEach { cat ->
+                    val isSelected = selectedCategory == cat
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedCategory = cat },
+                        label = { Text(cat, fontSize = 12.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Red400.copy(alpha = 0.2f),
+                            selectedLabelColor = Red400
+                        )
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                categories.drop(4).forEach { cat ->
                     val isSelected = selectedCategory == cat
                     FilterChip(
                         selected = isSelected,

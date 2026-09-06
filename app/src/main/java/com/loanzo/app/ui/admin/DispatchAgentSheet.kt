@@ -38,7 +38,7 @@ fun DispatchAgentSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF0F172A),
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     ) {
         Column(
@@ -73,7 +73,7 @@ fun DispatchAgentSheet(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Map Inspection to Certified Agent",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -84,9 +84,9 @@ fun DispatchAgentSheet(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF1E293B))
+                        .background(Color(0xFFF1F5F9))
                 ) {
-                    Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -95,7 +95,7 @@ fun DispatchAgentSheet(
             // Visit Overview Card
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -104,7 +104,7 @@ fun DispatchAgentSheet(
                 ) {
                     Text(
                         text = visit.title,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -136,7 +136,7 @@ fun DispatchAgentSheet(
             // Payout Configurator
             Text(
                 text = "Field Inspection Bounty / Payout (₹)",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -149,8 +149,8 @@ fun DispatchAgentSheet(
                     val isSelected = payoutAmount == amount
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected) Gold500 else Color(0xFF1E293B),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Gold500 else Color(0xFF334155)),
+                        color = if (isSelected) Gold500 else Color(0xFFF1F5F9),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Gold500 else MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .weight(1f)
                             .clickable { payoutAmount = amount }
@@ -175,7 +175,7 @@ fun DispatchAgentSheet(
             // Available Agents Roster
             Text(
                 text = "Select Active Certified Agent",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -187,7 +187,7 @@ fun DispatchAgentSheet(
                         .fillMaxWidth()
                         .height(100.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF1E293B)),
+                        .background(Color(0xFFF1F5F9)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("No empaneled agents currently registered", color = Gray400, fontSize = 12.sp)
@@ -203,7 +203,7 @@ fun DispatchAgentSheet(
                         val isSelected = selectedAgentId == agent.userId
                         Card(
                             shape = RoundedCornerShape(10.dp),
-                            colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFF1E293B) else Color(0xFF141D2E)),
+                            colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFF1F5F9) else Color(0xFFF8FAFC)),
                             border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Emerald400 else Color(0xFF243247)),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -215,7 +215,7 @@ fun DispatchAgentSheet(
                             ) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = if (isSelected) Emerald400.copy(alpha = 0.2f) else Color(0xFF334155),
+                                    color = if (isSelected) Emerald400.copy(alpha = 0.2f) else MaterialTheme.colorScheme.outlineVariant,
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
@@ -232,7 +232,7 @@ fun DispatchAgentSheet(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = agent.permanentAddress.take(20) + " Officer",
-                                            color = Color.White,
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
                                         )

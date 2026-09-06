@@ -78,11 +78,11 @@ fun AgentApplicationScreen(
     var decl2 by remember { mutableStateOf(false) }
     var decl3 by remember { mutableStateOf(false) }
 
-    val darkBg = Color(0xFF0D1117)
-    val cardBg = Color(0xFF161B22)
-    val borderColor = Color(0xFF30363D)
-    val goldAccent = Color(0xFFFFB800)
-    val emeraldAccent = Color(0xFF10B981)
+    val darkBg = MaterialTheme.colorScheme.background
+    val cardBg = Color.White
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
+    val goldAccent = com.loanzo.app.ui.theme.GoldCoinBright
+    val emeraldAccent = com.loanzo.app.ui.theme.Emerald400
 
     val isFormValid = pccNumber.isNotBlank() &&
             policeStation.isNotBlank() &&
@@ -101,7 +101,7 @@ fun AgentApplicationScreen(
                             text = "Agent Empanelment",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -119,12 +119,12 @@ fun AgentApplicationScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF161B22)
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -158,7 +158,7 @@ fun AgentApplicationScreen(
                         Icon(
                             imageVector = Icons.Default.Shield,
                             contentDescription = null,
-                            tint = Color.Black,
+                            tint = com.loanzo.app.ui.theme.Navy900,
                             modifier = Modifier.size(26.dp)
                         )
                     }
@@ -168,7 +168,7 @@ fun AgentApplicationScreen(
                             text = "Official Empanelment Dossier",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -176,7 +176,7 @@ fun AgentApplicationScreen(
                         Text(
                             text = "Applicant: $userName (${if (userPhone.isNotBlank()) userPhone else userEmail})",
                             fontSize = 12.sp,
-                            color = Color(0xFF9CA3AF),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             softWrap = false,
                             overflow = TextOverflow.Ellipsis
@@ -200,7 +200,7 @@ fun AgentApplicationScreen(
                 text = "Years of Field Experience",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFE5E7EB)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -241,7 +241,7 @@ fun AgentApplicationScreen(
                 text = "Primary Appraisal Domain",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFE5E7EB)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
             domainOptions.forEach { domain ->
@@ -253,10 +253,10 @@ fun AgentApplicationScreen(
                         .clip(RoundedCornerShape(10.dp))
                         .clickable { selectedDomain = domain },
                     shape = RoundedCornerShape(10.dp),
-                    color = if (selected) Color(0xFF1E293B) else cardBg,
+                    color = if (selected) Color(0xFFEFF6FF) else cardBg,
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        if (selected) Color(0xFF38BDF8) else borderColor
+                        if (selected) com.loanzo.app.ui.theme.BrandRoyalBlue else borderColor
                     )
                 ) {
                     Row(
@@ -275,7 +275,7 @@ fun AgentApplicationScreen(
                         Text(
                             text = domain,
                             fontSize = 13.sp,
-                            color = if (selected) Color.White else Color(0xFF9CA3AF),
+                            color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                         )
                     }
@@ -360,14 +360,14 @@ fun AgentApplicationScreen(
                             text = if (pccUploaded) "PCC Document Attached (Verified)" else "Upload PCC Document Copy (PDF / JPG)",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             softWrap = false
                         )
                         Text(
                             text = if (pccUploaded) "Original police seal & signature detected" else "Tap to attach digital certificate copy",
                             fontSize = 11.sp,
-                            color = Color(0xFF9CA3AF),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -433,7 +433,7 @@ fun AgentApplicationScreen(
                 text = "Service Radius: ${serviceRadiusKm.toInt()} km",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFE5E7EB)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Slider(
                 value = serviceRadiusKm,
@@ -453,7 +453,7 @@ fun AgentApplicationScreen(
                 text = "Primary Mode of Field Transport",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFE5E7EB)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -589,14 +589,14 @@ fun AgentApplicationScreen(
                     .height(54.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = goldAccent,
-                    disabledContainerColor = Color(0xFF21262D)
+                    containerColor = com.loanzo.app.ui.theme.GoldCoinRich,
+                    disabledContainerColor = Color(0xFFE2E8F0)
                 )
             ) {
                 if (isSubmitting) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
-                        color = Color.Black,
+                        color = com.loanzo.app.ui.theme.Navy900,
                         strokeWidth = 2.dp
                     )
                 } else {
@@ -604,7 +604,7 @@ fun AgentApplicationScreen(
                         Icon(
                             imageVector = Icons.Default.Send,
                             contentDescription = null,
-                            tint = Color.Black,
+                            tint = com.loanzo.app.ui.theme.Navy900,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -612,7 +612,7 @@ fun AgentApplicationScreen(
                             text = "Submit Empanelment Dossier to Master Admin",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
+                            color = com.loanzo.app.ui.theme.Navy900,
                             maxLines = 1,
                             softWrap = false,
                             overflow = TextOverflow.Ellipsis
@@ -638,7 +638,7 @@ private fun SectionHeader(stepNumber: String, title: String, subtitle: String) {
         ) {
             Text(
                 text = stepNumber,
-                color = Color.Black,
+                color = com.loanzo.app.ui.theme.Navy900,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 13.sp
             )
@@ -649,14 +649,14 @@ private fun SectionHeader(stepNumber: String, title: String, subtitle: String) {
                 text = title,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 softWrap = false
             )
             Text(
                 text = subtitle,
                 fontSize = 11.sp,
-                color = Color(0xFF8B949E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 softWrap = false
             )
@@ -689,7 +689,7 @@ private fun LegalCheckbox(
         Text(
             text = text,
             fontSize = 12.sp,
-            color = Color(0xFFD1D5DB),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 16.sp,
             modifier = Modifier.padding(top = 10.dp)
         )
@@ -705,8 +705,8 @@ private fun textFieldColors(container: Color, border: Color, focused: Color) =
         focusedBorderColor = focused,
         unfocusedBorderColor = border,
         focusedLabelColor = focused,
-        unfocusedLabelColor = Color(0xFF8B949E),
-        focusedTextColor = Color.White,
-        unfocusedTextColor = Color.White,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
         cursorColor = focused
     )

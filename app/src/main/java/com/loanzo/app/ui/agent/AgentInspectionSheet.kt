@@ -190,7 +190,7 @@ fun AgentInspectionSheet(
                         ) {
                             Text(
                                 text = "Check In",
-                                color = Color.Black,
+                                color = com.loanzo.app.ui.theme.Navy900,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -276,8 +276,8 @@ fun AgentInspectionSheet(
                         unfocusedContainerColor = cardBg,
                         focusedBorderColor = goldAccent,
                         unfocusedBorderColor = borderColor,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     ),
                     singleLine = true
                 )
@@ -328,8 +328,8 @@ fun AgentInspectionSheet(
                     unfocusedContainerColor = cardBg,
                     focusedBorderColor = goldAccent,
                     unfocusedBorderColor = borderColor,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 )
             )
 
@@ -353,14 +353,14 @@ fun AgentInspectionSheet(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = emeraldAccent,
-                    disabledContainerColor = Color(0xFF21262D)
+                    disabledContainerColor = Color(0xFFE2E8F0)
                 )
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = Color.Black,
+                        tint = com.loanzo.app.ui.theme.Navy900,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -368,7 +368,7 @@ fun AgentInspectionSheet(
                         text = "Submit Field Report & Claim ₹${visit.payoutAmount.toInt()}",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = com.loanzo.app.ui.theme.Navy900,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -458,7 +458,7 @@ private fun PhotoProofBox(
                 text = if (isCaptured) "Photo Captured" else label,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (isCaptured) emeraldAccent else Color.White,
+                color = if (isCaptured) emeraldAccent else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 softWrap = false
             )

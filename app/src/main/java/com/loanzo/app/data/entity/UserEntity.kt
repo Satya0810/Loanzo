@@ -35,5 +35,7 @@ data class UserEntity(
     val agentStatus: String = "NOT_APPLIED", // NOT_APPLIED, PENDING, APPROVED, REJECTED
     val isOnDuty: Boolean = true,
     val totalAgentEarnings: Double = 0.0,
+    val registeredDeviceId: String = "",
+    val registeredDeviceModel: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
