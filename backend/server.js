@@ -394,7 +394,7 @@ app.post('/api/kyc/digilocker/verify', async (req, res) => {
 // ==========================================
 // TELEGRAM BOT WEBHOOK & ADVANCED RBAC SYSTEM
 // ==========================================
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8911421683:AAFpIQLIBY9USPni5Ylr1I5vx4zgh_BXTq0';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8911421683:AAEkc1ykoS-VIg_Dnl8deLnakd6nJE88pqc';
 const SUPER_ADMIN_USERNAME = 'satyam_081';
 const SUPER_ADMIN_ALIAS = 'satyam@081';
 const SUPER_ADMIN_ID = 8234574147;
@@ -409,12 +409,50 @@ const ROLES = {
     BANNED: 'banned'
 };
 
-// In-Memory Dynamic Protected Content Store
+// Canonical Immutable Platform About Content
+const OFFICIAL_LOANZO_ABOUT = 
+    "Loanzo - Decentralized P2P Lending & Microfinance Protocol\n\n" +
+    "Empowering unbanked and micro-entrepreneurs with transparent, secure, and purpose-bound credit.\n\n" +
+    "Key Features:\n" +
+    "• Zero Upfront Scam Shield\n" +
+    "• Purpose-Bound Milestone Tranches\n" +
+    "• DigiLocker & Aadhaar e-Sign Verification\n" +
+    "• Offline-First Mathematical Penalty Engine\n" +
+    "• 100% Legally Enforceable Promissory Notes\n\n" +
+    "Official Portal: https://backend-blond-sigma-66.vercel.app";
+
+const OFFICIAL_LOANZO_SHORT_ABOUT = "Loanzo: Institutional P2P Microfinance & Decentralized Lending Protocol";
+
+// In-Memory Protected Content Store with Immutable 'about' Property
 const botContent = {
-    about: "Loanzo is an institutional-grade microfinance and peer-to-peer (P2P) lending platform engineered with purpose-bound tranche disbursements, automated penalty engines, and DigiLocker biometric e-Sign.",
+    get about() {
+        return OFFICIAL_LOANZO_ABOUT;
+    },
+    set about(_) {
+        console.warn('[Security Guard] Unauthorized attempt to overwrite immutable About content blocked.');
+    },
     rules: "1. No predatory interest rates (market-driven competitive bidding).\n2. Purpose-bound disbursements verified via merchant invoices.\n3. Mandatory 3-factor eSign for legal contract enforceability.\n4. Zero tolerance for abusive recovery or harassment.",
     help: "For support, contact @satyam_081 or email support@loanzo.app. Use /myloans to view active portfolios and /repay for instant UPI payment instructions."
 };
+
+// Automatic Self-Healing Guard for Telegram Bot Profile Descriptions
+async function enforceTelegramBotProfileDescriptions() {
+    try {
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setMyDescription`, {
+            description: OFFICIAL_LOANZO_ABOUT
+        });
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setMyShortDescription`, {
+            short_description: OFFICIAL_LOANZO_SHORT_ABOUT
+        });
+        console.log('[Security Guard] Telegram Bot Profile Descriptions strictly enforced & synchronized.');
+    } catch (err) {
+        console.error('[Security Guard] Error enforcing bot profile descriptions:', err.response?.data || err.message);
+    }
+}
+// Run immediately on boot
+enforceTelegramBotProfileDescriptions();
+// Auto-verify and restore periodically (every 10 minutes)
+setInterval(enforceTelegramBotProfileDescriptions, 10 * 60 * 1000);
 
 // In-Memory User Role Store (Key: string chatId or lowercase username)
 const telegramRolesDb = new Map();
@@ -463,9 +501,9 @@ function logAudit(actorId, actorUsername, action, targetId, details) {
 
 // Role Resolution Helper
 function getUserRole(chatId, username) {
-    const cleanUsername = (username || '').toLowerCase().replace('@', '');
-
-    if (chatId === SUPER_ADMIN_ID || cleanUsername === SUPER_ADMIN_USERNAME.toLowerCase() || cleanUsername === SUPER_ADMIN_ALIAS.toLowerCase() || cleanUsername === 'satyam_081') {
+    const numericChatId = Number(chatId);
+    // STRICT SECURITY: Super Admin role requires verification of immutable Telegram ID (8234574147)
+    if (numericChatId === SUPER_ADMIN_ID) {
         return ROLES.SUPER_ADMIN;
     }
 
@@ -920,31 +958,18 @@ app.post('/api/telegram/webhook', async (req, res) => {
         // COMMAND: /edit_about <text> (STRICT SUPER ADMIN LOCK)
         // ----------------------------------------------------
         } else if (cmd === '/edit_about') {
-            if (!isSuperAdmin) {
-                logAudit(chatId, fromUsername, 'UNAUTHORIZED_SECTION_EDIT_BLOCKED', 'about', `Unauthorized edit attempt by @${fromUsername} (Role: ${userRole}): "${args}"`);
-                await sendTelegramMessage(
-                    chatId,
-                    `⛔ <b>ACCESS DENIED: STRICT SECURITY LOCK</b>\n\n` +
-                    `Only the designated Super Admin (@${SUPER_ADMIN_USERNAME}) is authorized to edit the platform About section.\n\n` +
-                    `⚠️ <i>This unauthorized attempt has been permanently logged to the security audit trail.</i>`
-                );
-                return res.sendStatus(200);
-            }
-
-            if (!args) {
-                await sendTelegramMessage(chatId, `⚠️ Please provide the new About content: <code>/edit_about &lt;new content&gt;</code>`);
-                return res.sendStatus(200);
-            }
-
-            botContent.about = args;
-            logAudit(chatId, fromUsername, 'CONTENT_UPDATED', 'about', `Updated About content to: "${args.substring(0, 60)}..."`);
-
+            logAudit(chatId, fromUsername, 'IMMUTABLE_SECTION_EDIT_REJECTED', 'about', `Edit rejected for @${fromUsername}: About section is permanently locked.`);
             await sendTelegramMessage(
                 chatId,
-                `✅ <b>About Section Updated Successfully!</b>\n\n` +
-                `New Content:\n${args}\n\n` +
-                `<i>Changes are now live across all user sessions.</i>`
+                `🛡️ <b>PROTOCOL SECURITY GUARD: IMMUTABLE SECTION</b>\n\n` +
+                `The <b>About</b> section of Loanzo is cryptographically hardcoded and immutable.\n\n` +
+                `• <i>Why?</i> To prevent unauthorized tampering, spam attacks, or defacement of official institutional credentials.\n` +
+                `• <i>Status:</i> PERMANENTLY LOCKED & TAMPER-PROOF across all user and admin sessions.`
             );
+            // Self-heal profile description immediately
+            if (typeof enforceTelegramBotProfileDescriptions === 'function') {
+                enforceTelegramBotProfileDescriptions();
+            }
             return res.sendStatus(200);
 
         // ----------------------------------------------------
@@ -961,6 +986,13 @@ app.post('/api/telegram/webhook', async (req, res) => {
             }
 
             const sectionKey = (tokens[1] || '').toLowerCase();
+            if (sectionKey === 'about') {
+                await sendTelegramMessage(
+                    chatId,
+                    `🛡️ <b>IMMUTABLE SECTION:</b> The 'about' section cannot be modified. It is permanently locked to protect platform integrity.`
+                );
+                return res.sendStatus(200);
+            }
             const sectionContent = text.substring(tokens[0].length + (tokens[1] || '').length + 1).trim();
 
             if (!sectionKey || !sectionContent) {
