@@ -65,7 +65,8 @@ object Routes {
     const val REPAYMENT = "repayment/{loanId}"
     const val PLEDGE = "pledge/{loanId}"
     const val AUDIT_TRAIL = "audit_trail/{loanId}"
-    const val CHAT = "chat/{loanId}"
+    const val CHAT = "chat/{channelId}?loanId={loanId}&targetUserId={targetUserId}"
+    const val CHAT_HUB = "chat_hub"
     const val DOCUMENT_VIEWER = "document_viewer/{loanId}"
     const val GUARANTORS = "guarantors/{loanId}"
     const val PROFILE = "profile"
@@ -87,7 +88,12 @@ object Routes {
     fun repayment(loanId: String) = "repayment/$loanId"
     fun pledge(loanId: String) = "pledge/$loanId"
     fun auditTrail(loanId: String) = "audit_trail/$loanId"
-    fun chat(loanId: String) = "chat/$loanId"
+    fun chat(channelId: String, loanId: String? = null, targetUserId: String? = null): String {
+        val builder = java.lang.StringBuilder("chat/$channelId?")
+        if (loanId != null) builder.append("loanId=$loanId&")
+        if (targetUserId != null) builder.append("targetUserId=$targetUserId&")
+        return builder.toString().trimEnd('&', '?')
+    }
     fun documentViewer(loanId: String) = "document_viewer/$loanId"
     fun guarantors(loanId: String) = "guarantors/$loanId"
     
@@ -789,14 +795,49 @@ fun LoanzoNavGraph(
             )
         }
 
+        composable(Routes.CHAT_HUB) {
+            val chatViewModel: com.loanzo.app.ui.loan.ChatViewModel = hiltViewModel()
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+
+            com.loanzo.app.ui.loan.ChatHubScreen(
+                chatViewModel = chatViewModel,
+                currentUserId = activeUserId,
+                onBack = { navController.popBackStack() },
+                onOpenChat = { channelId, loanId, targetUserId ->
+                    navController.navigate(Routes.chat(channelId, loanId, targetUserId))
+                }
+            )
+        }
+
         composable(
-            Routes.CHAT,
-            arguments = listOf(navArgument("loanId") { type = NavType.StringType })
+            route = Routes.CHAT,
+            arguments = listOf(
+                navArgument("channelId") { type = NavType.StringType },
+                navArgument("loanId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("targetUserId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { backStackEntry ->
-            val loanId = backStackEntry.arguments?.getString("loanId") ?: ""
-            ChatScreen(
-                loanId = loanId,
-                onBack = { navController.popBackStack() }
+            val channelId = backStackEntry.arguments?.getString("channelId") ?: ""
+            val loanIdArg = backStackEntry.arguments?.getString("loanId")
+            val targetUserId = backStackEntry.arguments?.getString("targetUserId")
+            val effectiveLoanId = if (!loanIdArg.isNullOrBlank()) loanIdArg else if (!channelId.startsWith("direct_") && !channelId.startsWith("support_")) channelId.removePrefix("loan_") else null
+
+            com.loanzo.app.ui.loan.ChatScreen(
+                channelId = channelId,
+                loanId = effectiveLoanId,
+                targetUserId = targetUserId,
+                onBack = { navController.popBackStack() },
+                onViewLoanAgreement = { lId -> navController.navigate(Routes.agreementSigning(lId)) }
             )
         }
 
@@ -1311,6 +1352,7 @@ fun MainScaffold(
                     },
                     onNavigateToLoansTab = { innerNavController.navigate(Routes.LOANS) },
                     onNavigateToChat = { loanId -> navController.navigate(Routes.chat(loanId)) },
+                    onNavigateToChatHub = { navController.navigate(Routes.CHAT_HUB) },
                     onNavigateToKyc = { navController.navigate(Routes.KYC) },
                     onPushDemoData = { authViewModel.pushDemoData() }
                 )

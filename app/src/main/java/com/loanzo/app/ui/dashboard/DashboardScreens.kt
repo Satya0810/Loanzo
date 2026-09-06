@@ -66,6 +66,7 @@ fun DashboardScreen(
     onNavigateToApproval: (String) -> Unit = {},
     onNavigateToLoansTab: () -> Unit = {},
     onNavigateToChat: (String) -> Unit = {},
+    onNavigateToChatHub: () -> Unit = {},
     onNavigateToKyc: () -> Unit = {},
     onPushDemoData: () -> Unit = {}
 ) {
@@ -221,7 +222,7 @@ fun DashboardScreen(
                                     },
                                     onClick = {
                                         isMenuExpanded = false
-                                        showChatSheet = true
+                                        onNavigateToChatHub()
                                     },
                                     leadingIcon = {
                                         Surface(
