@@ -1067,6 +1067,18 @@ fun MainScaffold(
     var showKycRequiredDialog by remember { mutableStateOf(false) }
     var kycDialogMessage by remember { mutableStateOf("") }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val permissionsRationaleShown by userRepository.isPermissionsRationaleShown()
+        .collectAsStateWithLifecycle(initialValue = true)
+    var showPermissionsPopup by remember { mutableStateOf(false) }
+
+    LaunchedEffect(permissionsRationaleShown) {
+        if (!permissionsRationaleShown && !com.loanzo.app.util.permissions.AppPermissionManager.hasAllEssentialPermissions(context)) {
+            kotlinx.coroutines.delay(600)
+            showPermissionsPopup = true
+        }
+    }
+
     // Back navigation handling for modal quick action menu and guided tour overlay
     androidx.activity.compose.BackHandler(enabled = isQuickActionMenuOpen) {
         isQuickActionMenuOpen = false
@@ -1796,6 +1808,19 @@ fun MainScaffold(
                 shape = RoundedCornerShape(24.dp),
                 containerColor = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp
+            )
+        }
+
+        if (showPermissionsPopup) {
+            com.loanzo.app.ui.components.RequiredPermissionsDialog(
+                onDismiss = {
+                    showPermissionsPopup = false
+                    scope.launch { userRepository.setPermissionsRationaleShown(true) }
+                },
+                onAllGranted = {
+                    showPermissionsPopup = false
+                    scope.launch { userRepository.setPermissionsRationaleShown(true) }
+                }
             )
         }
     }

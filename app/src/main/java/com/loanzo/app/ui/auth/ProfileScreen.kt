@@ -108,6 +108,7 @@ fun ProfileScreen(
     var showDemoDataDialog by remember { mutableStateOf(false) }
     var isSeedingDemo by remember { mutableStateOf(false) }
     var isVaultUnlocked by remember { mutableStateOf(false) }
+    var showPermissionsSheet by remember { mutableStateOf(false) }
     var showVaultPasswordDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -1782,6 +1783,13 @@ fun ProfileScreen(
     // ================= DIALOGS & MODALS =================
 
     // 1. Password Verification Dialog for Document Vault
+    if (showPermissionsSheet) {
+        com.loanzo.app.ui.components.RequiredPermissionsDialog(
+            onDismiss = { showPermissionsSheet = false },
+            onAllGranted = { showPermissionsSheet = false }
+        )
+    }
+
     if (showVaultPasswordDialog) {
         UnlockVaultDialog(
             user = user,
