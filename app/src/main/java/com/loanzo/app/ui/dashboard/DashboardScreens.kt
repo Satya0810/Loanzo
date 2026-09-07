@@ -73,7 +73,6 @@ fun DashboardScreen(
     var isMenuExpanded by remember { mutableStateOf(false) }
     var showChatSheet by remember { mutableStateOf(false) }
     var showReportSheet by remember { mutableStateOf(false) }
-    var showAcademySimulator by remember { mutableStateOf(false) }
     var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
     var selectedVisitForInspection by remember { mutableStateOf<com.loanzo.app.data.entity.AgentVisitEntity?>(null) }
 
@@ -167,15 +166,19 @@ fun DashboardScreen(
                                 shape = RoundedCornerShape(14.dp),
                                 color = BrandAmberGold.copy(alpha = 0.12f),
                                 border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.4f)),
-                                modifier = Modifier.clickable { showAcademySimulator = true }
+                                modifier = Modifier.clickable {
+                                    scope.launch {
+                                        userRepository.setActiveTour(com.loanzo.app.ui.components.AppTours.REQUEST_LOAN, 0)
+                                    }
+                                }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Text("✨", fontSize = 12.sp)
-                                    Text("Academy", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
+                                    Text("🧭", fontSize = 12.sp)
+                                    Text("Guide", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
                                 }
                             }
 
@@ -322,18 +325,18 @@ fun DashboardScreen(
 
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
-                                // Option 4: Academy & Live Simulator
+                                // Option 4: Interactive Guide
                                 DropdownMenuItem(
                                     text = {
                                         Column {
                                             Text(
-                                                text = "Loanzo Academy",
+                                                text = "Interactive Guide",
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
-                                                text = "Interactive tutorials & simulators",
+                                                text = "Step-by-step feature walkthrough",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = BrandAmberGold,
                                                 fontSize = 11.sp
@@ -342,7 +345,9 @@ fun DashboardScreen(
                                     },
                                     onClick = {
                                         isMenuExpanded = false
-                                        showAcademySimulator = true
+                                        scope.launch {
+                                            userRepository.setActiveTour(com.loanzo.app.ui.components.AppTours.REQUEST_LOAN, 0)
+                                        }
                                     },
                                     leadingIcon = {
                                         Surface(
@@ -351,7 +356,7 @@ fun DashboardScreen(
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
-                                                Text("🎓", fontSize = 16.sp)
+                                                Text("🧭", fontSize = 16.sp)
                                             }
                                         }
                                     }
@@ -728,7 +733,7 @@ fun DashboardScreen(
                             scope.launch {
                                 userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_CALCULATOR_TRIED)
                             }
-                            showAcademySimulator = true
+                            onNavigateToCalculator()
                         },
                         onVerifyKyc = {
                             onNavigateToKyc()
@@ -1455,15 +1460,6 @@ fun DashboardScreen(
         }
     }
 
-    // Hands-on Interactive Academy Simulator Sheet
-    if (showAcademySimulator) {
-        LoanzoAcademySimulatorSheet(
-            onDismiss = { showAcademySimulator = false },
-            onNavigateToCreateLoan = {
-                showAcademySimulator = false
-                onNavigateToCreateLoan()
-            }
-        )
-    }
+
     }
 }
