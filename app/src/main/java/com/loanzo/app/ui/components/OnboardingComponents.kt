@@ -244,7 +244,7 @@ fun WelcomeOnboardingCarousel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFF0D131F), Color(0xFF06090E))))
+                .background(CanvasPorcelain)
         ) {
             Column(
                 modifier = Modifier
@@ -267,7 +267,8 @@ fun WelcomeOnboardingCarousel(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0xFF1E293B).copy(alpha = 0.8f))
+                            .background(BrandIceBlue)
+                            .border(1.dp, BrandIceBorder, RoundedCornerShape(20.dp))
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Image(
@@ -275,12 +276,12 @@ fun WelcomeOnboardingCarousel(
                             contentDescription = "Loanzo",
                             modifier = Modifier.size(20.dp)
                         )
-                        Text("LOANZO", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
+                        Text("LOANZO", color = BrandRoyalBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
                     }
 
                     // Skip button
                     TextButton(onClick = onSkip) {
-                        Text("Skip ➔", color = Gray400, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text("Skip ➔", color = TextSlateMuted, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     }
                 }
 
@@ -304,9 +305,9 @@ fun WelcomeOnboardingCarousel(
                             modifier = Modifier
                                 .size(280.dp)
                                 .clip(RoundedCornerShape(32.dp))
-                                .background(Brush.radialGradient(listOf(BrandAmberGold.copy(alpha = 0.15f), Color.Transparent)))
-                                .border(1.5.dp, Brush.linearGradient(listOf(BrandAmberGold.copy(alpha = 0.4f), Color.Transparent)), RoundedCornerShape(32.dp))
-                                .padding(12.dp),
+                                .background(Color.White)
+                                .border(1.5.dp, BrandIceBorder, RoundedCornerShape(32.dp))
+                                .padding(8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
@@ -324,12 +325,12 @@ fun WelcomeOnboardingCarousel(
                         // Category Badge
                         Surface(
                             shape = CircleShape,
-                            color = BrandAmberGold.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.3f))
+                            color = BrandGoldLight,
+                            border = BorderStroke(1.dp, BrandGoldBorder)
                         ) {
                             Text(
                                 text = slide.badge,
-                                color = BrandAmberGold,
+                                color = BrandGoldDark,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 1.2.sp,
@@ -345,7 +346,7 @@ fun WelcomeOnboardingCarousel(
                             text = slide.title,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = TextNavyDark,
                             textAlign = TextAlign.Center,
                             fontSize = 22.sp,
                             lineHeight = 28.sp
@@ -356,7 +357,7 @@ fun WelcomeOnboardingCarousel(
                         Text(
                             text = slide.subtitle,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Gray300,
+                            color = TextSlateMedium,
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,
@@ -389,7 +390,7 @@ fun WelcomeOnboardingCarousel(
                                     .height(6.dp)
                                     .width(width)
                                     .clip(CircleShape)
-                                    .background(if (isSelected) BrandAmberGold else Color.White.copy(alpha = 0.2f))
+                                    .background(if (isSelected) BrandAmberGold else Color(0xFFCBD5E1))
                             )
                         }
                     }
@@ -410,8 +411,8 @@ fun WelcomeOnboardingCarousel(
                             .height(54.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = BrandAmberGold,
-                            contentColor = Color(0xFF0F172A)
+                            containerColor = BrandRoyalBlue,
+                            contentColor = Color.White
                         ),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
