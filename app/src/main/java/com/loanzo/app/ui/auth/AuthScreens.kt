@@ -145,10 +145,14 @@ fun LoginScreen(
                     )
 
                     AnimatedVisibility(visible = error != null) {
+                        val isSuccess = error?.contains("success", ignoreCase = true) == true ||
+                                        error?.contains("created", ignoreCase = true) == true ||
+                                        error?.contains("registered", ignoreCase = true) == true ||
+                                        error?.contains("linked", ignoreCase = true) == true
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = Red400.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, Red400.copy(alpha = 0.3f)),
+                            color = if (isSuccess) Emerald400.copy(alpha = 0.15f) else Red400.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, if (isSuccess) Emerald400.copy(alpha = 0.4f) else Red400.copy(alpha = 0.3f)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 12.dp)
@@ -157,12 +161,18 @@ fun LoginScreen(
                                 modifier = Modifier.padding(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.ErrorOutline, null, tint = Red400, modifier = Modifier.size(18.dp))
+                                Icon(
+                                    imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    tint = if (isSuccess) Emerald400 else Red400,
+                                    modifier = Modifier.size(18.dp)
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = error ?: "",
-                                    color = Red400,
-                                    style = MaterialTheme.typography.bodySmall
+                                    color = if (isSuccess) Emerald400 else Red400,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = if (isSuccess) FontWeight.SemiBold else FontWeight.Normal
                                 )
                             }
                         }

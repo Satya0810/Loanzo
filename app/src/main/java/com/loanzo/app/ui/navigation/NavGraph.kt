@@ -442,7 +442,8 @@ fun LoanzoNavGraph(
 
             LaunchedEffect(authState.registrationSuccess) {
                 if (authState.registrationSuccess) {
-                    navController.navigate(Routes.KYC) {
+                    authViewModel.clearRegistrationSuccess()
+                    navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
@@ -475,6 +476,15 @@ fun LoanzoNavGraph(
                 onNavigateToLogin = { navController.popBackStack() },
                 onClearError = { authViewModel.clearError() }
             )
+
+            LaunchedEffect(authState.passwordResetSuccess) {
+                if (authState.passwordResetSuccess) {
+                    authViewModel.clearPasswordResetSuccess()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            }
         }
 
         composable(Routes.KYC) {
