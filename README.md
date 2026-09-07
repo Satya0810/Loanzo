@@ -280,13 +280,10 @@ All project research, master documentation, system architectural blueprints, and
 
 | Document / Asset | Format | Size | Description |
 | :--- | :--- | :--- | :--- |
-| **[Loanzo Master Pitch & Project Report](LOANZO_MASTER_PITCH_AND_PROJECT_REPORT.pdf)** | `PDF` | 5.5 MB | **12-Page Executive Master Pitch Deck & Regulatory System Report** covering multi-asset collateral, verified data sources, RBAC, and FMEA risk matrix |
+
 | **[Loanzo Full Project Report](Loanzo_Full_Project_Report.pdf)** | `PDF` | 5.5 MB | **12-Page Master Technical Engineering Document** covering SRS, IEEE 829 testing strategy, RBAC, Room v12 ERDs, and mathematical models |
 | **[Loanzo Master Presentation](Loanzo_Master_Presentation.pptx)** | `PPTX` | 11.1 MB | **Executive Pitch Deck & System Walkthrough** for investors, bankers, and regulatory reviewers |
-| **[Loanzo Unified Master Comic Book](Loanzo_Unified_Master_Comic_Book.pdf)** | `PDF` | 13.7 MB | **Complete Graphic Novel Edition** illustrating user stories, fraud mitigation, and tranche disbursements |
-| **[Loanzo Manga Edition](Loanzo_Manga_Edition.pdf)** | `PDF` | 14.0 MB | **Stylized Manga Narrative** detailing the journey of micro-entrepreneurs escaping loan sharks |
-| **[Loanzo Lender Story Comic](Loanzo_Lender_Story_Comic.pdf)** | `PDF` | 7.5 MB | **Investor Deep-Dive Comic** following high-yield retail lending, escrow mechanisms, and capital security |
-| **[Loanzo The Complete Comic Book](Loanzo_The_Complete_Comic_Book.pdf)** | `PDF` | 6.5 MB | **Introductory Visual Narrative** introducing Aisha, Arjun, and the Loanzo protocol |
+
 
 ---
 
