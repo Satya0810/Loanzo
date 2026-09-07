@@ -1,5 +1,20 @@
 package com.loanzo.app.ui.admin
 
+import com.loanzo.app.ui.components.ExecutiveHeroCard
+import com.loanzo.app.ui.theme.Navy700
+import com.loanzo.app.ui.theme.Navy800
+import com.loanzo.app.ui.theme.Navy900
+import com.loanzo.app.ui.theme.SurfaceDarkElevated
+import com.loanzo.app.ui.theme.GoldCoinBright
+import com.loanzo.app.ui.theme.GoldCoinRich
+import com.loanzo.app.ui.theme.GoldCoinAmber
+import com.loanzo.app.ui.theme.Gray300
+import com.loanzo.app.ui.theme.Gray400
+import com.loanzo.app.ui.theme.Emerald400
+import com.loanzo.app.ui.theme.Gold500
+import com.loanzo.app.ui.theme.Emerald500
+
+
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -142,8 +157,8 @@ fun AppOwnerVerificationScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Institutional Top KPI Ribbon
-            AdminKpiRibbon(
+            // Institutional Top KPI Ribbon (Executive Obsidian Command Card)
+            AdminExecutiveCommandCard(
                 activeAgents = agentApplications.count { it.status == "APPROVED" },
                 pendingDocs = pendingAgentsCount,
                 unassignedVisits = unassignedCount,
@@ -235,7 +250,15 @@ fun AppOwnerVerificationScreen(
                         complaints = complaints,
                         onScheduleHearing = { cmp -> schedulingMediation = cmp },
                         onResolve = { id -> scope.launch(Dispatchers.IO) { adminRepository.resolveComplaint(id, "Resolved by Master Admin") } },
-                        onDismiss = { id -> scope.launch(Dispatchers.IO) { adminRepository.dismissComplaint(id, "Dismissed post verification") } }
+                        onDismiss = { id -> scope.launch(Dispatchers.IO) { adminRepository.dismissComplaint(id, "Dismissed post verification") } },
+                        onAuthorizeDeviceTransfer = { compId, userId, newDevId, newDevModel ->
+                            scope.launch(Dispatchers.IO) {
+                                adminRepository.authorizeDeviceTransfer(compId, userId, newDevId, newDevModel)
+                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "Device transfer authorized for $userId to $newDevModel", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
                     )
                     5 -> NocTab(
                         nocs = nocs,
@@ -372,7 +395,7 @@ data class DocumentInspectionData(
 
 // --- MODULE 0: KPI RIBBON ---
 @Composable
-private fun AdminKpiRibbon(
+private fun AdminExecutiveCommandCard(
     activeAgents: Int,
     pendingDocs: Int,
     unassignedVisits: Int,
@@ -380,19 +403,161 @@ private fun AdminKpiRibbon(
     openComplaints: Int,
     totalNocs: Int
 ) {
-    Row(
+    ExecutiveHeroCard(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        KpiChip("🛡️ Agents", "$activeAgents Active", Emerald400)
-        KpiChip("📑 KYC Queue", "$pendingDocs Pending", if (pendingDocs > 0) Gold500 else Emerald400)
-        KpiChip("🗺️ Dispatch", "$unassignedVisits Needed", if (unassignedVisits > 0) Color(0xFFF97316) else Emerald400)
-        KpiChip("💎 Vault Assets", "₹${(vaultValue / 100000).formatDecimal(1)}L", Gold500)
-        KpiChip("⚖️ Grievances", "$openComplaints Open", if (openComplaints > 0) Color(0xFFEF4444) else Emerald400)
-        KpiChip("📜 NOCs Issued", "$totalNocs Clear", Emerald400)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = CircleShape,
+                    color = GoldCoinRich.copy(alpha = 0.2f),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        Icons.Default.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = GoldCoinBright,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Master Admin Command",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Platform Custodian • Institutional Reserve",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Gray400
+                    )
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Emerald400.copy(alpha = 0.2f),
+                border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.4f))
+            ) {
+                Text(
+                    text = "ACTIVE RESERVE",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Emerald400,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "Total Escrow Collateral Vault",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Gray300
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "₹${(vaultValue / 100000).formatDecimal(1)} Lakhs",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = GoldCoinBright
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = SurfaceDarkElevated,
+                border = BorderStroke(0.8.dp, Emerald400.copy(alpha = 0.4f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(Emerald400))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "$activeAgents Agents Empaneled",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Emerald400
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = SurfaceDarkElevated,
+                border = BorderStroke(0.8.dp, Emerald400.copy(alpha = 0.35f)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text("Agents", fontSize = 10.sp, color = Gray400)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("$activeAgents Active", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Emerald400)
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = SurfaceDarkElevated,
+                border = BorderStroke(0.8.dp, (if (pendingDocs > 0) Gold500 else Emerald400).copy(alpha = 0.35f)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text("KYC Queue", fontSize = 10.sp, color = Gray400)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("$pendingDocs Pending", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (pendingDocs > 0) Gold500 else Emerald400)
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = SurfaceDarkElevated,
+                border = BorderStroke(0.8.dp, (if (unassignedVisits > 0) Color(0xFFF97316) else Emerald400).copy(alpha = 0.35f)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text("Dispatch", fontSize = 10.sp, color = Gray400)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("$unassignedVisits Needed", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (unassignedVisits > 0) Color(0xFFF97316) else Emerald400)
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = SurfaceDarkElevated,
+                border = BorderStroke(0.8.dp, (if (openComplaints > 0) Color(0xFFEF4444) else Emerald400).copy(alpha = 0.35f)),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text("Grievances", fontSize = 10.sp, color = Gray400)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("$openComplaints Open", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (openComplaints > 0) Color(0xFFEF4444) else Emerald400)
+                }
+            }
+        }
     }
 }
 
@@ -458,8 +623,8 @@ private fun AgentsTab(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Gold500,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             )
         )
 
@@ -554,7 +719,7 @@ private fun AgentRosterCard(
                     Column {
                         Text(
                             text = agent.applicantName.ifBlank { agent.permanentAddress.take(24) },
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -588,7 +753,7 @@ private fun AgentRosterCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF141D2E))
+                    .background(Color(0xFFF1F5F9))
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
@@ -733,7 +898,7 @@ private fun DocumentKycTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(doc.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(doc.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Text("${doc.subjectName} • ${doc.subjectPhone}", color = Gray400, fontSize = 11.sp)
                         Text("Doc #: ${doc.documentNumber}", color = Gold500, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
@@ -766,7 +931,7 @@ private fun DocumentKycTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("PCC Clearance & Driving License", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("PCC Clearance & Driving License", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Text("Station: ${agent.policeStation} • City: ${agent.operatingCity}", color = Gray400, fontSize = 11.sp)
                         Text("PCC #: ${agent.policeVerificationNumber}", color = Gold500, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
@@ -809,7 +974,7 @@ private fun DispatchTab(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Default.DoneAll, null, tint = Emerald400, modifier = Modifier.size(48.dp))
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("All field visits currently mapped to agents!", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("All field visits currently mapped to agents!", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text("Zero backlog in inspection queue", color = Gray400, fontSize = 12.sp)
             }
         }
@@ -849,7 +1014,7 @@ private fun DispatchTab(
                         }
 
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(visit.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(visit.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Text("Address: ${visit.targetAddress}", color = Gray300, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text("Party: ${visit.borrowerName} (${visit.borrowerPhone})", color = Gray400, fontSize = 11.sp)
 
@@ -914,7 +1079,7 @@ private fun VaultTab(
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text(item.assetDescription, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(item.assetDescription, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Text("Borrower: ${item.borrowerName} • Facility: ${item.vaultFacilityName}", color = Gray400, fontSize = 11.sp)
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -922,7 +1087,7 @@ private fun VaultTab(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF141D2E))
+                            .background(Color(0xFFF1F5F9))
                             .padding(8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -966,7 +1131,8 @@ private fun ComplaintsTab(
     complaints: List<ComplaintEntity>,
     onScheduleHearing: (ComplaintEntity) -> Unit,
     onResolve: (String) -> Unit,
-    onDismiss: (String) -> Unit
+    onDismiss: (String) -> Unit,
+    onAuthorizeDeviceTransfer: (complaintId: String, usernameOrId: String, newDeviceId: String, newDeviceModel: String) -> Unit = { _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     if (complaints.isEmpty()) {
@@ -974,13 +1140,20 @@ private fun ComplaintsTab(
             Text("Zero open complaints on record", color = Gray400, fontSize = 13.sp)
         }
     } else {
+        val devIdRegex = remember { Regex("ID: ([^\\)\\s]+)") }
+        val devModelRegex = remember { Regex("New Device: ([^\\(]+)") }
+
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
             items(complaints) { cmp ->
                 val isOpen = cmp.status == "OPEN" || cmp.status == "INVESTIGATING"
+                val isRecovery = cmp.category == "UNREGISTERED_DEVICE_RECOVERY"
+                val extractedDevId = if (cmp.evidenceUris.contains("||")) cmp.evidenceUris.split("||").firstOrNull() ?: "" else devIdRegex.find(cmp.description)?.groupValues?.getOrNull(1) ?: ""
+                val extractedDevModel = if (cmp.evidenceUris.contains("||")) cmp.evidenceUris.split("||").getOrNull(1) ?: "" else devModelRegex.find(cmp.description)?.groupValues?.getOrNull(1)?.trim() ?: "Authorized New Phone"
+
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444) else MaterialTheme.colorScheme.outlineVariant),
+                    border = BorderStroke(1.dp, if (isRecovery) Color(0xFF8B5CF6) else if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444) else MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -991,11 +1164,11 @@ private fun ComplaintsTab(
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444).copy(alpha = 0.2f) else Gold500.copy(alpha = 0.2f)
+                                color = if (isRecovery) Color(0xFF7C3AED).copy(alpha = 0.2f) else if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444).copy(alpha = 0.2f) else Gold500.copy(alpha = 0.2f)
                             ) {
                                 Text(
-                                    text = "${cmp.priority} • ${cmp.complainantRole}",
-                                    color = if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444) else Gold500,
+                                    text = if (isRecovery) "📱 DEVICE RECOVERY GRIEVANCE" else "${cmp.priority} • ${cmp.complainantRole}",
+                                    color = if (isRecovery) Color(0xFF8B5CF6) else if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444) else Gold500,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
@@ -1005,10 +1178,26 @@ private fun ComplaintsTab(
                         }
 
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(cmp.subject, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(cmp.subject, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Text(cmp.description, color = Gray300, fontSize = 11.sp)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text("From: ${cmp.complainantName} (${cmp.complainantPhone})", color = Gold500, fontSize = 11.sp)
+
+                        if (isRecovery) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFF5F3FF),
+                                border = BorderStroke(1.dp, Color(0xFFDDD6FE)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("Hardware Device Transfer Request", fontWeight = FontWeight.Bold, color = Color(0xFF6D28D9), fontSize = 12.sp)
+                                    Text("New Device Model: $extractedDevModel", fontSize = 11.sp, color = Color(0xFF4C1D95), fontWeight = FontWeight.SemiBold)
+                                    Text("Hardware UID: $extractedDevId", fontSize = 10.sp, color = Color(0xFF6D28D9))
+                                }
+                            }
+                        }
 
                         if (isOpen) {
                             Spacer(modifier = Modifier.height(10.dp))
@@ -1024,24 +1213,47 @@ private fun ComplaintsTab(
                                     Icon(Icons.Default.Phone, null, tint = Emerald400, modifier = Modifier.size(14.dp))
                                 }
 
-                                Button(
-                                    onClick = { onScheduleHearing(cmp) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.weight(1.3f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
-                                ) {
-                                    Icon(Icons.Default.VideoCall, null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Mediate Hearing", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                }
+                                if (isRecovery) {
+                                    Button(
+                                        onClick = {
+                                            onAuthorizeDeviceTransfer(cmp.complaintId, cmp.complainantId, extractedDevId, extractedDevModel)
+                                        },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1.4f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Navy900)
+                                    ) {
+                                        Icon(Icons.Default.SecurityUpdateGood, null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Authorize Transfer", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
 
-                                Button(
-                                    onClick = { onResolve(cmp.complaintId) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.weight(1.1f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Navy900)
-                                ) {
-                                    Text("Resolve", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    OutlinedButton(
+                                        onClick = { onDismiss(cmp.complaintId) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1.0f)
+                                    ) {
+                                        Text("Dismiss", fontSize = 11.sp)
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = { onScheduleHearing(cmp) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1.3f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                                    ) {
+                                        Icon(Icons.Default.VideoCall, null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Mediate Hearing", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    Button(
+                                        onClick = { onResolve(cmp.complaintId) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1.1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Navy900)
+                                    ) {
+                                        Text("Resolve", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }
@@ -1076,7 +1288,7 @@ private fun NocTab(
         item {
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF141D2E)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, Gold500),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -1096,7 +1308,7 @@ private fun NocTab(
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text("Clearance for ${eligibleLoan.borrower} (PAN: ${eligibleLoan.pan})", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Clearance for ${eligibleLoan.borrower} (PAN: ${eligibleLoan.pan})", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Text("Lender: ${eligibleLoan.lender} • Total Repaid: ₹${eligibleLoan.repaid.toInt()}", color = Gray300, fontSize = 11.sp)
                     Text("Pledged Collateral: ${eligibleLoan.collateral}", color = Gray400, fontSize = 11.sp)
 
@@ -1149,7 +1361,7 @@ private fun NocTab(
                             Text("LEGAL CLEARANCE", color = Emerald400, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
                         }
                     }
-                    Text("Borrower: ${noc.borrowerName} • Loan: ${noc.loanId}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Borrower: ${noc.borrowerName} • Loan: ${noc.loanId}", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text("Collateral Released: ${noc.collateralReleasedDesc}", color = Gray300, fontSize = 11.sp)
                     Text("Digital Signature: ${noc.digitalSignatureHash}", color = Gold500, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
@@ -1216,7 +1428,7 @@ private fun HearingsTab(
                             }
 
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(m.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(m.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             Text("Parties: ${m.borrowerName} & ${m.lenderName}", color = Gray300, fontSize = 11.sp)
                             Text("Agenda: ${m.agenda}", color = Gray400, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
 
@@ -1273,7 +1485,7 @@ private fun SmsInterceptorTab(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text("Manual Verification Token Overrule", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Manual Verification Token Overrule", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -1285,8 +1497,8 @@ private fun SmsInterceptorTab(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Gold500,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     Button(
@@ -1342,7 +1554,7 @@ private fun SmsInterceptorTab(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(item.phone, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text(item.phone, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(item.status, color = if (isVerified) Emerald400 else Gold500, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                 }

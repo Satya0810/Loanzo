@@ -87,6 +87,27 @@ class AdminRepository @Inject constructor(
         )
     }
 
+    suspend fun submitComplaint(complaint: ComplaintEntity) {
+        complaintDao.insertComplaint(complaint)
+    }
+
+    suspend fun authorizeDeviceTransfer(complaintId: String, usernameOrId: String, newDeviceId: String, newDeviceModel: String) {
+        val user = userDao.getUserByUsername(usernameOrId) ?: userDao.getUserById(usernameOrId)
+        if (user != null) {
+            val updated = user.copy(
+                registeredDeviceId = newDeviceId,
+                registeredDeviceModel = newDeviceModel
+            )
+            userDao.updateUser(updated)
+        }
+        complaintDao.updateComplaintStatus(
+            complaintId = complaintId,
+            status = "RESOLVED",
+            notes = "Device transfer authorized by Master Admin to $newDeviceModel ($newDeviceId)",
+            resolvedAt = System.currentTimeMillis()
+        )
+    }
+
     // --- Mediation & Hearings ---
 
     suspend fun scheduleMediationMeeting(meeting: MediationMeetingEntity) {

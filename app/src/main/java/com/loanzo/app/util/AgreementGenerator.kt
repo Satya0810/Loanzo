@@ -51,6 +51,15 @@ object AgreementGenerator {
             var page = doc.startPage(pageInfo)
             var canvas = page.canvas
 
+            // Draw Official Loanzo Logo on top
+            try {
+                val logoBmp = BitmapFactory.decodeResource(context.resources, com.loanzo.app.R.drawable.app_logo)
+                if (logoBmp != null) {
+                    val scaledLogo = Bitmap.createScaledBitmap(logoBmp, 42, 42, true)
+                    canvas.drawBitmap(scaledLogo, 40f, 35f, null)
+                }
+            } catch (_: Exception) {}
+
             var y = 60f
             canvas.drawText("LOAN AGREEMENT", pageWidth / 2f, y, titlePaint); y += 40f
             
@@ -274,6 +283,15 @@ object AgreementGenerator {
             // Gold decorative border
             val borderPaint = Paint().apply { style = Paint.Style.STROKE; strokeWidth = 3f; color = android.graphics.Color.rgb(255, 193, 7) }
             canvas.drawRect(25f, 25f, pageWidth - 25f, pageHeight - 25f, borderPaint)
+
+            // Draw Official Loanzo Logo on top
+            try {
+                val logoBmp = BitmapFactory.decodeResource(context.resources, com.loanzo.app.R.drawable.app_logo)
+                if (logoBmp != null) {
+                    val scaledLogo = Bitmap.createScaledBitmap(logoBmp, 42, 42, true)
+                    canvas.drawBitmap(scaledLogo, 45f, 45f, null)
+                }
+            } catch (_: Exception) {}
 
             var y = 70f
             canvas.drawText("NO OBJECTION CERTIFICATE (NOC)", pageWidth / 2f, y, titlePaint); y += 24f

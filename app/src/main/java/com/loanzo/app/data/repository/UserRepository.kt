@@ -21,7 +21,8 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class UserRepository @Inject constructor(
     private val userDao: UserDao,
     private val appSyncManager: AppSyncManager,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val sessionManager: com.loanzo.app.data.session.BankingSessionManager
 ) {
     companion object {
         private val CURRENT_USER_ID = stringPreferencesKey("current_user_id")
@@ -32,6 +33,7 @@ class UserRepository @Inject constructor(
         private val BIOMETRIC_ENABLED = booleanPreferencesKey("biometric_enabled")
         private val BIOMETRIC_USER_ID = stringPreferencesKey("biometric_user_id")
         private val APP_LANGUAGE = stringPreferencesKey("app_language")
+        val PERMISSIONS_RATIONALE_SHOWN = booleanPreferencesKey("permissions_rationale_shown")
 
         // ─── Onboarding & Guided Tour keys ─────────────────────────────────────
         val ONBOARDING_WELCOME_COMPLETED = booleanPreferencesKey("onboarding_welcome_completed")
@@ -82,6 +84,7 @@ class UserRepository @Inject constructor(
             prefs[IS_LOGGED_IN] = true
             prefs[USER_ROLE] = role
         }
+        sessionManager.saveSession(userId, role)
     }
 
     suspend fun clearSession() {
@@ -90,6 +93,7 @@ class UserRepository @Inject constructor(
             prefs[IS_LOGGED_IN] = false
             prefs.remove(USER_ROLE)
         }
+        sessionManager.clearSession()
     }
 
     fun getCurrentUserId(): Flow<String?> = context.dataStore.data.map { it[CURRENT_USER_ID] }
@@ -133,6 +137,12 @@ class UserRepository @Inject constructor(
 
     // App Language preference
     fun getAppLanguage(): Flow<String> = context.dataStore.data.map { it[APP_LANGUAGE] ?: "en" }
+
+    fun isPermissionsRationaleShown(): Flow<Boolean> = context.dataStore.data.map { it[PERMISSIONS_RATIONALE_SHOWN] ?: false }
+
+    suspend fun setPermissionsRationaleShown(shown: Boolean) {
+        context.dataStore.edit { it[PERMISSIONS_RATIONALE_SHOWN] = shown }
+    }
     suspend fun setAppLanguage(languageCode: String) {
         context.dataStore.edit { prefs -> prefs[APP_LANGUAGE] = languageCode }
     }

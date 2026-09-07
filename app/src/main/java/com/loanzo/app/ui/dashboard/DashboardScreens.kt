@@ -66,6 +66,7 @@ fun DashboardScreen(
     onNavigateToApproval: (String) -> Unit = {},
     onNavigateToLoansTab: () -> Unit = {},
     onNavigateToChat: (String) -> Unit = {},
+    onNavigateToChatHub: () -> Unit = {},
     onNavigateToKyc: () -> Unit = {},
     onPushDemoData: () -> Unit = {}
 ) {
@@ -88,7 +89,7 @@ fun DashboardScreen(
     val questDemoDone by userRepository.isQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_DEMO_SEEDED)
         .collectAsStateWithLifecycle(initialValue = false)
     val questDismissed by userRepository.isQuestCardDismissed()
-        .collectAsStateWithLifecycle(initialValue = false)
+        .collectAsStateWithLifecycle(initialValue = true) // default true to avoid flash on navigation
     val scope = rememberCoroutineScope()
     val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
     val agentVisits by (if (state.user != null) agentRepository.getVisitsForAgent(state.user.userId) else kotlinx.coroutines.flow.flowOf(emptyList()))
@@ -221,7 +222,7 @@ fun DashboardScreen(
                                     },
                                     onClick = {
                                         isMenuExpanded = false
-                                        showChatSheet = true
+                                        onNavigateToChatHub()
                                     },
                                     leadingIcon = {
                                         Surface(
@@ -711,7 +712,7 @@ fun DashboardScreen(
             // ==========================================
             // 👤 STANDARD MEMBER CONSUMER HERO
             // ==========================================
-            if (!questDismissed) {
+            if (state.user != null && !questDismissed) {
                 item {
                     InteractiveGettingStartedQuestCard(
                         isCommunityDone = questCommunityDone,

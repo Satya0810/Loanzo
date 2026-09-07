@@ -25,9 +25,10 @@ import com.loanzo.app.data.entity.*
         ComplaintEntity::class,
         MediationMeetingEntity::class,
         CollateralVaultEntity::class,
-        NocCertificateEntity::class
+        NocCertificateEntity::class,
+        VaultDocumentEntity::class
     ],
-    version = 13,
+    version = 15,
     exportSchema = false
 )
 abstract class LoanzoDatabase : RoomDatabase() {
@@ -48,4 +49,5 @@ abstract class LoanzoDatabase : RoomDatabase() {
     abstract fun mediationMeetingDao(): MediationMeetingDao
     abstract fun collateralVaultDao(): CollateralVaultDao
     abstract fun nocCertificateDao(): NocCertificateDao
+    abstract fun vaultDocumentDao(): VaultDocumentDao
 }

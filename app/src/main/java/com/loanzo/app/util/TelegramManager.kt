@@ -21,7 +21,7 @@ class TelegramManager @Inject constructor() {
 
     companion object {
         private const val TAG = "TelegramManager"
-        const val BOT_TOKEN = "8911421683:AAFpIQLIBY9USPni5Ylr1I5vx4zgh_BXTq0"
+        const val BOT_TOKEN = "8911421683:AAEkc1ykoS-VIg_Dnl8deLnakd6nJE88pqc"
         const val BOT_USERNAME = "Loanzo_bot"
         const val BOT_URL = "https://t.me/$BOT_USERNAME"
 

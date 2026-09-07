@@ -1,5 +1,8 @@
 package com.loanzo.app.ui.navigation
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -51,6 +54,7 @@ import com.loanzo.app.util.toDateString
 // Route definitions
 object Routes {
     const val SPLASH = "splash"
+    const val SESSION_LOCK = "session_lock"
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val FORGOT_PASSWORD = "forgot_password"
@@ -65,7 +69,8 @@ object Routes {
     const val REPAYMENT = "repayment/{loanId}"
     const val PLEDGE = "pledge/{loanId}"
     const val AUDIT_TRAIL = "audit_trail/{loanId}"
-    const val CHAT = "chat/{loanId}"
+    const val CHAT = "chat/{channelId}?loanId={loanId}&targetUserId={targetUserId}"
+    const val CHAT_HUB = "chat_hub"
     const val DOCUMENT_VIEWER = "document_viewer/{loanId}"
     const val GUARANTORS = "guarantors/{loanId}"
     const val PROFILE = "profile"
@@ -87,7 +92,12 @@ object Routes {
     fun repayment(loanId: String) = "repayment/$loanId"
     fun pledge(loanId: String) = "pledge/$loanId"
     fun auditTrail(loanId: String) = "audit_trail/$loanId"
-    fun chat(loanId: String) = "chat/$loanId"
+    fun chat(channelId: String, loanId: String? = null, targetUserId: String? = null): String {
+        val builder = java.lang.StringBuilder("chat/$channelId?")
+        if (loanId != null) builder.append("loanId=$loanId&")
+        if (targetUserId != null) builder.append("targetUserId=$targetUserId&")
+        return builder.toString().trimEnd('&', '?')
+    }
     fun documentViewer(loanId: String) = "document_viewer/$loanId"
     fun guarantors(loanId: String) = "guarantors/$loanId"
     
@@ -113,6 +123,24 @@ fun LoanzoNavGraph(
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val sessionManager = com.loanzo.app.util.LocalBankingSessionManager.current
+    val sessionState by sessionManager.sessionState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(sessionState) {
+        if (sessionState == com.loanzo.app.data.session.SessionState.LOCKED) {
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            if (currentRoute != Routes.SPLASH && currentRoute != Routes.LOGIN && currentRoute != Routes.SESSION_LOCK) {
+                navController.navigate(Routes.SESSION_LOCK) {
+                    launchSingleTop = true
+                }
+            }
+        } else if (sessionState == com.loanzo.app.data.session.SessionState.EXPIRED) {
+            authViewModel.logout()
+            navController.navigate(Routes.LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -150,24 +178,80 @@ fun LoanzoNavGraph(
             ) + fadeOut(animationSpec = tween(250))
         }
     ) {
-        // Session Gate / Branded Splash
+        // Session Gate / Branded Splash with Parallel Warmup & Bank-Grade Security
         composable(Routes.SPLASH) {
             SplashScreen()
-            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val warmupCoordinator = com.loanzo.app.util.LocalSplashWarmupCoordinator.current
 
-            LaunchedEffect(authState.isSessionChecking, authState.isLoggedIn) {
-                if (!authState.isSessionChecking) {
-                    val destination = if (authState.isLoggedIn) {
-                        Routes.MAIN
-                    } else {
-                        Routes.LOGIN
+            LaunchedEffect(Unit) {
+                val minSplashDurationMs = 3500L
+                val splashStartTime = System.currentTimeMillis()
+
+                // Simultaneously await 3.5s animation completion and background IO database warmup
+                val warmupResult = kotlinx.coroutines.coroutineScope {
+                    val timerDeferred = async {
+                        val elapsed = System.currentTimeMillis() - splashStartTime
+                        if (elapsed < minSplashDurationMs) {
+                            kotlinx.coroutines.delay(minSplashDurationMs - elapsed)
+                        }
                     }
-                    navController.navigate(destination) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                        launchSingleTop = true
+
+                    val warmupDeferred = async {
+                        warmupCoordinator.executeParallelWarmup()
                     }
+
+                    timerDeferred.await()
+                    warmupDeferred.await()
+                }
+
+                // Await session checking resolution in AuthViewModel
+                while (authState.isSessionChecking) {
+                    kotlinx.coroutines.delay(40)
+                }
+
+                // Deterministic Atomic Navigation — ZERO layout jump, ZERO flicker
+                val targetDestination = if (warmupResult.isUntrustedDevice) {
+                    Routes.FORGOT_PASSWORD
+                } else if (warmupResult.isSessionLocked) {
+                    Routes.SESSION_LOCK
+                } else if (authState.isLoggedIn) {
+                    Routes.MAIN
+                } else {
+                    warmupResult.targetRoute
+                }
+
+                navController.navigate(targetDestination) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
+                    launchSingleTop = true
                 }
             }
+        }
+
+        // Bank-Grade Inactivity Quick Unlock Screen
+        composable(Routes.SESSION_LOCK) {
+            val sessionMgr = com.loanzo.app.util.LocalBankingSessionManager.current
+            val userRepo = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepo.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val user by (if (activeUserId.isNotBlank()) userRepo.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            com.loanzo.app.ui.auth.SessionLockScreen(
+                userName = user?.name ?: "Valued Member",
+                userRole = user?.role?.uppercase() ?: "MEMBER",
+                onUnlockSuccess = {
+                    sessionMgr.unlockSession()
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.SESSION_LOCK) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         // Auth flow
@@ -372,12 +456,19 @@ fun LoanzoNavGraph(
                 resetUserEmail = authState.resetUserEmail,
                 resetUserPhone = authState.resetUserPhone,
                 isEmailVerified = authState.isEmailVerified,
+                isUntrustedDevice = authState.isUntrustedDevice,
+                registeredDeviceModel = authState.registeredDeviceModel,
+                currentDeviceModel = authState.currentDeviceModel,
+                recoveryGrievanceTicket = authState.recoveryGrievanceTicket,
                 onInitiate = { authViewModel.initiateForgotPassword(it) },
                 onAddFactor = { authViewModel.add2FAFactor(it) },
                 onResetPassword = { authViewModel.resetPassword(it) },
                 onSendEmailVerification = { authViewModel.sendEmailVerification(it) },
                 onVerifyEmailOtp = { authViewModel.verifyEmailOtp(it) },
                 onSetPhoneVerified = { authViewModel.setPhoneVerified(it) },
+                onSubmitGrievance = { fullName, phone, idLast4, reason, remarks ->
+                    authViewModel.submitAccountRecoveryGrievance(fullName, phone, idLast4, reason, remarks)
+                },
                 onResetAuthState = { authViewModel.resetAuthState() },
                 isLoading = authState.isLoading,
                 error = authState.error,
@@ -426,9 +517,8 @@ fun LoanzoNavGraph(
 
         // Main scaffold with bottom nav (Strictly for Normal Members: Borrowers & Lenders)
         composable(Routes.MAIN) {
-            val userRepository = com.loanzo.app.util.LocalUserRepository.current
-            LaunchedEffect(authState.isLoggedIn) {
-                if (!authState.isLoggedIn) {
+            LaunchedEffect(authState.isSessionChecking, authState.isLoggedIn) {
+                if (!authState.isSessionChecking && !authState.isLoggedIn) {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                         launchSingleTop = true
@@ -457,7 +547,13 @@ fun LoanzoNavGraph(
                     }
                 },
                 onSelectAgent = {
-                    navController.navigate(Routes.AGENT_APPLICATION)
+                    if (user?.role == "AGENT" && user?.agentStatus == "APPROVED") {
+                        navController.navigate(Routes.AGENT_MAIN)
+                    } else if (user?.agentStatus == "PENDING") {
+                        navController.navigate(Routes.AGENT_PENDING_APPROVAL)
+                    } else {
+                        navController.navigate(Routes.AGENT_APPLICATION)
+                    }
                 }
             )
         }
@@ -776,14 +872,49 @@ fun LoanzoNavGraph(
             )
         }
 
+        composable(Routes.CHAT_HUB) {
+            val chatViewModel: com.loanzo.app.ui.loan.ChatViewModel = hiltViewModel()
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+
+            com.loanzo.app.ui.loan.ChatHubScreen(
+                chatViewModel = chatViewModel,
+                currentUserId = activeUserId,
+                onBack = { navController.popBackStack() },
+                onOpenChat = { channelId, loanId, targetUserId ->
+                    navController.navigate(Routes.chat(channelId, loanId, targetUserId))
+                }
+            )
+        }
+
         composable(
-            Routes.CHAT,
-            arguments = listOf(navArgument("loanId") { type = NavType.StringType })
+            route = Routes.CHAT,
+            arguments = listOf(
+                navArgument("channelId") { type = NavType.StringType },
+                navArgument("loanId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("targetUserId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { backStackEntry ->
-            val loanId = backStackEntry.arguments?.getString("loanId") ?: ""
-            ChatScreen(
-                loanId = loanId,
-                onBack = { navController.popBackStack() }
+            val channelId = backStackEntry.arguments?.getString("channelId") ?: ""
+            val loanIdArg = backStackEntry.arguments?.getString("loanId")
+            val targetUserId = backStackEntry.arguments?.getString("targetUserId")
+            val effectiveLoanId = if (!loanIdArg.isNullOrBlank()) loanIdArg else if (!channelId.startsWith("direct_") && !channelId.startsWith("support_")) channelId.removePrefix("loan_") else null
+
+            com.loanzo.app.ui.loan.ChatScreen(
+                channelId = channelId,
+                loanId = effectiveLoanId,
+                targetUserId = targetUserId,
+                onBack = { navController.popBackStack() },
+                onViewLoanAgreement = { lId -> navController.navigate(Routes.agreementSigning(lId)) }
             )
         }
 
@@ -1002,8 +1133,10 @@ fun MainScaffold(
     val activeTourStep by userRepository.getActiveTourStep()
         .collectAsStateWithLifecycle(initialValue = 0)
 
-    val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
-    val currentUser by (if (!currentUserId.isNullOrBlank()) userRepository.observeUser(currentUserId!!) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = authState.currentUserId)
+    val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+    val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val isKycCompleted = currentUser?.kycStatus == "VERIFIED"
 
     val userRole = currentUser?.role?.uppercase() ?: "USER"
@@ -1012,6 +1145,18 @@ fun MainScaffold(
 
     var showKycRequiredDialog by remember { mutableStateOf(false) }
     var kycDialogMessage by remember { mutableStateOf("") }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val permissionsRationaleShown by userRepository.isPermissionsRationaleShown()
+        .collectAsStateWithLifecycle(initialValue = true)
+    var showPermissionsPopup by remember { mutableStateOf(false) }
+
+    LaunchedEffect(permissionsRationaleShown) {
+        if (!permissionsRationaleShown && !com.loanzo.app.util.permissions.AppPermissionManager.hasAllEssentialPermissions(context)) {
+            kotlinx.coroutines.delay(600)
+            showPermissionsPopup = true
+        }
+    }
 
     // Back navigation handling for modal quick action menu and guided tour overlay
     androidx.activity.compose.BackHandler(enabled = isQuickActionMenuOpen) {
@@ -1298,6 +1443,7 @@ fun MainScaffold(
                     },
                     onNavigateToLoansTab = { innerNavController.navigate(Routes.LOANS) },
                     onNavigateToChat = { loanId -> navController.navigate(Routes.chat(loanId)) },
+                    onNavigateToChatHub = { navController.navigate(Routes.CHAT_HUB) },
                     onNavigateToKyc = { navController.navigate(Routes.KYC) },
                     onPushDemoData = { authViewModel.pushDemoData() }
                 )
@@ -1741,6 +1887,19 @@ fun MainScaffold(
                 shape = RoundedCornerShape(24.dp),
                 containerColor = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp
+            )
+        }
+
+        if (showPermissionsPopup) {
+            com.loanzo.app.ui.components.RequiredPermissionsDialog(
+                onDismiss = {
+                    showPermissionsPopup = false
+                    scope.launch { userRepository.setPermissionsRationaleShown(true) }
+                },
+                onAllGranted = {
+                    showPermissionsPopup = false
+                    scope.launch { userRepository.setPermissionsRationaleShown(true) }
+                }
             )
         }
     }

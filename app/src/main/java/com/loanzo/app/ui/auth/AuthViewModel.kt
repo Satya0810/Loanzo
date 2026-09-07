@@ -7,6 +7,7 @@ import android.content.Context
 import com.google.android.gms.tasks.Tasks
 import com.loanzo.app.data.didit.DiditVerificationService
 import com.loanzo.app.data.entity.UserEntity
+import com.loanzo.app.util.isSuperAdmin
 import com.loanzo.app.data.repository.UserRepository
 import com.loanzo.app.data.firebase.FirebaseManager
 import com.loanzo.app.data.drive.GoogleDriveManager
@@ -39,12 +40,16 @@ data class AuthUiState(
     val emailVerificationCode: String? = null,
     val phoneVerificationCode: String? = null,
     val isUsernameUnique: Boolean? = null,
-    // Forgot Password
-    val forgotPasswordStep: Int = 1, // 1: ID, 2: 2FA Selection, 3: Verify 1, 4: Verify 2, 5: Create New Pass
+    // Forgot Password & Device Binding
+    val forgotPasswordStep: Int = 1, // 1: ID, 2: 2FA Selection, 3: Verify 1, 4: Verify 2, 5: Create New Pass, 6: Untrusted Device Grievance
     val verified2FAFactors: List<String> = emptyList(),
     val resetLoginId: String = "",
     val resetUserEmail: String = "",
     val resetUserPhone: String = "",
+    val isUntrustedDevice: Boolean = false,
+    val currentDeviceModel: String = "",
+    val registeredDeviceModel: String = "",
+    val recoveryGrievanceTicket: String? = null,
     // KYC state
     val kycStep: Int = 0, // 0=not started, 1=PAN, 2=Aadhaar, 3=Selfie, 4=Bank/UPI, 5=Complete
     val kycStatus: String = "PENDING",
@@ -64,7 +69,8 @@ class AuthViewModel @Inject constructor(
     private val googleDriveManager: GoogleDriveManager,
     private val digiLockerService: com.loanzo.app.data.digilocker.DigiLockerVerificationService,
     private val telegramManager: com.loanzo.app.util.TelegramManager,
-    private val demoDataSeeder: com.loanzo.app.data.DemoDataSeeder
+    private val demoDataSeeder: com.loanzo.app.data.DemoDataSeeder,
+    private val adminRepository: com.loanzo.app.data.repository.AdminRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -455,9 +461,36 @@ class AuthViewModel @Inject constructor(
             }
 
             if (user != null) {
-                val resetOtp = (100000..999999).random().toString()
+                val currentDevId = com.loanzo.app.util.DeviceSecurityHelper.getHardwareDeviceId(context)
+                val currentDevModel = com.loanzo.app.util.DeviceSecurityHelper.getDeviceModelName()
+                val isDeviceMatched = com.loanzo.app.util.DeviceSecurityHelper.isDeviceMatched(user.registeredDeviceId, currentDevId)
 
-                // If user has email, trigger Firebase Password Reset email
+                if (!isDeviceMatched) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isUntrustedDevice = true,
+                            resetLoginId = user.username.ifBlank { user.userId },
+                            resetUserEmail = user.email,
+                            resetUserPhone = user.phone,
+                            registeredDeviceModel = user.registeredDeviceModel.ifBlank { "Primary Registered Device" },
+                            currentDeviceModel = currentDevModel,
+                            forgotPasswordStep = 6,
+                            recoveryGrievanceTicket = null,
+                            error = "Security Notice: Unregistered hardware device detected. Password reset is restricted to your registered phone (${user.registeredDeviceModel.ifBlank { "Primary Device" }})."
+                        )
+                    }
+                    return@launch
+                }
+
+                // If legacy user on their device, auto-bind
+                if (user.registeredDeviceId.isBlank()) {
+                    user = user.copy(registeredDeviceId = currentDevId, registeredDeviceModel = currentDevModel)
+                    userRepository.updateUser(user)
+                    firebaseManager.saveUserToFirestore(user)
+                }
+
+                val resetOtp = (100000..999999).random().toString()
                 if (user.email.isNotBlank()) {
                     firebaseManager.sendPasswordResetEmail(user.email)
                 }
@@ -465,19 +498,66 @@ class AuthViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
+                        isUntrustedDevice = false,
                         resetLoginId = user.username.ifBlank { user.userId },
                         resetUserEmail = user.email,
                         resetUserPhone = user.phone,
+                        registeredDeviceModel = user.registeredDeviceModel.ifBlank { currentDevModel },
+                        currentDeviceModel = currentDevModel,
                         emailVerificationCode = resetOtp,
                         phoneVerificationCode = resetOtp,
                         forgotPasswordStep = 2,
                         verified2FAFactors = emptyList(),
                         isEmailVerified = false,
-                        error = if (user.email.isNotBlank()) "Password reset link sent to ${user.email}! Or verify with OTP / Biometrics below." else "Verify using Biometrics or Phone OTP below."
+                        error = if (user.email.isNotBlank()) "Password reset link sent to ${user.email}. Check your email or verify with device biometrics below." else "Verify using Biometrics or Phone OTP below."
                     )
                 }
             } else {
                 _uiState.update { it.copy(isLoading = false, error = "No account found with this Username, Email, or Phone.") }
+            }
+        }
+    }
+
+    fun submitAccountRecoveryGrievance(
+        fullName: String,
+        phone: String,
+        idLast4: String,
+        reason: String,
+        remarks: String
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val ticketId = "REC-" + java.util.UUID.randomUUID().toString().take(6).uppercase()
+                val currentDevId = com.loanzo.app.util.DeviceSecurityHelper.getHardwareDeviceId(context)
+                val currentDevModel = com.loanzo.app.util.DeviceSecurityHelper.getDeviceModelName()
+                val targetUser = _uiState.value.resetLoginId
+
+                val complaint = com.loanzo.app.data.entity.ComplaintEntity(
+                    complaintId = ticketId,
+                    complainantId = targetUser,
+                    complainantName = fullName.ifBlank { targetUser },
+                    complainantRole = "MEMBER",
+                    complainantPhone = phone.ifBlank { _uiState.value.resetUserPhone },
+                    category = "UNREGISTERED_DEVICE_RECOVERY",
+                    priority = "HIGH",
+                    subject = "Device Transfer Request: $targetUser ($currentDevModel)",
+                    description = "Full Name: $fullName | Phone: $phone | ID Last 4: $idLast4 | Reason: $reason | New Device: $currentDevModel (ID: $currentDevId) | Remarks: $remarks",
+                    evidenceUris = "$currentDevId||$currentDevModel",
+                    status = "OPEN"
+                )
+
+                adminRepository.submitComplaint(complaint)
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        recoveryGrievanceTicket = ticketId,
+                        error = "Grievance submitted successfully (Ticket #$ticketId). Our Master Admin desk will review your identity and authorize your new device."
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = "Failed to submit grievance: ${e.message}") }
             }
         }
     }
@@ -662,20 +742,34 @@ class AuthViewModel @Inject constructor(
                     )
 
                     if (!targetRole.isNullOrBlank()) {
-                        val mappedRole = when {
-                            targetRole.contains("admin", ignoreCase = true) -> "ADMIN"
-                            targetRole.contains("agent", ignoreCase = true) -> "AGENT"
-                            targetRole.contains("borrower", ignoreCase = true) -> "BORROWER"
-                            targetRole.contains("lender", ignoreCase = true) -> "LENDER"
-                            else -> "USER"
+                        if (targetRole.contains("agent", ignoreCase = true)) {
+                            if (finalUser.role != "AGENT" || finalUser.agentStatus != "APPROVED") {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        error = "Access Denied: This account is not an approved Field Agent. Please sign in as a Member or apply for Field Agent empanelment."
+                                    )
+                                }
+                                return@launch
+                            }
+                        } else if (targetRole.contains("admin", ignoreCase = true)) {
+                            if (!finalUser.isSuperAdmin() && finalUser.role != "ADMIN") {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        error = "Access Denied: Master Admin privileges required."
+                                    )
+                                }
+                                return@launch
+                            }
                         }
-                        finalUser = finalUser.copy(
-                            role = mappedRole,
-                            agentStatus = if (mappedRole == "AGENT") "APPROVED" else finalUser.agentStatus,
-                            isOnDuty = if (mappedRole == "AGENT") true else finalUser.isOnDuty
-                        )
                     }
 
+                    if (finalUser.registeredDeviceId.isBlank()) {
+                        val currentDevId = com.loanzo.app.util.DeviceSecurityHelper.getHardwareDeviceId(context)
+                        val currentDevModel = com.loanzo.app.util.DeviceSecurityHelper.getDeviceModelName()
+                        finalUser = finalUser.copy(registeredDeviceId = currentDevId, registeredDeviceModel = currentDevModel)
+                    }
                     userRepository.updateUser(finalUser)
                     firebaseManager.saveUserToFirestore(finalUser)
 
@@ -789,7 +883,9 @@ class AuthViewModel @Inject constructor(
                     role = role,
                     kycStatus = "PENDING",
                     emailVerified = true,
-                    phoneVerified = true
+                    phoneVerified = true,
+                    registeredDeviceId = com.loanzo.app.util.DeviceSecurityHelper.getHardwareDeviceId(context),
+                    registeredDeviceModel = com.loanzo.app.util.DeviceSecurityHelper.getDeviceModelName()
                 )
 
                 // Provision in Firebase Auth
@@ -982,19 +1078,27 @@ class AuthViewModel @Inject constructor(
                 if (onlineUser != null) {
                     var finalUser = onlineUser
                     if (!targetRole.isNullOrBlank()) {
-                        val mappedRole = when {
-                            targetRole.contains("admin", ignoreCase = true) -> "ADMIN"
-                            targetRole.contains("agent", ignoreCase = true) -> "AGENT"
-                            targetRole.contains("borrower", ignoreCase = true) -> "BORROWER"
-                            targetRole.contains("lender", ignoreCase = true) -> "LENDER"
-                            else -> "USER"
+                        if (targetRole.contains("agent", ignoreCase = true)) {
+                            if (finalUser.role != "AGENT" || finalUser.agentStatus != "APPROVED") {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        error = "Access Denied: This account is not an approved Field Agent. Please sign in as a Member or apply for Field Agent empanelment."
+                                    )
+                                }
+                                return@launch
+                            }
+                        } else if (targetRole.contains("admin", ignoreCase = true)) {
+                            if (!finalUser.isSuperAdmin() && finalUser.role != "ADMIN") {
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        error = "Access Denied: Master Admin privileges required."
+                                    )
+                                }
+                                return@launch
+                            }
                         }
-                        finalUser = finalUser.copy(
-                            role = mappedRole,
-                            agentStatus = if (mappedRole == "AGENT") "APPROVED" else finalUser.agentStatus,
-                            isOnDuty = if (mappedRole == "AGENT") true else finalUser.isOnDuty
-                        )
-                        userRepository.updateUser(finalUser)
                     }
                     userRepository.saveSession(finalUser.userId, finalUser.role)
                     userRepository.saveBiometricEnrollment(finalUser.userId, true)

@@ -33,11 +33,11 @@ fun AgentPendingApprovalScreen(
     onReapply: () -> Unit,
     onLogout: () -> Unit
 ) {
-    val darkBg = Color(0xFF0D1117)
-    val cardBg = Color(0xFF161B22)
-    val borderColor = Color(0xFF30363D)
-    val goldAccent = Color(0xFFFFB800)
-    val emeraldAccent = Color(0xFF10B981)
+    val darkBg = MaterialTheme.colorScheme.background
+    val cardBg = Color.White
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
+    val goldAccent = com.loanzo.app.ui.theme.GoldCoinBright
+    val emeraldAccent = com.loanzo.app.ui.theme.Emerald400
     val redAccent = Color(0xFFEF4444)
 
     val isApproved = application?.status == "APPROVED"
@@ -57,7 +57,7 @@ fun AgentPendingApprovalScreen(
                         text = "Empanelment Status",
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -66,7 +66,7 @@ fun AgentPendingApprovalScreen(
                     TextButton(onClick = onLogout) {
                         Text(
                             text = "Sign Out",
-                            color = Color(0xFF9CA3AF),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp,
                             maxLines = 1,
                             softWrap = false
@@ -74,7 +74,7 @@ fun AgentPendingApprovalScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF161B22)
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -125,7 +125,7 @@ fun AgentPendingApprovalScreen(
                 },
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
 
@@ -138,7 +138,7 @@ fun AgentPendingApprovalScreen(
                     else -> "Your application has been received and routed to the Master Admin (@satyam_081) queue for background clearance."
                 },
                 fontSize = 13.sp,
-                color = Color(0xFF9CA3AF),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 lineHeight = 18.sp
             )
@@ -163,7 +163,7 @@ fun AgentPendingApprovalScreen(
                                 text = "APPLICATION DOSSIER",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF8B949E),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 letterSpacing = 1.sp
                             )
                             Surface(
@@ -202,7 +202,7 @@ fun AgentPendingApprovalScreen(
                 text = "Verification Progress Tracker",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -256,13 +256,13 @@ fun AgentPendingApprovalScreen(
                         text = "Enter Agent Dashboard",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = com.loanzo.app.ui.theme.Navy900
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = Color.Black,
+                        tint = com.loanzo.app.ui.theme.Navy900,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -279,14 +279,14 @@ fun AgentPendingApprovalScreen(
                         text = "Modify & Re-submit Application",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = com.loanzo.app.ui.theme.Navy900
                     )
                 }
             } else {
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFF1E293B),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155))
+                    color = Color(0xFFF1F5F9),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),
@@ -302,7 +302,7 @@ fun AgentPendingApprovalScreen(
                         Text(
                             text = "Admin reviews usually complete within 12 - 24 hours. Once approved, this screen will instantly transition to your Agent Console.",
                             fontSize = 12.sp,
-                            color = Color(0xFFCBD5E1),
+                            color = MaterialTheme.colorScheme.onSurface,
                             lineHeight = 16.sp
                         )
                     }
@@ -325,13 +325,13 @@ private fun DetailRow(label: String, value: String) {
         Text(
             text = label,
             fontSize = 12.sp,
-            color = Color(0xFF8B949E)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = value,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -357,7 +357,7 @@ private fun TimelineStep(
                         when {
                             isCompleted -> Color(0xFF10B981)
                             isActive -> Color(0xFFFFB800)
-                            else -> Color(0xFF30363D)
+                            else -> Color(0xFFE2E8F0)
                         }
                     ),
                 contentAlignment = Alignment.Center
@@ -366,7 +366,7 @@ private fun TimelineStep(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
-                        tint = Color.Black,
+                        tint = com.loanzo.app.ui.theme.Navy900,
                         modifier = Modifier.size(16.dp)
                     )
                 } else {
@@ -384,7 +384,7 @@ private fun TimelineStep(
                     modifier = Modifier
                         .width(2.dp)
                         .height(36.dp)
-                        .background(if (isCompleted) Color(0xFF10B981) else Color(0xFF30363D))
+                        .background(if (isCompleted) Color(0xFF10B981) else Color(0xFFE2E8F0))
                 )
             }
         }
@@ -402,7 +402,7 @@ private fun TimelineStep(
             Text(
                 text = subtitle,
                 fontSize = 11.sp,
-                color = Color(0xFF8B949E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 15.sp
             )
         }

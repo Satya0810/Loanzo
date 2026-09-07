@@ -1,6 +1,7 @@
 package com.loanzo.app.data
 
 import com.loanzo.app.data.entity.*
+import com.loanzo.app.data.entity.VaultDocumentEntity
 import com.loanzo.app.data.repository.UserRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -912,6 +913,41 @@ class DemoDataSeeder @Inject constructor(
                 event = "SEALED",
                 newState = "SECURED_IN_VAULT",
                 description = "Gold collateral sealed with tamper evident tag TS-891024."
+            )
+        )
+
+        // Seed Baseline Vault Documents
+        val targetBorrowerId = currentUserId ?: DEMO_BORROWER_ID
+        database.vaultDocumentDao().insertDocument(
+            VaultDocumentEntity(
+                documentId = "vault_doc_demo_1",
+                userId = targetBorrowerId,
+                loanId = DEMO_LOAN_BORROWED_ID,
+                title = "Welcome Credit Facility Sanction Letter",
+                documentType = "SANCTION_LETTER",
+                fileName = "Sanction_LZ_Welcome.pdf",
+                filePath = "",
+                fileSizeBytes = 145320L,
+                checksumSha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                isEncrypted = true,
+                description = "Official loan sanction confirmation with interest model & tenure terms.",
+                generatedAt = now - (oneDayMs * 5)
+            )
+        )
+        database.vaultDocumentDao().insertDocument(
+            VaultDocumentEntity(
+                documentId = "vault_doc_demo_2",
+                userId = targetBorrowerId,
+                loanId = DEMO_LOAN_BORROWED_ID,
+                title = "Digital Loan Agreement - LZ-2026",
+                documentType = "LOAN_AGREEMENT",
+                fileName = "Agreement_LZ_2026.pdf",
+                filePath = "",
+                fileSizeBytes = 210450L,
+                checksumSha256 = "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+                isEncrypted = true,
+                description = "Peer-to-peer credit agreement with digital signatures and KYC verification.",
+                generatedAt = now - (oneDayMs * 3)
             )
         )
     }

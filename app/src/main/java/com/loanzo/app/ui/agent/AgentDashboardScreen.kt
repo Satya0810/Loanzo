@@ -1,5 +1,23 @@
 package com.loanzo.app.ui.agent
 
+import com.loanzo.app.ui.components.ExecutiveHeroCard
+import com.loanzo.app.ui.theme.Navy700
+import com.loanzo.app.ui.theme.Navy800
+import com.loanzo.app.ui.theme.Navy900
+import com.loanzo.app.ui.theme.SurfaceDarkElevated
+import com.loanzo.app.ui.theme.GoldCoinBright
+import com.loanzo.app.ui.theme.GoldCoinRich
+import com.loanzo.app.ui.theme.GoldCoinCream
+import com.loanzo.app.ui.theme.GoldCoinAmber
+import com.loanzo.app.ui.theme.GoldCoinBorder
+import com.loanzo.app.ui.theme.Gray300
+import com.loanzo.app.ui.theme.Gray400
+import com.loanzo.app.ui.theme.Emerald400
+import com.loanzo.app.ui.theme.BrandRoyalBlue
+import com.loanzo.app.util.toInrString
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.BorderStroke
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -89,159 +107,88 @@ fun AgentDashboardScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Surface(
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+                color = MaterialTheme.colorScheme.background,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(horizontal = 18.dp, vertical = 12.dp)
+                        .padding(horizontal = 18.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            LoanzoAvatar(
-                                user = user,
-                                size = 44.dp,
-                                showVerifiedBadge = true,
-                                borderColor = goldAccent,
-                                borderWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Surface(
-                                    shape = RoundedCornerShape(4.dp),
-                                    color = goldAccent.copy(alpha = 0.2f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, goldAccent.copy(alpha = 0.4f))
-                                ) {
-                                    Text(
-                                        text = "CERTIFIED FIELD OFFICER",
-                                        color = goldAccent,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = user?.name?.ifBlank { "Loanzo Agent" } ?: "Loanzo Agent",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-
-                        // Top right actions: Super Admin Role Switcher + Logout
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isSuperAdmin) {
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = goldAccent.copy(alpha = 0.18f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, goldAccent.copy(alpha = 0.5f)),
-                                    modifier = Modifier
-                                        .clickable { showRoleSwitchDialog = true }
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Text("👑", fontSize = 12.sp)
-                                        Text(
-                                            text = "Role",
-                                            color = goldAccent,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                            }
-
-                            // Logout action
-                            IconButton(onClick = onLogout) {
-                                Icon(
-                                    imageVector = Icons.Default.Logout,
-                                    contentDescription = "Sign Out",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Duty Status Switcher Bar
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isOnDuty) Color(0xFF0F2E1E) else Color(0xFF2E1C0F),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (isOnDuty) emeraldAccent.copy(alpha = 0.5f) else Color(0xFFF97316).copy(alpha = 0.5f)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        LoanzoAvatar(
+                            user = user,
+                            size = 42.dp,
+                            showVerifiedBadge = true,
+                            borderColor = GoldCoinBright,
+                            borderWidth = 2.dp
                         )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f, fill = false),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(if (isOnDuty) emeraldAccent else Color(0xFFF97316))
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (isOnDuty) "Status: ON DUTY (Active)" else "Status: ON BREAK / OFF",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isOnDuty) emeraldAccent else Color(0xFFF97316),
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Button(
-                                onClick = { onToggleDutyStatus(!isOnDuty) },
-                                shape = RoundedCornerShape(6.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isOnDuty) Color(0xFF374151) else emeraldAccent
-                                ),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.height(28.dp)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = GoldCoinRich.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, GoldCoinBright.copy(alpha = 0.4f))
                             ) {
                                 Text(
-                                    text = if (isOnDuty) "Ask for Break" else "Go On Duty",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isOnDuty) Color.White else Color.Black,
+                                    text = "OFFICIAL FIELD OFFICER",
+                                    color = GoldCoinAmber,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                     maxLines = 1,
                                     softWrap = false
                                 )
                             }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = user?.name?.ifBlank { "Loanzo Agent" } ?: "Loanzo Agent",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isSuperAdmin) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = GoldCoinRich.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, GoldCoinBright.copy(alpha = 0.4f)),
+                                modifier = Modifier.clickable { showRoleSwitchDialog = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("👑", fontSize = 12.sp)
+                                    Text(
+                                        text = "Role",
+                                        color = GoldCoinAmber,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+
+                        IconButton(onClick = onLogout) {
+                            Icon(
+                                imageVector = Icons.Default.Logout,
+                                contentDescription = "Sign Out",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -289,7 +236,7 @@ fun AgentDashboardScreen(
                                 Text(
                                     text = "You will not receive new emergency field verification requests while on break.",
                                     fontSize = 11.sp,
-                                    color = Color(0xFFD1D5DB),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     lineHeight = 15.sp
                                 )
                             }
@@ -298,33 +245,231 @@ fun AgentDashboardScreen(
                 }
             }
 
-            // Stats Summary Card
+            // Executive Obsidian Hero Card (Signature Black Hero Card)
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ExecutiveHeroCard(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Today's Visits",
-                        value = "${todayVisits.size}",
-                        icon = Icons.Default.EventNote,
-                        iconColor = Color(0xFF38BDF8)
-                    )
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Money Earned",
-                        value = "₹${totalEarnings.toInt()}",
-                        icon = Icons.Default.Payments,
-                        iconColor = emeraldAccent
-                    )
-                    StatCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Completed",
-                        value = "$completedVisitsCount",
-                        icon = Icons.Default.TaskAlt,
-                        iconColor = goldAccent
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = GoldCoinRich.copy(alpha = 0.2f),
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Security,
+                                    contentDescription = null,
+                                    tint = GoldCoinBright,
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Agent Cockpit",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Verified Ground Operations",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Gray400
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isOnDuty) Emerald400.copy(alpha = 0.2f) else Color(0xFFF97316).copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, if (isOnDuty) Emerald400.copy(alpha = 0.4f) else Color(0xFFF97316).copy(alpha = 0.4f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isOnDuty) Emerald400 else Color(0xFFF97316))
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = if (isOnDuty) "ON DUTY" else "ON BREAK",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isOnDuty) Emerald400 else Color(0xFFF97316),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = "Total Verified Earnings",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Gray300
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = totalEarnings.toInrString(),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Emerald400
+                            )
+                        }
+
+                        Button(
+                            onClick = { onToggleDutyStatus(!isOnDuty) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isOnDuty) Color(0xFF1E293B) else Emerald400,
+                                contentColor = if (isOnDuty) Gray300 else Navy900
+                            ),
+                            border = BorderStroke(1.dp, if (isOnDuty) Color(0xFF334155) else Emerald400),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isOnDuty) Icons.Default.Coffee else Icons.Default.FlashOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isOnDuty) "Take Break" else "Go On Duty",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = SurfaceDarkElevated,
+                            border = BorderStroke(0.8.dp, Color(0xFF38BDF8).copy(alpha = 0.35f)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.EventNote,
+                                        contentDescription = null,
+                                        tint = Color(0xFF38BDF8),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Today",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Gray400
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "${todayVisits.size}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Scheduled",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Gray400
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = SurfaceDarkElevated,
+                            border = BorderStroke(0.8.dp, Emerald400.copy(alpha = 0.35f)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Payments,
+                                        contentDescription = null,
+                                        tint = Emerald400,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Earned",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Gray400
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "₹${totalEarnings.toInt()}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Emerald400
+                                )
+                                Text(
+                                    text = "Credited",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Gray400
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = SurfaceDarkElevated,
+                            border = BorderStroke(0.8.dp, GoldCoinBright.copy(alpha = 0.35f)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.TaskAlt,
+                                        contentDescription = null,
+                                        tint = GoldCoinBright,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Done",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Gray400
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "$completedVisitsCount",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldCoinBright
+                                )
+                                Text(
+                                    text = "Inspections",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Gray400
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -494,7 +639,7 @@ fun AgentDashboardScreen(
                 Column {
                     Text(
                         text = "Field inspection report successfully logged and cryptographically attested.",
-                        color = Color(0xFFD1D5DB),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -520,7 +665,7 @@ fun AgentDashboardScreen(
                 ) {
                     Text(
                         text = "Continue",
-                        color = Color.Black,
+                        color = Navy900,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -549,7 +694,7 @@ fun AgentDashboardScreen(
                 Column {
                     Text(
                         text = "Hello @${user?.username?.ifBlank { "satyam0810" } ?: "satyam0810"}, switch your operational view instantly:",
-                        color = Color(0xFFD1D5DB),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 13.sp
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -557,7 +702,7 @@ fun AgentDashboardScreen(
                     // Option 1: Switch to Consumer Member Dashboard
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFF21262D),
+                        color = Color(0xFFF1F5F9),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -593,7 +738,7 @@ fun AgentDashboardScreen(
                     // Option 2: Switch to Master Admin Hub
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFF21262D),
+                        color = Color(0xFFF1F5F9),
                         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -684,18 +829,18 @@ private fun FilterChipItem(
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) Color(0xFFFFB800) else MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(
+        color = if (isSelected) GoldCoinCream else Color.White,
+        border = BorderStroke(
             1.dp,
-            if (isSelected) Color(0xFFFFB800) else MaterialTheme.colorScheme.outlineVariant
+            if (isSelected) GoldCoinBorder else MaterialTheme.colorScheme.outlineVariant
         ),
         modifier = Modifier.clickable { onSelect() }
     ) {
         Text(
             text = label,
             fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) Color.Black else Color(0xFFD1D5DB),
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) GoldCoinAmber else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             maxLines = 1,
             softWrap = false
@@ -806,7 +951,7 @@ private fun AgentVisitCard(
                 Text(
                     text = "${visit.scheduledDate} • ${visit.scheduledTimeSlot}",
                     fontSize = 12.sp,
-                    color = Color(0xFFD1D5DB),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     softWrap = false
                 )
@@ -817,8 +962,8 @@ private fun AgentVisitCard(
             // Address Box with Maps button
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = Color(0xFF0F141C),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF21262D))
+                color = Color(0xFFF1F5F9),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
             ) {
                 Row(
                     modifier = Modifier
@@ -836,7 +981,7 @@ private fun AgentVisitCard(
                     Text(
                         text = visit.targetAddress,
                         fontSize = 12.sp,
-                        color = Color(0xFFCBD5E1),
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -916,13 +1061,13 @@ private fun AgentVisitCard(
                         .fillMaxWidth()
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = goldAccent)
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldCoinRich, contentColor = Navy900)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.AssignmentTurnedIn,
                             contentDescription = null,
-                            tint = Color.Black,
+                            tint = Navy900,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -930,7 +1075,7 @@ private fun AgentVisitCard(
                             text = "Start Physical Inspection",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
+                            color = Navy900,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -960,7 +1105,7 @@ private fun CounterpartyRow(
         ) {
             Surface(
                 shape = RoundedCornerShape(4.dp),
-                color = Color(0xFF21262D)
+                color = Color(0xFFF1F5F9)
             ) {
                 Text(
                     text = roleLabel,

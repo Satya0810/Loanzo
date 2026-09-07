@@ -166,3 +166,27 @@ com.loanzo.app
 │
 └── LoanzoApplication.kt                # Application entrypoint & Hilt dependency setup
 ```
+
+---
+
+## 5. Banking Session & Zero-Glitch Startup Package Topology
+
+```
+app/src/main/java/com/loanzo/app/
+├── data/
+│   ├── session/
+│   │   └── BankingSessionManager.kt       # Singleton tracking inactivity (3m), hard expiry (2d), and device binding
+│   └── repository/
+│       └── UserRepository.kt              # Synchronized session persistence with BankingSessionManager
+├── util/
+│   ├── SplashWarmupCoordinator.kt         # Asynchronous IO warm-up engine running parallel to 3.5s splash animation
+│   ├── DeviceSecurityHelper.kt            # Hardware device fingerprinting (UID-XXXXXXXXXXXX)
+│   ├── BiometricAuthManager.kt            # AndroidX BiometricPrompt (Fingerprint/Face/PIN) integration
+│   └── CompositionLocals.kt               # LocalBankingSessionManager & LocalSplashWarmupCoordinator providers
+└── ui/
+    ├── auth/
+    │   ├── SplashScreen.kt                # 3.5-second cinematic logo entrance animation with real-time clearance
+    │   └── SessionLockScreen.kt           # Non-destructive Biometric & 4-digit PIN Quick Unlock Shield
+    └── navigation/
+        └── NavGraph.kt                    # Single-shot atomic navigation dispatch & session state watcher
+```

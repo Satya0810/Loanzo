@@ -17,7 +17,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.CompositionLocalProvider
 import com.loanzo.app.util.LocalUserRepository
+import com.loanzo.app.util.LocalAgentRepository
+import com.loanzo.app.util.LocalAdminRepository
+import com.loanzo.app.util.LocalBankingSessionManager
+import com.loanzo.app.util.LocalSplashWarmupCoordinator
 import com.loanzo.app.data.repository.UserRepository
+import com.loanzo.app.data.session.BankingSessionManager
+import com.loanzo.app.util.SplashWarmupCoordinator
 import com.loanzo.app.ui.auth.AuthViewModel
 import com.loanzo.app.ui.navigation.LoanzoNavGraph
 import com.loanzo.app.ui.theme.LoanzoTheme
@@ -32,13 +38,13 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var userRepository: UserRepository
     @Inject lateinit var agentRepository: com.loanzo.app.data.repository.AgentRepository
     @Inject lateinit var adminRepository: com.loanzo.app.data.repository.AdminRepository
+    @Inject lateinit var sessionManager: BankingSessionManager
+    @Inject lateinit var warmupCoordinator: SplashWarmupCoordinator
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleDeepLinkIntent(intent)
-
-        // Truecaller OAuth removed per security audit
 
         setContent {
             val themeMode by userRepository.getThemeMode().collectAsState(initial = "LIGHT")
@@ -64,8 +70,10 @@ class MainActivity : FragmentActivity() {
 
             CompositionLocalProvider(
                 LocalUserRepository provides userRepository,
-                com.loanzo.app.util.LocalAgentRepository provides agentRepository,
-                com.loanzo.app.util.LocalAdminRepository provides adminRepository
+                LocalAgentRepository provides agentRepository,
+                LocalAdminRepository provides adminRepository,
+                LocalBankingSessionManager provides sessionManager,
+                LocalSplashWarmupCoordinator provides warmupCoordinator
             ) {
                 LoanzoTheme(darkTheme = isDark) {
                     Surface(
@@ -77,6 +85,22 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val authState = authViewModel.uiState.value
+        sessionManager.onAppForegrounded(authState.isLoggedIn)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        sessionManager.onAppBackgrounded()
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        sessionManager.onUserInteracted()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -108,5 +132,4 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
-
 }

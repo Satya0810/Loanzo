@@ -53,7 +53,7 @@ fun DocumentInspectionDialog(
                 .fillMaxWidth(0.95f)
                 .fillMaxHeight(0.92f)
                 .clip(RoundedCornerShape(20.dp)),
-            color = Color(0xFF0F172A)
+            color = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
@@ -91,7 +91,7 @@ fun DocumentInspectionDialog(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = docTitle,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -102,9 +102,9 @@ fun DocumentInspectionDialog(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF1E293B))
+                            .background(Color(0xFFF1F5F9))
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                     }
                 }
 
@@ -117,7 +117,7 @@ fun DocumentInspectionDialog(
                         .height(240.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFF0B0F19))
-                        .border(1.dp, Color(0xFF334155), RoundedCornerShape(12.dp)),
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     val validUri = photoUri?.ifBlank { null }
@@ -169,7 +169,7 @@ fun DocumentInspectionDialog(
                         ) {
                             Icon(Icons.Default.Security, null, tint = Emerald400, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Tamper-Proof Audit Lock", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("Tamper-Proof Audit Lock", color = MaterialTheme.colorScheme.onSurface, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -179,7 +179,7 @@ fun DocumentInspectionDialog(
                 // Metadata Details Card
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -191,14 +191,14 @@ fun DocumentInspectionDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Applicant Name", color = Gray400, fontSize = 12.sp)
-                            Text(subjectName, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(subjectName, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Contact Number", color = Gray400, fontSize = 12.sp)
-                            Text(subjectPhone, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(subjectPhone, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -212,7 +212,7 @@ fun DocumentInspectionDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Issuing Authority", color = Gray400, fontSize = 12.sp)
-                            Text(issuingAuthority, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text(issuingAuthority, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -222,7 +222,7 @@ fun DocumentInspectionDialog(
                 // Verification Checklist
                 Text(
                     text = "Mandatory Audit Verification Checklist",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -244,8 +244,8 @@ fun DocumentInspectionDialog(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFEF4444),
                             unfocusedBorderColor = Color(0xFFEF4444).copy(alpha = 0.5f),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                 }

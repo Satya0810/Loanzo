@@ -1,4 +1,14 @@
 package com.loanzo.app.ui.auth
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.loanzo.app.ui.theme.GoldCoinBright
+import com.loanzo.app.ui.theme.GoldCoinRich
+import com.loanzo.app.ui.theme.GoldCoinAmber
+import com.loanzo.app.ui.theme.GoldCoinCream
+import com.loanzo.app.ui.theme.GoldCoinBorder
+import com.loanzo.app.ui.theme.BrandRoyalBlue
+
 
 import android.app.Activity
 import android.content.Intent
@@ -1076,17 +1086,22 @@ fun RegisterScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ForgotPasswordScreen(
-    step: Int, // 1: ID, 2: 2FA Selection, 3: Verify 1, 4: Verify 2, 5: Create New Pass
+    step: Int, // 1: ID, 2..4: 2FA Selection/Verification, 5: Create New Pass, 6: Untrusted Device Grievance
     verifiedFactors: List<String>,
     resetUserEmail: String = "",
     resetUserPhone: String = "",
     isEmailVerified: Boolean = false,
+    isUntrustedDevice: Boolean = false,
+    registeredDeviceModel: String = "",
+    currentDeviceModel: String = "",
+    recoveryGrievanceTicket: String? = null,
     onInitiate: (String) -> Unit,
     onAddFactor: (String) -> Unit,
     onResetPassword: (String) -> Unit,
     onSendEmailVerification: (String) -> Unit,
     onVerifyEmailOtp: (String) -> Unit,
     onSetPhoneVerified: (Boolean) -> Unit,
+    onSubmitGrievance: (fullName: String, phone: String, idLast4: String, reason: String, remarks: String) -> Unit = { _, _, _, _, _ -> },
     onResetAuthState: () -> Unit,
     isLoading: Boolean,
     error: String?,
@@ -1112,6 +1127,12 @@ fun ForgotPasswordScreen(
     var newPasswordVisible by remember { mutableStateOf(false) }
     var confirmNewPasswordVisible by remember { mutableStateOf(false) }
     var step5Error by remember { mutableStateOf<String?>(null) }
+    var emailLinkDispatched by remember { mutableStateOf(false) }
+    var grievanceFullName by remember { mutableStateOf("") }
+    var grievancePhone by remember { mutableStateOf(resetUserPhone) }
+    var grievanceIdLast4 by remember { mutableStateOf("") }
+    var grievanceReason by remember { mutableStateOf("Purchased New Device") }
+    var grievanceRemarks by remember { mutableStateOf("") }
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -1189,33 +1210,39 @@ fun ForgotPasswordScreen(
                             }
                         }
                     } else if (step in 2..4) {
-                        Text("Two-Factor Authentication (2FA)", color = Gold500, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Verify any 2 of the methods below to unlock password reset.", color = Gray300, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 16.dp))
-                        
+                        // Trusted Device Indicator
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = Emerald400.copy(alpha = 0.15f),
+                            color = Emerald400.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.4f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                "Methods Verified: ${verifiedFactors.size}/2 (${if (verifiedFactors.isEmpty()) "None" else verifiedFactors.joinToString()})",
-                                color = Emerald400,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(10.dp)
-                            )
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.VerifiedUser, null, tint = Emerald400, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text("Trusted Hardware Phone Verified", color = Emerald400, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(registeredDeviceModel.ifBlank { "Registered Phone" }, color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp)
+                                }
+                            }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text("Two-Factor Authentication (2FA)", color = Gold500, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Verify identity or use email reset link to proceed.", color = Gray300, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
 
                         val targetEmail = if (resetUserEmail.isNotBlank()) resetUserEmail else if (loginId.contains("@")) loginId.trim() else ""
                         val targetPhone = if (resetUserPhone.isNotBlank()) resetUserPhone else loginId.trim()
 
-                        // Method 1: Email Verification
+                        // Method 1: Email Verification Link
                         if (!verifiedFactors.contains("email") && targetEmail.isNotBlank()) {
                             OutlinedButton(
                                 onClick = { 
                                     onSendEmailVerification(targetEmail)
-                                    selectedFactor = "email"
-                                    otpInput = ""
+                                    emailLinkDispatched = true
                                 },
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 shape = RoundedCornerShape(12.dp),
@@ -1223,7 +1250,31 @@ fun ForgotPasswordScreen(
                             ) {
                                 Icon(Icons.Default.Email, null, tint = Gold500, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Verify with Email Link ($targetEmail)", color = Gold500, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("Send Password Reset Email Link", color = Gold500, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+
+                            if (emailLinkDispatched) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color(0xFFEFF6FF),
+                                    border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.MarkEmailRead, null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Reset Link Sent to $targetEmail", color = BrandRoyalBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            "Check your email inbox and tap the link to reset your password, OR verify with your device biometrics below to create a new password immediately.",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp,
+                                            lineHeight = 15.sp
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -1234,7 +1285,7 @@ fun ForgotPasswordScreen(
                                     val fa = com.loanzo.app.util.BiometricAuthManager.getActivity(context) ?: (activity as? FragmentActivity)
                                     if (fa != null) {
                                         com.loanzo.app.util.BiometricAuthManager.authenticate(
-                                            activity = fa,
+                                             activity = fa,
                                             onSuccess = { onAddFactor("biometric") },
                                             onError = { err ->
                                                 android.widget.Toast.makeText(context, "Biometric error: $err", android.widget.Toast.LENGTH_SHORT).show()
@@ -1250,7 +1301,7 @@ fun ForgotPasswordScreen(
                             ) {
                                 Icon(Icons.Default.Fingerprint, null, tint = Gold500, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Verify with Biometrics", color = Gold500, fontWeight = FontWeight.Bold)
+                                Text("Verify with Device Biometrics (Instant)", color = Gold500, fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -1275,21 +1326,20 @@ fun ForgotPasswordScreen(
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.Message, null, tint = Gold500, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Send Verification to Admin", color = Gold500, fontWeight = FontWeight.Bold)
+                                Text("Send Verification Token to Admin", color = Gold500, fontWeight = FontWeight.Bold)
                             }
                         }
 
-                        // Active Input Box
-                        if (selectedFactor != null) {
+                        // Active Input Box for Phone Token only
+                        if (selectedFactor == "phone") {
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("Enter the 6-digit OTP code for $selectedFactor verification:", color = Gray300, fontSize = 13.sp)
+                            Text("Enter the token confirmed by admin:", color = Gray300, fontSize = 13.sp)
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 OutlinedTextField(
                                     value = otpInput,
                                     onValueChange = { otpInput = it },
-                                    placeholder = { Text("6-digit OTP") },
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    placeholder = { Text("Verification Token") },
                                     singleLine = true,
                                     modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(10.dp),
@@ -1298,14 +1348,10 @@ fun ForgotPasswordScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Button(
                                     onClick = {
-                                        if (selectedFactor == "email") {
+                                        if (pendingPhoneToken != null && otpInput.trim() == pendingPhoneToken) {
+                                            onAddFactor("phone")
+                                        } else {
                                             onVerifyEmailOtp(otpInput.trim())
-                                        } else if (selectedFactor == "phone") {
-                                            if (pendingPhoneToken != null && otpInput.trim() == pendingPhoneToken) {
-                                                onAddFactor("phone")
-                                            } else {
-                                                onVerifyEmailOtp(otpInput.trim())
-                                            }
                                         }
                                         selectedFactor = null
                                         otpInput = ""
@@ -1317,7 +1363,6 @@ fun ForgotPasswordScreen(
                                 }
                             }
                         }
-
                     } else if (step == 5) {
                         Text("Create New Password", color = Gold500, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         Text("Enter and confirm your new secure password below.", color = Gray300, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
@@ -1375,6 +1420,178 @@ fun ForgotPasswordScreen(
                                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                             } else {
                                 Text("Update Password", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else if (step == 6 || isUntrustedDevice) {
+                        if (recoveryGrievanceTicket != null) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Emerald400.copy(alpha = 0.2f),
+                                    modifier = Modifier.size(54.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.TaskAlt, null, tint = Emerald400, modifier = Modifier.size(28.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text("Recovery Request Lodged", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = GoldCoinRich.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, GoldCoinBright.copy(alpha = 0.4f))
+                                ) {
+                                    Text(
+                                        text = "Ticket ID: #$recoveryGrievanceTicket",
+                                        color = GoldCoinAmber,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Your identity verification request has been forwarded to the Master Admin Security Desk. Once your KYC identity is verified, your new device ($currentDeviceModel) will be authorized within 2-4 hours.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 16.sp
+                                )
+                                Spacer(modifier = Modifier.height(20.dp))
+                                Button(
+                                    onClick = onNavigateToLogin,
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue)
+                                ) {
+                                    Text("Return to Sign In", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFFFFFBEB),
+                                border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)
+                            ) {
+                                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
+                                    Icon(Icons.Default.Warning, null, tint = Color(0xFFD97706), modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text("Unregistered Device Detected", color = Color(0xFFB45309), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            "For financial protection, this account is bound to another phone ($registeredDeviceModel). To reset your password on this device ($currentDeviceModel), please submit an Account Recovery Grievance.",
+                                            color = Color(0xFF92400E),
+                                            fontSize = 11.sp,
+                                            lineHeight = 15.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            Text("Account Recovery Grievance Form", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Provide your KYC proof to verify your account ownership:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            OutlinedTextField(
+                                value = grievanceFullName,
+                                onValueChange = { grievanceFullName = it },
+                                label = { Text("Full Name (as per KYC)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = grievancePhone,
+                                onValueChange = { grievancePhone = it },
+                                label = { Text("Registered Mobile Number") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = grievanceIdLast4,
+                                onValueChange = { if (it.length <= 4) grievanceIdLast4 = it },
+                                label = { Text("Last 4 Digits of PAN / Aadhaar") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text("Reason for Device Change:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val reasons = listOf("Purchased New Device", "Old Phone Lost / Stolen", "Phone Formatted", "Other")
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                items(reasons) { r ->
+                                    val isSel = grievanceReason == r
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSel) GoldCoinCream else Color.White,
+                                        border = BorderStroke(1.dp, if (isSel) GoldCoinBorder else MaterialTheme.colorScheme.outlineVariant),
+                                        modifier = Modifier.clickable { grievanceReason = r }
+                                    ) {
+                                        Text(
+                                            text = r,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSel) GoldCoinAmber else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = grievanceRemarks,
+                                onValueChange = { grievanceRemarks = it },
+                                label = { Text("Remarks / Explanation") },
+                                maxLines = 3,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            Button(
+                                onClick = {
+                                    onSubmitGrievance(
+                                        grievanceFullName.trim(),
+                                        grievancePhone.trim(),
+                                        grievanceIdLast4.trim(),
+                                        grievanceReason,
+                                        grievanceRemarks.trim()
+                                    )
+                                },
+                                enabled = grievanceFullName.isNotBlank() && grievancePhone.isNotBlank() && grievanceIdLast4.length == 4,
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldCoinRich, contentColor = com.loanzo.app.ui.theme.Navy900)
+                            ) {
+                                Text("Submit Recovery Grievance", fontWeight = FontWeight.Bold)
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            TextButton(onClick = onNavigateToLogin, modifier = Modifier.fillMaxWidth()) {
+                                Text("Back to Sign In", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

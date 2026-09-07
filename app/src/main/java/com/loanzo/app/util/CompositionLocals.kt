@@ -4,9 +4,10 @@ import androidx.compose.runtime.compositionLocalOf
 import com.loanzo.app.data.repository.AdminRepository
 import com.loanzo.app.data.repository.AgentRepository
 import com.loanzo.app.data.repository.UserRepository
+import com.loanzo.app.data.session.BankingSessionManager
 
 /**
- * CompositionLocal to provide UserRepository, AgentRepository, and AdminRepository
+ * CompositionLocal to provide core repositories and session managers
  * to composables without requiring Hilt injection at every level.
  */
 val LocalUserRepository = compositionLocalOf<UserRepository> {
@@ -21,3 +22,10 @@ val LocalAdminRepository = compositionLocalOf<AdminRepository> {
     error("No AdminRepository provided")
 }
 
+val LocalBankingSessionManager = compositionLocalOf<BankingSessionManager> {
+    error("No BankingSessionManager provided")
+}
+
+val LocalSplashWarmupCoordinator = compositionLocalOf<SplashWarmupCoordinator> {
+    error("No SplashWarmupCoordinator provided")
+}
