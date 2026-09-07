@@ -3,6 +3,7 @@ package com.loanzo.app.data.dao
 import androidx.room.*
 import com.loanzo.app.data.entity.MarketplaceBidEntity
 import com.loanzo.app.data.entity.MarketplacePostEntity
+import com.loanzo.app.data.entity.MarketplaceVouchEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -34,6 +35,26 @@ interface MarketplaceDao {
 
     @Query("UPDATE marketplace_posts SET vouchCount = vouchCount + 1 WHERE postId = :postId")
     suspend fun incrementVouchCount(postId: String)
+
+    @Query("UPDATE marketplace_posts SET vouchCount = MAX(0, vouchCount - 1) WHERE postId = :postId")
+    suspend fun decrementVouchCount(postId: String)
+
+    // Vouches & Deduplication
+    @Query("SELECT EXISTS(SELECT 1 FROM marketplace_vouches WHERE postId = :postId AND voucherUserId = :userId)")
+    suspend fun hasUserVouched(postId: String, userId: String): Boolean
+
+    @Query("SELECT postId FROM marketplace_vouches WHERE voucherUserId = :userId")
+    fun getUserVouchedPostIdsFlow(userId: String): Flow<List<String>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertVouch(vouch: MarketplaceVouchEntity)
+
+    @Query("DELETE FROM marketplace_vouches WHERE postId = :postId AND voucherUserId = :userId")
+    suspend fun deleteVouch(postId: String, userId: String)
+
+    @Query("SELECT * FROM marketplace_vouches WHERE postId = :postId ORDER BY createdAt DESC")
+    fun getVouchesForPostFlow(postId: String): Flow<List<MarketplaceVouchEntity>>
+
 
     @Query("UPDATE marketplace_posts SET bidsCount = bidsCount + 1 WHERE postId = :postId")
     suspend fun incrementBidsCount(postId: String)

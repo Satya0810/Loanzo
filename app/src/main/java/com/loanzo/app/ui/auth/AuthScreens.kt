@@ -307,53 +307,7 @@ fun LoginScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Text(
-                            text = "Quick Select Account:",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Gray400,
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
-                        )
-
-                        // Quick Selectable User Accounts with Golden Coin Box Coloring
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val demoAccounts = listOf(
-                                Triple("satyam0810", "👑 satyam0810", "Master Admin"),
-                                Triple("agent_demo", "🕵️ agent_demo", "Field Agent"),
-                                Triple("user_demo", "👤 user_demo", "Member")
-                            )
-                            demoAccounts.forEach { (uName, uLabel, uRole) ->
-                                val isSelected = userId.trim().equals(uName, ignoreCase = true)
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        userId = uName
-                                        userRole = uRole
-                                        onClearError()
-                                    },
-                                    label = {
-                                        Text(
-                                            uLabel,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = goldFilterChipColors(),
-                                    border = goldFilterChipBorder(isSelected),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
+                        
 
                         // Username Input Field (the option to enter username)
                         OutlinedTextField(
@@ -412,9 +366,13 @@ fun LoginScreen(
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 enabled = !isLoading
                             ) {
-                                Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text("Sign in with Biometrics", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(Icons.Default.Face, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Sign in with Fingerprint / Face", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                }
                             }
                         }
                     } else {
@@ -518,9 +476,13 @@ fun LoginScreen(
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 enabled = !isLoading
                             ) {
-                                Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text("Sign in with Biometrics", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(Icons.Default.Face, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Sign in with Fingerprint / Face", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                }
                             }
                         }
 

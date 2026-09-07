@@ -47,7 +47,8 @@ fun AssignVaultLockerDialog(
                 .fillMaxWidth(0.95f)
                 .wrapContentHeight()
                 .clip(RoundedCornerShape(20.dp)),
-            color = MaterialTheme.colorScheme.surface
+            color = Color(0xFF0F1E36),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E3250))
         ) {
             Column(
                 modifier = Modifier
@@ -76,12 +77,12 @@ fun AssignVaultLockerDialog(
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(item.vaultItemId, color = Gray400, fontSize = 11.sp)
+                            Text(item.vaultItemId, color = Color(0xFF94A3B8), fontSize = 11.sp)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Assign Locker & Tamper Seal",
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color.White,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -92,9 +93,9 @@ fun AssignVaultLockerDialog(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF1F5F9))
+                            .background(Color(0xFF162544))
                     ) {
-                        Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
 
@@ -103,13 +104,14 @@ fun AssignVaultLockerDialog(
                 // Asset Summary
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF162544)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E3250)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(item.assetDescription, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(item.assetDescription, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Text("Borrower: ${item.borrowerName} • Est: ₹${item.estimatedValue.toInt()}", color = Gold500, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Appraisal: ${item.appraisedPurityOrCondition}", color = Gray300, fontSize = 11.sp)
+                        Text("Appraisal: ${item.appraisedPurityOrCondition}", color = Color(0xFFCBD5E1), fontSize = 11.sp)
                     }
                 }
 
@@ -118,13 +120,15 @@ fun AssignVaultLockerDialog(
                 OutlinedTextField(
                     value = facilityName,
                     onValueChange = { facilityName = it },
-                    label = { Text("Vault Facility", color = Gray400, fontSize = 12.sp) },
+                    label = { Text("Vault Facility", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Gold500,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0xFF162544),
+                        unfocusedContainerColor = Color(0xFF162544)
                     )
                 )
 
@@ -139,8 +143,10 @@ fun AssignVaultLockerDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Gold500,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0xFF162544),
+                        unfocusedContainerColor = Color(0xFF162544)
                     )
                 )
 
@@ -155,8 +161,10 @@ fun AssignVaultLockerDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Emerald400,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0xFF162544),
+                        unfocusedContainerColor = Color(0xFF162544)
                     )
                 )
 
@@ -171,8 +179,10 @@ fun AssignVaultLockerDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFFF97316),
                         unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color(0xFF162544),
+                        unfocusedContainerColor = Color(0xFF162544)
                     )
                 )
 

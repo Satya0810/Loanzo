@@ -38,7 +38,7 @@ fun DispatchAgentSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = Color(0xFF0F1E36),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     ) {
         Column(
@@ -68,12 +68,12 @@ fun DispatchAgentSheet(
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(visit.visitId, color = Gray400, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(visit.visitId, color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Map Inspection to Certified Agent",
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = Color.White,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -84,9 +84,9 @@ fun DispatchAgentSheet(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF1F5F9))
+                        .background(Color(0xFF162544))
                 ) {
-                    Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -95,7 +95,8 @@ fun DispatchAgentSheet(
             // Visit Overview Card
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF162544)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E3250)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -104,7 +105,7 @@ fun DispatchAgentSheet(
                 ) {
                     Text(
                         text = visit.title,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -115,7 +116,7 @@ fun DispatchAgentSheet(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = visit.targetAddress,
-                            color = Gray300,
+                            color = Color(0xFFCBD5E1),
                             fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -126,7 +127,7 @@ fun DispatchAgentSheet(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Slot: ${visit.scheduledTimeSlot}", color = Gold500, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Counterparty: ${visit.borrowerName}", color = Gray400, fontSize = 11.sp)
+                        Text("Counterparty: ${visit.borrowerName}", color = Color(0xFFCBD5E1), fontSize = 11.sp)
                     }
                 }
             }
@@ -136,7 +137,7 @@ fun DispatchAgentSheet(
             // Payout Configurator
             Text(
                 text = "Field Inspection Bounty / Payout (₹)",
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -149,8 +150,8 @@ fun DispatchAgentSheet(
                     val isSelected = payoutAmount == amount
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected) Gold500 else Color(0xFFF1F5F9),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Gold500 else MaterialTheme.colorScheme.outlineVariant),
+                        color = if (isSelected) Gold500 else Color(0xFF162544),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Gold500 else Color(0xFF1E3250)),
                         modifier = Modifier
                             .weight(1f)
                             .clickable { payoutAmount = amount }
@@ -161,7 +162,7 @@ fun DispatchAgentSheet(
                         ) {
                             Text(
                                 text = "₹${amount.toInt()}",
-                                color = if (isSelected) Navy900 else Color.White,
+                                color = if (isSelected) Navy900 else Color(0xFFCBD5E1),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -175,7 +176,7 @@ fun DispatchAgentSheet(
             // Available Agents Roster
             Text(
                 text = "Select Active Certified Agent",
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -187,10 +188,10 @@ fun DispatchAgentSheet(
                         .fillMaxWidth()
                         .height(100.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFF1F5F9)),
+                        .background(Color(0xFF162544)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No empaneled agents currently registered", color = Gray400, fontSize = 12.sp)
+                    Text("No empaneled agents currently registered", color = Color(0xFF94A3B8), fontSize = 12.sp)
                 }
             } else {
                 LazyColumn(
@@ -203,8 +204,8 @@ fun DispatchAgentSheet(
                         val isSelected = selectedAgentId == agent.userId
                         Card(
                             shape = RoundedCornerShape(10.dp),
-                            colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFF1F5F9) else Color(0xFFF8FAFC)),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Emerald400 else Color(0xFF243247)),
+                            colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFF1E3A5F) else Color(0xFF162544)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Emerald400 else Color(0xFF1E3250)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { selectedAgentId = agent.userId }
@@ -232,7 +233,7 @@ fun DispatchAgentSheet(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = agent.permanentAddress.take(20) + " Officer",
-                                            color = MaterialTheme.colorScheme.onSurface,
+                                            color = Color.White,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -252,7 +253,7 @@ fun DispatchAgentSheet(
                                     }
                                     Text(
                                         text = "${agent.operatingCity} • Radius: ${agent.serviceRadiusKm} km • ${agent.vehicleType}",
-                                        color = Gray400,
+                                        color = Color(0xFFCBD5E1),
                                         fontSize = 10.sp
                                     )
                                 }

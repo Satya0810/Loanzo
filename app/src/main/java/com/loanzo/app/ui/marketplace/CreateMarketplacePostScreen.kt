@@ -1,6 +1,7 @@
 package com.loanzo.app.ui.marketplace
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -42,7 +43,9 @@ fun CreateMarketplacePostScreen(
         tenureMonths: Int,
         purposeCategory: String,
         locationCity: String,
-        collateralOffered: String
+        collateralOffered: String,
+        coBorrowerName: String,
+        coBorrowerRelationship: String
     ) -> Unit,
     onNavigateBack: () -> Unit
 ) {
@@ -58,6 +61,8 @@ fun CreateMarketplacePostScreen(
     var selectedTenure by remember { mutableIntStateOf(6) }
     var selectedCategory by remember { mutableStateOf("EDUCATION") }
     var locationCity by remember { mutableStateOf("Bengaluru") }
+    var coBorrowerName by remember { mutableStateOf("") }
+    var coBorrowerRelationship by remember { mutableStateOf("") }
     var collateralOffered by remember { mutableStateOf("") }
 
     val tenures = listOf(3, 6, 12, 18, 24, 36)
@@ -277,6 +282,47 @@ fun CreateMarketplacePostScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            if (!isLenderOffer) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFFAF5FF),
+                    border = BorderStroke(1.dp, Color(0xFFE9D5FF)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Group, null, tint = Color(0xFF9333EA), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Add Co-Borrower (Optional • Boosts Approval)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Color(0xFF581C87)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = coBorrowerName,
+                            onValueChange = { coBorrowerName = it },
+                            label = { Text("Co-Borrower Full Name") },
+                            placeholder = { Text("e.g. Priya Mehra") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = coBorrowerRelationship,
+                            onValueChange = { coBorrowerRelationship = it },
+                            label = { Text("Relationship to Seeker") },
+                            placeholder = { Text("e.g. Spouse / Brother / Business Partner") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Publish Button
@@ -298,7 +344,9 @@ fun CreateMarketplacePostScreen(
                         selectedTenure,
                         selectedCategory,
                         locationCity,
-                        collateralOffered
+                        collateralOffered,
+                        coBorrowerName.trim(),
+                        coBorrowerRelationship.trim()
                     )
                 },
                 colors = ButtonDefaults.buttonColors(

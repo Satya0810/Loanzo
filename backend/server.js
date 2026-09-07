@@ -449,10 +449,10 @@ async function enforceTelegramBotProfileDescriptions() {
         console.error('[Security Guard] Error enforcing bot profile descriptions:', err.response?.data || err.message);
     }
 }
-// Run immediately on boot
-enforceTelegramBotProfileDescriptions();
-// Auto-verify and restore periodically (every 10 minutes)
-setInterval(enforceTelegramBotProfileDescriptions, 10 * 60 * 1000);
+// Non-blocking asynchronous sync on boot
+setTimeout(() => {
+    enforceTelegramBotProfileDescriptions().catch(() => {});
+}, 1000);
 
 // In-Memory User Role Store (Key: string chatId or lowercase username)
 const telegramRolesDb = new Map();
@@ -511,6 +511,7 @@ function getUserRole(chatId, username) {
         return telegramRolesDb.get(String(chatId)).role;
     }
 
+    const cleanUsername = (username || '').toLowerCase().replace('@', '').trim();
     if (cleanUsername && telegramRolesDb.has(cleanUsername)) {
         return telegramRolesDb.get(cleanUsername).role;
     }
@@ -547,10 +548,23 @@ async function sendTelegramMessage(chatId, text, replyMarkup = null) {
             parse_mode: 'HTML'
         };
         if (replyMarkup) payload.reply_markup = replyMarkup;
-        const res = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, payload);
+        const res = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, payload, { timeout: 8000 });
         return res.data?.result || true;
     } catch (err) {
         console.error(`[Telegram send error for ${chatId}]:`, err.response?.data || err.message);
+        if (err.response?.data?.description && err.response.data.description.toLowerCase().includes("can't parse entities")) {
+            try {
+                const plainPayload = {
+                    chat_id: chatId,
+                    text: text.replace(/<[^>]*>/g, '')
+                };
+                if (replyMarkup) plainPayload.reply_markup = replyMarkup;
+                const retryRes = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, plainPayload, { timeout: 8000 });
+                return retryRes.data?.result || true;
+            } catch (fallbackErr) {
+                console.error(`[Telegram plain fallback error for ${chatId}]:`, fallbackErr.response?.data || fallbackErr.message);
+            }
+        }
         return false;
     }
 }
@@ -707,7 +721,7 @@ app.post('/api/telegram/webhook', async (req, res) => {
                 await sendTelegramMessage(reqItem.userId,
                     `⚠️ <b>Verification Request Update</b>\n\n` +
                     `Your Loanzo verification request was reviewed by our Admin desk (@${fromUser}) and could not be approved at this time.\n\n` +
-                    `Please verify your profile details and re-apply using /verify_me <details>.`
+                    `Please verify your profile details and re-apply using /verify_me &lt;details&gt;.`
                 );
                 return res.sendStatus(200);
 

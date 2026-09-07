@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.loanzo.app.data.entity.MarketplaceBidEntity
 import com.loanzo.app.data.entity.MarketplacePostEntity
+import com.loanzo.app.data.entity.MarketplaceVouchEntity
 import com.loanzo.app.data.repository.MarketplaceRepository
 import com.loanzo.app.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +30,8 @@ data class MarketplaceUiState(
     val activeFilterCount: Int = 0,
     val currentUserId: String = "",
     val currentUserName: String = "",
+    val vouchedPostIds: Set<String> = emptySet(),
+    val vouchesByPost: Map<String, List<MarketplaceVouchEntity>> = emptyMap(),
     val isKycVerified: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -62,7 +65,16 @@ class MarketplaceViewModel @Inject constructor(
                             isKycVerified = (user?.kycStatus == "VERIFIED")
                         )
                     }
+                    observeUserVouches(uid)
                 }
+            }
+        }
+    }
+
+    private fun observeUserVouches(userId: String) {
+        viewModelScope.launch {
+            marketplaceRepository.getUserVouchedPostIdsFlow(userId).collectLatest { vouchedList ->
+                _uiState.update { it.copy(vouchedPostIds = vouchedList.toSet()) }
             }
         }
     }
@@ -82,6 +94,21 @@ class MarketplaceViewModel @Inject constructor(
                             current.currentUserId
                         )
                     )
+                }
+                observeVouchesForPosts(rawList)
+            }
+        }
+    }
+
+    private fun observeVouchesForPosts(posts: List<MarketplacePostEntity>) {
+        posts.forEach { post ->
+            viewModelScope.launch {
+                marketplaceRepository.getVouchesForPostFlow(post.postId).collectLatest { vouches ->
+                    _uiState.update { state ->
+                        state.copy(
+                            vouchesByPost = state.vouchesByPost + (post.postId to vouches)
+                        )
+                    }
                 }
             }
         }
@@ -131,7 +158,7 @@ class MarketplaceViewModel @Inject constructor(
 
     fun setCategoryTag(category: String) {
         _uiState.update { current ->
-            val targetCategory = if (current.selectedCategoryTag == category) "ALL" else category
+            val targetCategory = if (current.selectedCategoryTag.equals(category, ignoreCase = true)) "ALL" else category
             val updated = current.copy(selectedCategoryTag = targetCategory)
             updated.copy(
                 posts = applyFilters(
@@ -188,6 +215,8 @@ class MarketplaceViewModel @Inject constructor(
         purposeCategory: String,
         locationCity: String,
         collateralOffered: String,
+        coBorrowerName: String = "",
+        coBorrowerRelationship: String = "",
         onSuccess: () -> Unit
     ) {
         val user = _uiState.value
@@ -211,7 +240,11 @@ class MarketplaceViewModel @Inject constructor(
             vouchCount = 0,
             bidsCount = 0,
             status = "OPEN",
-            createdAt = System.currentTimeMillis()
+            createdAt = System.currentTimeMillis(),
+            coBorrowerName = coBorrowerName,
+            coBorrowerRelationship = coBorrowerRelationship,
+            coBorrowerKycVerified = coBorrowerName.isNotBlank(),
+            coBorrowerTrustScore = if (coBorrowerName.isNotBlank()) 89 else 85
         )
 
         viewModelScope.launch {
@@ -263,14 +296,146 @@ class MarketplaceViewModel @Inject constructor(
         }
     }
 
-    fun vouchForPost(postId: String) {
+    fun vouchForPost(
+        postId: String,
+        reason: String = "COMMERCIAL_PEER",
+        comment: String = ""
+    ) {
+        val uid = _uiState.value.currentUserId
+        val name = _uiState.value.currentUserName
+        if (uid.isBlank()) {
+            _uiState.update { it.copy(error = "Please sign in to vouch for posts.") }
+            return
+        }
         viewModelScope.launch {
-            marketplaceRepository.vouchForPost(postId)
+            val result = marketplaceRepository.vouchForPost(
+                postId = postId,
+                voucherUserId = uid,
+                voucherName = name.ifBlank { "Verified Member" },
+                reason = reason,
+                comment = comment
+            )
+            if (result.isSuccess) {
+                val isNowVouched = result.getOrNull() == true
+                _uiState.update {
+                    it.copy(
+                        actionSuccessMessage = if (isNowVouched) "Endorsement recorded! Thank you for vouching." else "Vouch removed."
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(error = result.exceptionOrNull()?.message ?: "Failed to update vouch")
+                }
+            }
         }
     }
 
     fun clearFeedback() {
         _uiState.update { it.copy(error = null, actionSuccessMessage = null) }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PROFILE BUILDERS FOR MODAL INSPECTION (AUTHOR, CO-BORROWER, VOUCHER)
+    // ─────────────────────────────────────────────────────────────────────────
+    suspend fun getAuthorProfile(post: MarketplacePostEntity): UserProfileViewData {
+        val localUser = userRepository.getUserById(post.authorId)
+        val isLender = post.postType == "OFFER_TO_LEND"
+        return UserProfileViewData(
+            userId = post.authorId,
+            name = localUser?.name ?: post.authorName,
+            username = localUser?.username ?: post.authorName.lowercase().replace(" ", "").filter { it.isLetterOrDigit() }.take(12),
+            roleTitle = if (isLender) "CAPITAL PROVIDER (LENDER)" else "PRIMARY BORROWER (LOAN SEEKER)",
+            avatarUrl = localUser?.profilePhotoUri ?: post.authorAvatarUrl,
+            locationCity = post.locationCity.ifBlank { localUser?.address ?: "Bengaluru" },
+            trustScore = post.authorTrustScore,
+            verificationLevel = if (localUser?.bankVerified == true || post.authorKycVerified) "Tier 3: Institutional Gold" else "Tier 2: National ID Verified",
+            verificationTier = if (localUser?.bankVerified == true || post.authorKycVerified) 3 else 2,
+            phoneVerified = localUser?.phoneVerified ?: true,
+            emailVerified = localUser?.emailVerified ?: true,
+            aadhaarVerified = localUser?.aadhaarVerified ?: post.authorKycVerified,
+            panVerified = localUser?.panVerified ?: post.authorKycVerified,
+            selfieVerified = localUser?.selfieVerified ?: true,
+            bankVerified = localUser?.bankVerified ?: true,
+            upiVerified = localUser?.upiVerified ?: true,
+            ckycVerified = true,
+            onTimeRepaymentRate = if (post.authorTrustScore > 90) 100.0 else 96.5,
+            completedLoansCount = if (isLender) 14 else 4,
+            activeLoansCount = 1,
+            defaultCount = 0,
+            vouchesReceivedCount = post.vouchCount,
+            memberSince = "Member since " + if (isLender) "Jan 2024" else "May 2024",
+            employmentStatus = if (isLender) "Accredited Capital Provider / Entity" else "Verified Salaried / Business Cashflow",
+            monthlyIncomeFormatted = if (isLender) "Capital Pool Active" else "₹65,000 / month",
+            collateralOrProof = post.collateralOffered,
+            phoneMasked = if (!localUser?.phone.isNullOrBlank()) localUser!!.phone.take(3) + "•••• " + localUser.phone.takeLast(4) else "+91 98•••• 4829",
+            emailMasked = if (!localUser?.email.isNullOrBlank()) localUser!!.email.take(2) + "••••@" + localUser.email.substringAfter("@", "gmail.com") else "m••••@gmail.com"
+        )
+    }
+
+    fun getCoBorrowerProfile(post: MarketplacePostEntity): UserProfileViewData {
+        return UserProfileViewData(
+            userId = "coborrower_${post.postId}",
+            name = post.coBorrowerName,
+            username = post.coBorrowerName.lowercase().replace(" ", "").filter { it.isLetterOrDigit() }.take(12),
+            roleTitle = "CO-BORROWER / GUARANTOR",
+            avatarUrl = post.coBorrowerAvatarUrl,
+            locationCity = post.locationCity,
+            trustScore = post.coBorrowerTrustScore,
+            verificationLevel = "Tier 2: National ID & Income Verified",
+            verificationTier = 2,
+            phoneVerified = true,
+            emailVerified = true,
+            aadhaarVerified = post.coBorrowerKycVerified,
+            panVerified = post.coBorrowerKycVerified,
+            selfieVerified = true,
+            bankVerified = true,
+            upiVerified = true,
+            ckycVerified = true,
+            onTimeRepaymentRate = 100.0,
+            completedLoansCount = 2,
+            activeLoansCount = 1,
+            defaultCount = 0,
+            vouchesReceivedCount = 5,
+            memberSince = "Member since Nov 2024",
+            employmentStatus = "Employed / Co-Earning Dependent",
+            monthlyIncomeFormatted = "₹45,000 / month",
+            relationshipToBorrower = post.coBorrowerRelationship.ifBlank { "Spouse (Co-Signer)" },
+            phoneMasked = "+91 97•••• 8391",
+            emailMasked = "c•••••@gmail.com"
+        )
+    }
+
+    fun getVoucherProfile(vouch: MarketplaceVouchEntity): UserProfileViewData {
+        return UserProfileViewData(
+            userId = vouch.voucherUserId,
+            name = vouch.voucherName,
+            username = vouch.voucherName.lowercase().replace(" ", "").filter { it.isLetterOrDigit() }.take(12),
+            roleTitle = "COMMUNITY ENDORSER (VOUCHER)",
+            avatarUrl = vouch.voucherAvatarUrl,
+            locationCity = "Community Peer",
+            trustScore = vouch.voucherTrustScore,
+            verificationLevel = "Tier 3: Verified Peer Endorser",
+            verificationTier = 3,
+            phoneVerified = true,
+            emailVerified = true,
+            aadhaarVerified = vouch.voucherKycVerified,
+            panVerified = vouch.voucherKycVerified,
+            selfieVerified = true,
+            bankVerified = true,
+            upiVerified = true,
+            ckycVerified = true,
+            onTimeRepaymentRate = 100.0,
+            completedLoansCount = 6,
+            activeLoansCount = 0,
+            defaultCount = 0,
+            vouchesReceivedCount = 21,
+            memberSince = "Member since Aug 2023",
+            employmentStatus = vouch.voucherRole.ifBlank { "Enterprise Peer" },
+            vouchReason = vouch.vouchReason,
+            vouchComment = vouch.comment,
+            phoneMasked = "+91 99•••• 1024",
+            emailMasked = "v•••••@company.in"
+        )
     }
 
     private fun applyFilters(
