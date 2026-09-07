@@ -244,7 +244,7 @@ fun WelcomeOnboardingCarousel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFF0D131F), Color(0xFF06090E))))
+                .background(CanvasPorcelain)
         ) {
             Column(
                 modifier = Modifier
@@ -267,7 +267,8 @@ fun WelcomeOnboardingCarousel(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0xFF1E293B).copy(alpha = 0.8f))
+                            .background(BrandIceBlue)
+                            .border(1.dp, BrandIceBorder, RoundedCornerShape(20.dp))
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Image(
@@ -275,12 +276,12 @@ fun WelcomeOnboardingCarousel(
                             contentDescription = "Loanzo",
                             modifier = Modifier.size(20.dp)
                         )
-                        Text("LOANZO", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
+                        Text("LOANZO", color = BrandRoyalBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
                     }
 
                     // Skip button
                     TextButton(onClick = onSkip) {
-                        Text("Skip ➔", color = Gray400, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text("Skip ➔", color = TextSlateMuted, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     }
                 }
 
@@ -304,9 +305,9 @@ fun WelcomeOnboardingCarousel(
                             modifier = Modifier
                                 .size(280.dp)
                                 .clip(RoundedCornerShape(32.dp))
-                                .background(Brush.radialGradient(listOf(BrandAmberGold.copy(alpha = 0.15f), Color.Transparent)))
-                                .border(1.5.dp, Brush.linearGradient(listOf(BrandAmberGold.copy(alpha = 0.4f), Color.Transparent)), RoundedCornerShape(32.dp))
-                                .padding(12.dp),
+                                .background(Color.White)
+                                .border(1.5.dp, BrandIceBorder, RoundedCornerShape(32.dp))
+                                .padding(8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
@@ -324,12 +325,12 @@ fun WelcomeOnboardingCarousel(
                         // Category Badge
                         Surface(
                             shape = CircleShape,
-                            color = BrandAmberGold.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.3f))
+                            color = BrandGoldLight,
+                            border = BorderStroke(1.dp, BrandGoldBorder)
                         ) {
                             Text(
                                 text = slide.badge,
-                                color = BrandAmberGold,
+                                color = BrandGoldDark,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 1.2.sp,
@@ -345,7 +346,7 @@ fun WelcomeOnboardingCarousel(
                             text = slide.title,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = TextNavyDark,
                             textAlign = TextAlign.Center,
                             fontSize = 22.sp,
                             lineHeight = 28.sp
@@ -356,7 +357,7 @@ fun WelcomeOnboardingCarousel(
                         Text(
                             text = slide.subtitle,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Gray300,
+                            color = TextSlateMedium,
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,
@@ -389,7 +390,7 @@ fun WelcomeOnboardingCarousel(
                                     .height(6.dp)
                                     .width(width)
                                     .clip(CircleShape)
-                                    .background(if (isSelected) BrandAmberGold else Color.White.copy(alpha = 0.2f))
+                                    .background(if (isSelected) BrandAmberGold else Color(0xFFCBD5E1))
                             )
                         }
                     }
@@ -410,8 +411,8 @@ fun WelcomeOnboardingCarousel(
                             .height(54.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = BrandAmberGold,
-                            contentColor = Color(0xFF0F172A)
+                            containerColor = BrandRoyalBlue,
+                            contentColor = Color.White
                         ),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
@@ -867,206 +868,6 @@ private fun QuestStepItem(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Loanzo Academy & Hands-on Interactive Simulator Modal
-// ─────────────────────────────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LoanzoAcademySimulatorSheet(
-    onDismiss: () -> Unit,
-    onNavigateToCreateLoan: () -> Unit = {}
-) {
-    var principal by remember { mutableFloatStateOf(50000f) }
-    var interestRate by remember { mutableFloatStateOf(12f) }
-    var tenureMonths by remember { mutableFloatStateOf(12f) }
-
-    // Live Math Calculation
-    val monthlyRate = (interestRate / 12f) / 100f
-    val n = tenureMonths.toInt()
-    val emi = if (monthlyRate > 0f) {
-        val factor = (1f + monthlyRate).pow(n)
-        (principal * monthlyRate * factor) / (factor - 1f)
-    } else {
-        principal / n
-    }
-    val totalPayable = emi * n
-    val totalInterest = (totalPayable - principal).coerceAtLeast(0f)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF0D131F),
-        tonalElevation = 8.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = BrandAmberGold.copy(alpha = 0.15f),
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("🎓", fontSize = 20.sp)
-                        }
-                    }
-                    Column {
-                        Text("Loanzo Academy", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 18.sp)
-                        Text("Interactive Loan & EMI Simulator", color = Gray400, fontSize = 12.sp)
-                    }
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Gray400)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 3D Visual Banner
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(1.dp, BrandAmberGold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.guide_p2p_handshake),
-                    contentDescription = "P2P Simulator",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.8f), Color.Transparent)))
-                        .padding(16.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth(0.65f)) {
-                        Text("Experiment Live", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Text("Drag sliders to see how interest rate & tenure affect your EMI", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Sliders Section
-            // 1. Amount
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Loan Amount", color = Gray300, fontSize = 13.sp)
-                Text("₹${principal.roundToInt().toString().replace(Regex("(\\d)(?=(\\d{3})+$)"), "$1,")}", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
-            Slider(
-                value = principal,
-                onValueChange = { principal = it },
-                valueRange = 5000f..500000f,
-                steps = 98,
-                colors = SliderDefaults.colors(thumbColor = BrandAmberGold, activeTrackColor = BrandAmberGold)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 2. Interest Rate
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Annual Interest Rate", color = Gray300, fontSize = 13.sp)
-                Text("${interestRate.roundToInt()}% p.a.", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
-            Slider(
-                value = interestRate,
-                onValueChange = { interestRate = it },
-                valueRange = 6f..30f,
-                steps = 23,
-                colors = SliderDefaults.colors(thumbColor = BrandAmberGold, activeTrackColor = BrandAmberGold)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 3. Tenure Months
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Tenure", color = Gray300, fontSize = 13.sp)
-                Text("${n} Months", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
-            Slider(
-                value = tenureMonths,
-                onValueChange = { tenureMonths = it },
-                valueRange = 3f..36f,
-                steps = 32,
-                colors = SliderDefaults.colors(thumbColor = BrandAmberGold, activeTrackColor = BrandAmberGold)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Computed EMI Card
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                color = Color(0xFF162032),
-                border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.4f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Monthly EMI", color = Gray400, fontSize = 12.sp, maxLines = 1, softWrap = false)
-                            Text("₹${emi.roundToInt()}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, softWrap = false)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Surface(shape = CircleShape, color = BrandAmberGold.copy(alpha = 0.2f)) {
-                            Text("Live Calculated", color = BrandAmberGold, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
-                        }
-                    }
-
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 12.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Total Interest", color = Gray400, fontSize = 11.sp, maxLines = 1, softWrap = false)
-                            Text("₹${totalInterest.roundToInt()}", color = BrandAmberGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                        }
-                        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                            Text("Total Payable", color = Gray400, fontSize = 11.sp, maxLines = 1, softWrap = false)
-                            Text("₹${totalPayable.roundToInt()}", color = Emerald400, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Action CTA: Create Real Loan
-            Button(
-                onClick = {
-                    onDismiss()
-                    onNavigateToCreateLoan()
-                },
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color(0xFF0F172A)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-            ) {
-                Text("Start Real Loan with These Terms ➔", fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, softWrap = false)
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // 6. Contextual Guide Card (Floating Mini Helper)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1246,7 +1047,7 @@ fun GuidedTourOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.78f))
+                .background(Color(0xFF0F172A).copy(alpha = 0.55f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -1263,9 +1064,9 @@ fun GuidedTourOverlay(
                         indication = null,
                         onClick = {}
                     ),
-                color = Color(0xFF111827),
-                border = BorderStroke(1.5.dp, BrandAmberGold.copy(alpha = 0.5f)),
-                shadowElevation = 24.dp
+                color = CanvasPorcelain,
+                border = BorderStroke(1.5.dp, BrandIceBorder),
+                shadowElevation = 20.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -1281,48 +1082,53 @@ fun GuidedTourOverlay(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = BrandAmberGold.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.3f))
+                            color = BrandIceBlue,
+                            border = BorderStroke(1.dp, BrandIceBorder)
                         ) {
                             Text(
                                 text = tour.title.uppercase(),
-                                color = BrandAmberGold,
+                                color = BrandRoyalBlue,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 1.sp,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                             )
                         }
 
-                        IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Gray400, modifier = Modifier.size(16.dp))
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSlateMuted, modifier = Modifier.size(18.dp))
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                    // 3D Illustration
+                    // Friendly Cartoon Illustration Container
                     Box(
                         modifier = Modifier
-                            .size(180.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .border(1.dp, BrandAmberGold.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                            .size(190.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(Color.White)
+                            .border(1.5.dp, BrandIceBorder, RoundedCornerShape(28.dp))
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Image(
                             painter = painterResource(step.imageRes),
                             contentDescription = step.title,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(20.dp)),
                             contentScale = ContentScale.Crop
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
                         text = step.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = TextNavyDark,
                         textAlign = TextAlign.Center,
                         fontSize = 18.sp
                     )
@@ -1332,10 +1138,10 @@ fun GuidedTourOverlay(
                     Text(
                         text = step.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Gray300,
+                        color = TextSlateMedium,
                         textAlign = TextAlign.Center,
                         fontSize = 13.sp,
-                        lineHeight = 18.sp
+                        lineHeight = 19.sp
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -1350,24 +1156,25 @@ fun GuidedTourOverlay(
                             OutlinedButton(
                                 onClick = { onBack(currentStep - 1) },
                                 shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, Gray600),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gray300)
+                                border = BorderStroke(1.dp, BrandIceBorder),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandRoyalBlue)
                             ) {
-                                Text("Back", fontSize = 12.sp)
+                                Text("Back", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             }
                         } else {
                             TextButton(onClick = onDismiss) {
-                                Text("Exit Tour", color = Gray400, fontSize = 12.sp)
+                                Text("Exit Tour", color = TextSlateMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             repeat(totalSteps) { idx ->
                                 Box(
                                     modifier = Modifier
-                                        .size(7.dp)
+                                        .height(6.dp)
+                                        .width(if (idx == currentStep) 20.dp else 6.dp)
                                         .clip(CircleShape)
-                                        .background(if (idx == currentStep) BrandAmberGold else Color.White.copy(alpha = 0.2f))
+                                        .background(if (idx == currentStep) BrandRoyalBlue else Color(0xFFCBD5E1))
                                 )
                             }
                         }
@@ -1375,7 +1182,7 @@ fun GuidedTourOverlay(
                         Button(
                             onClick = { if (isLast) onFinish() else onNext(currentStep + 1) },
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color(0xFF0F172A))
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                         ) {
                             Text(if (isLast) "Finish ✓" else "Next ➔", fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
                         }

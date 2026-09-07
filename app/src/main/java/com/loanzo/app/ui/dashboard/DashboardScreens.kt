@@ -1,5 +1,7 @@
 package com.loanzo.app.ui.dashboard
 
+import com.loanzo.app.ui.marketplace.VouchReasonDialog
+
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -56,7 +58,7 @@ fun DashboardScreen(
     onTabSelected: (MarketplaceTabFilter) -> Unit = {},
     onSearchQueryChange: (String) -> Unit = {},
     onCategoryTagSelected: (String) -> Unit = {},
-    onVouchPost: (String) -> Unit = {},
+    onVouchPost: (postId: String, reason: String, note: String) -> Unit = { _, _, _ -> },
     onSubmitBid: (postId: String, amount: Double, rate: Double, tenure: Int, message: String) -> Unit = { _, _, _, _, _ -> },
     onNavigateToCreatePost: (String) -> Unit = {},
     onNavigateToCreateLoan: () -> Unit = {},
@@ -68,13 +70,14 @@ fun DashboardScreen(
     onNavigateToChat: (String) -> Unit = {},
     onNavigateToChatHub: () -> Unit = {},
     onNavigateToKyc: () -> Unit = {},
+    onNavigateToAdminHub: (Int) -> Unit = {},
     onPushDemoData: () -> Unit = {}
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
     var showChatSheet by remember { mutableStateOf(false) }
     var showReportSheet by remember { mutableStateOf(false) }
-    var showAcademySimulator by remember { mutableStateOf(false) }
     var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
+    var postToVouch by remember { mutableStateOf<MarketplacePostEntity?>(null) }
     var selectedVisitForInspection by remember { mutableStateOf<com.loanzo.app.data.entity.AgentVisitEntity?>(null) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -94,6 +97,13 @@ fun DashboardScreen(
     val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
     val agentVisits by (if (state.user != null) agentRepository.getVisitsForAgent(state.user.userId) else kotlinx.coroutines.flow.flowOf(emptyList()))
         .collectAsStateWithLifecycle(initialValue = emptyList())
+    val adminRepository = com.loanzo.app.util.LocalAdminRepository.current
+    val adminComplaints by adminRepository.allComplaints.collectAsStateWithLifecycle(initialValue = emptyList())
+    val adminVaultItems by adminRepository.allVaultItems.collectAsStateWithLifecycle(initialValue = emptyList())
+    val adminVisits by adminRepository.allVisits.collectAsStateWithLifecycle(initialValue = emptyList())
+    val adminNocs by adminRepository.allNocs.collectAsStateWithLifecycle(initialValue = emptyList())
+    val adminMeetings by adminRepository.allMeetings.collectAsStateWithLifecycle(initialValue = emptyList())
+    val adminApplications by adminRepository.allAgentApplications.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -167,15 +177,19 @@ fun DashboardScreen(
                                 shape = RoundedCornerShape(14.dp),
                                 color = BrandAmberGold.copy(alpha = 0.12f),
                                 border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.4f)),
-                                modifier = Modifier.clickable { showAcademySimulator = true }
+                                modifier = Modifier.clickable {
+                                    scope.launch {
+                                        userRepository.setActiveTour(com.loanzo.app.ui.components.AppTours.REQUEST_LOAN, 0)
+                                    }
+                                }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Text("✨", fontSize = 12.sp)
-                                    Text("Academy", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
+                                    Text("🧭", fontSize = 12.sp)
+                                    Text("Guide", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
                                 }
                             }
 
@@ -322,18 +336,18 @@ fun DashboardScreen(
 
                                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
-                                // Option 4: Academy & Live Simulator
+                                // Option 4: Interactive Guide
                                 DropdownMenuItem(
                                     text = {
                                         Column {
                                             Text(
-                                                text = "Loanzo Academy",
+                                                text = "Interactive Guide",
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
-                                                text = "Interactive tutorials & simulators",
+                                                text = "Step-by-step feature walkthrough",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = BrandAmberGold,
                                                 fontSize = 11.sp
@@ -342,7 +356,9 @@ fun DashboardScreen(
                                     },
                                     onClick = {
                                         isMenuExpanded = false
-                                        showAcademySimulator = true
+                                        scope.launch {
+                                            userRepository.setActiveTour(com.loanzo.app.ui.components.AppTours.REQUEST_LOAN, 0)
+                                        }
                                     },
                                     leadingIcon = {
                                         Surface(
@@ -351,7 +367,7 @@ fun DashboardScreen(
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
-                                                Text("🎓", fontSize = 16.sp)
+                                                Text("🧭", fontSize = 16.sp)
                                             }
                                         }
                                     }
@@ -611,13 +627,19 @@ fun DashboardScreen(
             }
         } else if (isAdmin) {
             // ==========================================
-            // 👑 MASTER ADMIN EXECUTIVE HUB CARD
+            // 👑 MASTER ADMIN EXECUTIVE COMMAND CENTER
             // ==========================================
             item {
+                val totalVol = state.totalLentDisbursed + state.totalBorrowedDisbursed
+                val adminVaultTotalValue = remember(adminVaultItems) { adminVaultItems.sumOf { it.estimatedValue } }
+                val unassignedVisitsCount = remember(adminVisits) { adminVisits.count { it.agentId == "UNASSIGNED" } }
+                val pendingDocsCount = remember(adminApplications) { adminApplications.count { it.status == "PENDING" } }
+                val openComplaintsCount = remember(adminComplaints) { adminComplaints.count { it.status == "OPEN" || it.status == "INVESTIGATING" } }
+
                 Card(
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.2.dp, Gold500.copy(alpha = 0.6f)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1E36)),
+                    border = BorderStroke(1.2.dp, Gold500.copy(alpha = 0.7f)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
@@ -631,66 +653,158 @@ fun DashboardScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = Gold500.copy(alpha = 0.15f),
-                                    modifier = Modifier.size(38.dp)
+                                    color = Gold500.copy(alpha = 0.2f),
+                                    border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                                    modifier = Modifier.size(42.dp)
                                 ) {
-                                    Text("👑", fontSize = 20.sp, modifier = Modifier.padding(8.dp))
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("👑", fontSize = 22.sp)
+                                    }
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text("APP OWNER & MASTER ADMIN", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Gold500)
-                                    Text("@${state.user?.username?.ifBlank { "satyam0810" }}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(
+                                        text = "@${state.user?.username?.ifBlank { "satyam0810" }}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text("Institutional Reserve Custodian", fontSize = 10.sp, color = Color(0xFFCBD5E1))
                                 }
                             }
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = Gold500.copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.4f)),
-                                modifier = Modifier.clickable { onNavigateToLoansTab() }
+                                color = Gold500.copy(alpha = 0.2f),
+                                border = BorderStroke(1.dp, Gold500),
+                                modifier = Modifier.clickable { onNavigateToAdminHub(0) }
                             ) {
-                                Text("PLATFORM ACTIVE", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Gold500, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("HUB", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Gold500)
+                                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Gold500, modifier = Modifier.size(12.dp))
+                                }
                             }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        val totalVol = state.totalLentDisbursed + state.totalBorrowedDisbursed
+                        // 3 Institutional Metrics Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                color = Color(0xFF162544),
+                                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.4f)),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("PLATFORM VOL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(totalVol.toInrString(), fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                                    Text("ESCROW VAULT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8))
+                                    Text(
+                                        text = "₹${(adminVaultTotalValue / 100000).formatDecimal(1)}L",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = GoldCoinBright
+                                    )
                                 }
                             }
 
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                color = Color(0xFF162544),
+                                border = BorderStroke(1.dp, Color(0xFF1E3250)),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("ACTIVE LOANS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("${state.loansAsLender.count { it.status == "ACTIVE" } + state.loansAsBorrower.count { it.status == "ACTIVE" }}", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = Emerald500)
+                                    Text("PLATFORM VOL", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8))
+                                    Text(
+                                        text = totalVol.toInrString(),
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
+                                    )
                                 }
                             }
 
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                color = Color(0xFF162544),
+                                border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.4f)),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("ESCROW VAULT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("SECURED 🛡️", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF6366F1), modifier = Modifier.padding(top = 4.dp))
+                                    Text("ACTIVE LOANS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8))
+                                    Text(
+                                        text = "${state.loansAsLender.count { it.status == "ACTIVE" } + state.loansAsBorrower.count { it.status == "ACTIVE" }} Active",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Emerald400
+                                    )
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // 8-Desk Operational Matrix on Dashboard
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "OPERATIONAL COMMAND DESKS",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Gold500,
+                                letterSpacing = 0.5.sp
+                            )
+                            Text(
+                                text = "1-Tap Direct Desk Entry",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Emerald400
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val dashDesks = listOf(
+                            DashboardAdminDesk(0, "Agents", Icons.Default.Groups, "${adminApplications.size} Empaneled", pendingDocsCount, Gold500),
+                            DashboardAdminDesk(1, "KYC Docs", Icons.Default.AssignmentInd, "$pendingDocsCount Pending", pendingDocsCount, if (pendingDocsCount > 0) Gold500 else Emerald400),
+                            DashboardAdminDesk(2, "Dispatch", Icons.Default.NearMe, "$unassignedVisitsCount Unassigned", unassignedVisitsCount, if (unassignedVisitsCount > 0) Color(0xFFF97316) else Emerald400),
+                            DashboardAdminDesk(3, "Vault", Icons.Default.Diamond, "${adminVaultItems.size} Lockers", 0, Emerald400),
+                            DashboardAdminDesk(4, "Grievance", Icons.Default.Gavel, "$openComplaintsCount Open", openComplaintsCount, if (openComplaintsCount > 0) Color(0xFFEF4444) else Emerald400),
+                            DashboardAdminDesk(5, "Legal NOC", Icons.Default.Description, "${adminNocs.size} Certificates", 0, Emerald400),
+                            DashboardAdminDesk(6, "Hearings", Icons.Default.Event, "${adminMeetings.size} Scheduled", 0, Emerald400),
+                            DashboardAdminDesk(7, "SMS Tokens", Icons.Default.Key, "Live Overrule", 0, Emerald400)
+                        )
+
+                        // 4 rows x 2 columns
+                        for (rowIndex in 0 until 4) {
+                            val deskA = dashDesks[rowIndex * 2]
+                            val deskB = dashDesks[rowIndex * 2 + 1]
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                DashboardAdminDeskCard(
+                                    desk = deskA,
+                                    onClick = { onNavigateToAdminHub(deskA.id) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                DashboardAdminDeskCard(
+                                    desk = deskB,
+                                    onClick = { onNavigateToAdminHub(deskB.id) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            if (rowIndex < 3) Spacer(modifier = Modifier.height(6.dp))
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
@@ -702,7 +816,7 @@ fun DashboardScreen(
                         ) {
                             Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Gold500, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Manage Platform Loans & Custody Ledger", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Text("Manage Platform Loans & Custody Ledger", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
@@ -728,7 +842,7 @@ fun DashboardScreen(
                             scope.launch {
                                 userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_CALCULATOR_TRIED)
                             }
-                            showAcademySimulator = true
+                            onNavigateToCalculator()
                         },
                         onVerifyKyc = {
                             onNavigateToKyc()
@@ -1181,10 +1295,22 @@ fun DashboardScreen(
             }
         } else {
             items(marketState.posts, key = { it.postId }) { post ->
+                val isVouched = post.postId in marketState.vouchedPostIds
+                val isSelf = post.authorId == marketState.currentUserId
                 Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
                     SocialPostCard(
                         post = post,
-                        onVouch = { onVouchPost(post.postId) },
+                        isVouched = isVouched,
+                        isSelf = isSelf,
+                        onVouch = {
+                            if (isSelf) {
+                                // Self-post vouch blocked
+                            } else if (isVouched) {
+                                onVouchPost(post.postId, "", "")
+                            } else {
+                                postToVouch = post
+                            }
+                        },
                         onPrimaryAction = { selectedPostForBid = post }
                     )
                 }
@@ -1455,15 +1581,74 @@ fun DashboardScreen(
         }
     }
 
-    // Hands-on Interactive Academy Simulator Sheet
-    if (showAcademySimulator) {
-        LoanzoAcademySimulatorSheet(
-            onDismiss = { showAcademySimulator = false },
-            onNavigateToCreateLoan = {
-                showAcademySimulator = false
-                onNavigateToCreateLoan()
+
+    }
+}
+
+data class DashboardAdminDesk(
+    val id: Int,
+    val title: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val subtitle: String,
+    val alertCount: Int = 0,
+    val alertColor: Color = Color(0xFFEF4444)
+)
+
+@Composable
+private fun DashboardAdminDeskCard(
+    desk: DashboardAdminDesk,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = Color(0xFF162544),
+        border = BorderStroke(1.dp, if (desk.alertCount > 0) desk.alertColor.copy(alpha = 0.5f) else Color(0xFF1E3250)),
+        modifier = modifier.height(54.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFF0F1E36),
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(desk.icon, contentDescription = desk.title, tint = Gold500, modifier = Modifier.size(16.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(desk.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, softWrap = false)
+                    Text(desk.subtitle, fontSize = 9.sp, color = Color(0xFFCBD5E1), maxLines = 1, softWrap = false)
+                }
             }
-        )
+            if (desk.alertCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(desk.alertColor)
+                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = "${desk.alertCount}",
+                        color = if (desk.alertColor == Gold500) Navy900 else Color.White,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+        }
     }
-    }
+}
+
+private fun Double.formatDecimal(decimals: Int): String {
+    return String.format(java.util.Locale.getDefault(), "%.${decimals}f", this)
 }

@@ -86,6 +86,7 @@ object Routes {
     // Feature Routes
     const val FINANCIAL_HEALTH = "financial_health"
     const val APP_OWNER_HUB = "app_owner_hub"
+    fun appOwnerHub(tab: Int = 0) = "$APP_OWNER_HUB?tab=$tab"
 
     fun loanDetail(loanId: String) = "loan_detail/$loanId"
     fun trancheRequest(loanId: String) = "tranche_request/$loanId"
@@ -184,7 +185,7 @@ fun LoanzoNavGraph(
             val warmupCoordinator = com.loanzo.app.util.LocalSplashWarmupCoordinator.current
 
             LaunchedEffect(Unit) {
-                val minSplashDurationMs = 3500L
+                val minSplashDurationMs = 1200L
                 val splashStartTime = System.currentTimeMillis()
 
                 // Simultaneously await 3.5s animation completion and background IO database warmup
@@ -442,7 +443,8 @@ fun LoanzoNavGraph(
 
             LaunchedEffect(authState.registrationSuccess) {
                 if (authState.registrationSuccess) {
-                    navController.navigate(Routes.KYC) {
+                    authViewModel.clearRegistrationSuccess()
+                    navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
@@ -475,6 +477,15 @@ fun LoanzoNavGraph(
                 onNavigateToLogin = { navController.popBackStack() },
                 onClearError = { authViewModel.clearError() }
             )
+
+            LaunchedEffect(authState.passwordResetSuccess) {
+                if (authState.passwordResetSuccess) {
+                    authViewModel.clearPasswordResetSuccess()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            }
         }
 
         composable(Routes.KYC) {
@@ -593,6 +604,11 @@ fun LoanzoNavGraph(
                 application = application,
                 onEnterAgentDashboard = {
                     navController.navigate(Routes.AGENT_MAIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onContinueAsMember = {
+                    navController.navigate(Routes.MAIN) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -951,7 +967,16 @@ fun LoanzoNavGraph(
             )
         }
 
-        composable(Routes.APP_OWNER_HUB) {
+        composable(
+            route = "${Routes.APP_OWNER_HUB}?tab={tab}",
+            arguments = listOf(
+                navArgument("tab") {
+                    type = NavType.IntType
+                    defaultValue = 0
+                }
+            )
+        ) { backStackEntry ->
+            val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
             val context = androidx.compose.ui.platform.LocalContext.current
             val database = remember { com.loanzo.app.di.DatabaseModule.provideDatabase(context) }
             val verifications by database.verificationDao().getAllVerifications()
@@ -998,13 +1023,17 @@ fun LoanzoNavGraph(
                     }
             }
 
+            val allUsers by database.userDao().getAllUsers()
+                .collectAsStateWithLifecycle(initialValue = emptyList())
             val agentApplications by database.agentDao().getAllApplications()
                 .collectAsStateWithLifecycle(initialValue = emptyList())
             val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
 
             com.loanzo.app.ui.admin.AppOwnerVerificationScreen(
+                allUsers = allUsers,
                 verifications = verifications,
                 agentApplications = agentApplications,
+                initialTab = initialTab,
                 onApproveVerification = { token, phone ->
                     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                         database.verificationDao().markAsVerified(token = token, phone = phone)
@@ -1043,6 +1072,36 @@ fun LoanzoNavGraph(
                         agentRepository.rejectApplication(appId, remarks)
                     }
                 },
+                onVerifyUserKyc = { user, approve, notes ->
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        val updated = if (approve) {
+                            user.copy(
+                                kycStatus = "VERIFIED",
+                                aadhaarVerified = true,
+                                panVerified = true,
+                                bankVerified = true,
+                                selfieVerified = true
+                            )
+                        } else {
+                            user.copy(kycStatus = "REJECTED")
+                        }
+                        database.userDao().updateUser(updated)
+                        try {
+                            database.notificationDao().insertNotification(
+                                com.loanzo.app.data.entity.NotificationEntity(
+                                    notificationId = "kyc_notif_" + java.util.UUID.randomUUID().toString().take(8),
+                                    userId = user.userId,
+                                    title = if (approve) "KYC Verification Approved! 🎉" else "KYC Action Required",
+                                    message = if (approve) "Your identity, Aadhaar, PAN, and Bank details have been fully verified by the Master Admin." else "Your KYC requires re-submission: $notes",
+                                    type = "KYC_STATUS",
+                                    timestamp = System.currentTimeMillis(),
+                                    isRead = false,
+                                    actionRoute = "profile"
+                                )
+                            )
+                        } catch (_: Exception) {}
+                    }
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -1053,10 +1112,11 @@ fun LoanzoNavGraph(
 
             com.loanzo.app.ui.marketplace.MarketplaceFeedScreen(
                 state = marketState,
+                viewModel = marketplaceViewModel,
                 onTabSelected = { marketplaceViewModel.setTab(it) },
                 onSearchQueryChange = { marketplaceViewModel.setSearchQuery(it) },
                 onCategoryTagSelected = { marketplaceViewModel.setCategoryTag(it) },
-                onVouchPost = { marketplaceViewModel.vouchForPost(it) },
+                onVouchPost = { postId, reason, note -> marketplaceViewModel.vouchForPost(postId, reason, note) },
                 onSubmitBid = { postId, amount, rate, tenure, msg ->
                     marketplaceViewModel.submitBid(postId, amount, rate, tenure, msg) {}
                 },
@@ -1082,7 +1142,7 @@ fun LoanzoNavGraph(
                 initialMode = mode,
                 isKycCompleted = isKycCompleted,
                 onNavigateToKyc = { navController.navigate(Routes.KYC) },
-                onPublish = { title, desc, postType, min, max, rate, tenure, cat, city, col ->
+                onPublish = { title, desc, postType, min, max, rate, tenure, cat, city, col, coName, coRel ->
                     marketplaceViewModel.publishPost(
                         title = title,
                         description = desc,
@@ -1094,6 +1154,8 @@ fun LoanzoNavGraph(
                         purposeCategory = cat,
                         locationCity = city,
                         collateralOffered = col,
+                        coBorrowerName = coName,
+                        coBorrowerRelationship = coRel,
                         onSuccess = {
                             navController.popBackStack()
                         }
@@ -1407,7 +1469,7 @@ fun MainScaffold(
                     onTabSelected = { marketplaceViewModel.setTab(it) },
                     onSearchQueryChange = { marketplaceViewModel.setSearchQuery(it) },
                     onCategoryTagSelected = { marketplaceViewModel.setCategoryTag(it) },
-                    onVouchPost = { marketplaceViewModel.vouchForPost(it) },
+                    onVouchPost = { postId, reason, note -> marketplaceViewModel.vouchForPost(postId, reason, note) },
                     onSubmitBid = { postId, amount, rate, tenure, msg ->
                         if (isKycCompleted) {
                             marketplaceViewModel.submitBid(postId, amount, rate, tenure, msg) {}
@@ -1445,6 +1507,7 @@ fun MainScaffold(
                     onNavigateToChat = { loanId -> navController.navigate(Routes.chat(loanId)) },
                     onNavigateToChatHub = { navController.navigate(Routes.CHAT_HUB) },
                     onNavigateToKyc = { navController.navigate(Routes.KYC) },
+                    onNavigateToAdminHub = { tabIndex -> navController.navigate(Routes.appOwnerHub(tabIndex)) },
                     onPushDemoData = { authViewModel.pushDemoData() }
                 )
             }
@@ -1558,7 +1621,7 @@ fun MainScaffold(
                     onNavigateToAgent = {
                         if (user?.role == "AGENT" && user?.agentStatus == "APPROVED") {
                             navController.navigate(Routes.AGENT_MAIN)
-                        } else if (user?.role == "AGENT" && user?.agentStatus == "PENDING") {
+                        } else if (user?.agentStatus == "PENDING") {
                             navController.navigate(Routes.AGENT_PENDING_APPROVAL)
                         } else {
                             navController.navigate(Routes.ROLE_SELECTION)

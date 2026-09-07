@@ -53,7 +53,8 @@ fun DocumentInspectionDialog(
                 .fillMaxWidth(0.95f)
                 .fillMaxHeight(0.92f)
                 .clip(RoundedCornerShape(20.dp)),
-            color = MaterialTheme.colorScheme.surface
+            color = Color(0xFF0F1E36),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E3250))
         ) {
             Column(
                 modifier = Modifier
@@ -84,14 +85,14 @@ fun DocumentInspectionDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Bank-Grade Inspector",
-                                color = Gray400,
+                                color = Color(0xFFCBD5E1),
                                 fontSize = 11.sp
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = docTitle,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color.White,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -102,9 +103,9 @@ fun DocumentInspectionDialog(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF1F5F9))
+                            .background(Color(0xFF162544))
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                 }
 
@@ -179,7 +180,8 @@ fun DocumentInspectionDialog(
                 // Metadata Details Card
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF162544)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E3250)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -190,29 +192,29 @@ fun DocumentInspectionDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Applicant Name", color = Gray400, fontSize = 12.sp)
-                            Text(subjectName, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("Applicant Name", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                            Text(subjectName, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Contact Number", color = Gray400, fontSize = 12.sp)
-                            Text(subjectPhone, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Contact Number", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                            Text(subjectPhone, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Document / Certificate #", color = Gray400, fontSize = 12.sp)
+                            Text("Document / Certificate #", color = Color(0xFF94A3B8), fontSize = 12.sp)
                             Text(documentNumber, color = Gold500, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Issuing Authority", color = Gray400, fontSize = 12.sp)
-                            Text(issuingAuthority, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text("Issuing Authority", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                            Text(issuingAuthority, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -222,7 +224,7 @@ fun DocumentInspectionDialog(
                 // Verification Checklist
                 Text(
                     text = "Mandatory Audit Verification Checklist",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = Color.White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -244,8 +246,10 @@ fun DocumentInspectionDialog(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFEF4444),
                             unfocusedBorderColor = Color(0xFFEF4444).copy(alpha = 0.5f),
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedContainerColor = Color(0xFF162544),
+                            unfocusedContainerColor = Color(0xFF162544)
                         )
                     )
                 }
@@ -326,7 +330,7 @@ private fun ChecklistRow(
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = title,
-            color = if (checked) Color.White else Gray400,
+            color = if (checked) Color.White else Color(0xFF94A3B8),
             fontSize = 11.sp,
             fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
         )

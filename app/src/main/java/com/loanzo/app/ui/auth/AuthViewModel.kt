@@ -28,6 +28,7 @@ data class AuthUiState(
     val currentRole: String? = null,
     val error: String? = null,
     val registrationSuccess: Boolean = false,
+    val passwordResetSuccess: Boolean = false,
     val isUserIdVerified: Boolean = false,
     val selectedRole: String = "Member",
     // Verifications
@@ -124,6 +125,7 @@ class AuthViewModel @Inject constructor(
                 isLoading = false,
                 error = null,
                 registrationSuccess = false,
+                passwordResetSuccess = false,
                 isEmailVerified = false,
                 isPhoneVerified = false,
                 isTotpVerified = false,
@@ -142,6 +144,14 @@ class AuthViewModel @Inject constructor(
 
     fun resetUserIdVerification() {
         _uiState.update { it.copy(isUserIdVerified = false, error = null) }
+    }
+
+    fun clearRegistrationSuccess() {
+        _uiState.update { it.copy(registrationSuccess = false) }
+    }
+
+    fun clearPasswordResetSuccess() {
+        _uiState.update { it.copy(passwordResetSuccess = false) }
     }
 
     fun setSelectedLoginRole(role: String) {
@@ -610,16 +620,20 @@ class AuthViewModel @Inject constructor(
                 userRepository.updateUser(updatedUser)
                 firebaseManager.saveUserToFirestore(updatedUser)
                 syncUserOnline(updatedUser)
+                userRepository.clearSession()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
+                        isLoggedIn = false,
+                        currentUserId = null,
                         forgotPasswordStep = 1,
                         resetLoginId = "",
                         resetUserEmail = "",
                         resetUserPhone = "",
                         verified2FAFactors = emptyList(),
                         isEmailVerified = false,
-                        error = "Password reset successful! Please log in."
+                        passwordResetSuccess = true,
+                        error = "Password reset successful! Please log in with your new password."
                     )
                 }
             } else {
@@ -895,7 +909,6 @@ class AuthViewModel @Inject constructor(
 
                 // Save to local Room Database & Cloud Firestore
                 userRepository.createUser(user)
-                userRepository.saveSession(userId, role)
                 
                 // If the user opted in and successfully passed the secure biometric prompt during registration, save it
                 if (enableBiometrics) {
@@ -904,15 +917,19 @@ class AuthViewModel @Inject constructor(
                 
                 syncUserOnline(user)
                 
+                // Clear any prior active session so user logs in explicitly
+                userRepository.clearSession()
+                
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        isLoggedIn = true,
-                        currentUserId = userId,
-                        currentRole = role,
+                        isLoggedIn = false,
+                        currentUserId = null,
+                        currentRole = null,
                         registrationSuccess = true,
-                        kycStep = 1,
-                        kycStatus = "PENDING"
+                        kycStep = 0,
+                        kycStatus = "PENDING",
+                        error = "Registration successful! Please log in with your credentials."
                     )
                 }
             } catch (e: Exception) {
@@ -1210,17 +1227,15 @@ class AuthViewModel @Inject constructor(
                     onSuccess = {
                         viewModelScope.launch {
                             userRepository.saveBiometricEnrollment(user.userId, true)
-                            userRepository.saveSession(user.userId, user.role)
+                            // Do not auto-login; keep user on login page to sign in explicitly
                             syncUserOnline(user)
 
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
-                                    isLoggedIn = true,
-                                    currentUserId = user.userId,
-                                    currentRole = user.role,
-                                    kycStatus = user.kycStatus,
-                                    error = null
+                                    isLoggedIn = false,
+                                    currentUserId = null,
+                                    error = "Biometrics registered successfully! Please log in."
                                 )
                             }
                             onSuccess()

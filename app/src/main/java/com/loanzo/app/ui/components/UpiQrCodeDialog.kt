@@ -1,26 +1,26 @@
 package com.loanzo.app.ui.components
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Payment
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -30,10 +30,6 @@ import com.loanzo.app.util.UpiHelper
 import com.loanzo.app.util.toInrString
 import java.net.URLEncoder
 
-/**
- * Dynamic UPI Scan & Pay QR Code Dialog.
- * Inspired by Revolut, PhonePe & Google Pay P2P settlements.
- */
 @Composable
 fun UpiQrCodeDialog(
     payeeName: String,
@@ -57,8 +53,8 @@ fun UpiQrCodeDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(26.dp),
-            colors = CardDefaults.cardColors(containerColor = Navy800),
-            border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp)
@@ -78,13 +74,13 @@ fun UpiQrCodeDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = CircleShape,
-                            color = Emerald400.copy(alpha = 0.15f),
+                            color = EmeraldLight,
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 Icons.Default.QrCodeScanner,
                                 contentDescription = null,
-                                tint = Emerald400,
+                                tint = Emerald600,
                                 modifier = Modifier.padding(8.dp)
                             )
                         }
@@ -93,11 +89,11 @@ fun UpiQrCodeDialog(
                             text = "Scan & Pay UPI",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Close, "Close", tint = Gray400)
+                        Icon(Icons.Default.Close, "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -107,7 +103,8 @@ fun UpiQrCodeDialog(
                 Surface(
                     shape = RoundedCornerShape(18.dp),
                     color = Color.White,
-                    shadowElevation = 8.dp,
+                    shadowElevation = 6.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BrandIceBorder),
                     modifier = Modifier
                         .size(230.dp)
                         .padding(4.dp)
@@ -133,26 +130,30 @@ fun UpiQrCodeDialog(
                     text = amount.toInrString(),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Gold500
+                    color = BrandAmberGold
                 )
+
+                Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
                     text = "Paying to $payeeName",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Navy900,
-                    modifier = Modifier.padding(top = 4.dp)
+                    color = BrandIceBlue,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BrandIceBorder),
+                    modifier = Modifier.padding(top = 6.dp)
                 ) {
                     Text(
                         text = payeeUpiId,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Gray300,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        color = BrandRoyalBlue,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
 
@@ -189,7 +190,7 @@ fun UpiQrCodeDialog(
                             .weight(1f)
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900)
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald600, contentColor = Color.White)
                     ) {
                         Icon(Icons.Default.Payment, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
@@ -221,11 +222,11 @@ fun UpiQrCodeDialog(
                             .weight(1f)
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
-                        Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp), tint = Color.White)
+                        Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Share Link", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White)
+                        Text("Share Link", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }

@@ -6,6 +6,7 @@ import com.google.firebase.firestore.SetOptions
 import com.loanzo.app.data.dao.MarketplaceDao
 import com.loanzo.app.data.entity.MarketplaceBidEntity
 import com.loanzo.app.data.entity.MarketplacePostEntity
+import com.loanzo.app.data.entity.MarketplaceVouchEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -100,22 +101,76 @@ class MarketplaceRepository @Inject constructor(
     }
 
     /**
-     * Endorses / vouches for a borrower or lender post.
+     * Endorses / vouches for a borrower or lender post with social collateral reasons.
+     * Prevents self-vouching and toggles on/off idempotently (1 vouch per user).
      */
-    suspend fun vouchForPost(postId: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun vouchForPost(
+        postId: String,
+        voucherUserId: String,
+        voucherName: String,
+        reason: String = "COMMERCIAL_PEER",
+        comment: String = ""
+    ): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
-            marketplaceDao.incrementVouchCount(postId)
-            try {
-                firestore.collection(COLLECTION_POSTS)
-                    .document(postId)
-                    .update("vouchCount", com.google.firebase.firestore.FieldValue.increment(1))
-            } catch (e: Exception) {
-                Log.w(TAG, "Firestore update failed for vouch: ${e.message}")
+            val post = marketplaceDao.getPostById(postId)
+            if (post != null && post.authorId == voucherUserId) {
+                return@withContext Result.failure(IllegalStateException("You cannot vouch for your own post."))
             }
-            Result.success(Unit)
+
+            val alreadyVouched = marketplaceDao.hasUserVouched(postId, voucherUserId)
+            if (alreadyVouched) {
+                // Toggle off / un-vouch
+                marketplaceDao.deleteVouch(postId, voucherUserId)
+                marketplaceDao.decrementVouchCount(postId)
+                try {
+                    firestore.collection(COLLECTION_POSTS)
+                        .document(postId)
+                        .update("vouchCount", com.google.firebase.firestore.FieldValue.increment(-1))
+                    firestore.collection(COLLECTION_POSTS)
+                        .document(postId)
+                        .collection("vouches")
+                        .document(voucherUserId)
+                        .delete()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore update failed for un-vouch: ${e.message}")
+                }
+                Result.success(false)
+            } else {
+                val vouch = MarketplaceVouchEntity(
+                    vouchId = java.util.UUID.randomUUID().toString(),
+                    postId = postId,
+                    voucherUserId = voucherUserId,
+                    voucherName = voucherName,
+                    vouchReason = reason,
+                    comment = comment
+                )
+                marketplaceDao.insertVouch(vouch)
+                marketplaceDao.incrementVouchCount(postId)
+                try {
+                    firestore.collection(COLLECTION_POSTS)
+                        .document(postId)
+                        .update("vouchCount", com.google.firebase.firestore.FieldValue.increment(1))
+                    firestore.collection(COLLECTION_POSTS)
+                        .document(postId)
+                        .collection("vouches")
+                        .document(voucherUserId)
+                        .set(vouch)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore update failed for vouch: ${e.message}")
+                }
+                Result.success(true)
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    fun getUserVouchedPostIdsFlow(userId: String): Flow<List<String>> {
+        return marketplaceDao.getUserVouchedPostIdsFlow(userId)
+    }
+
+    fun getVouchesForPostFlow(postId: String): Flow<List<MarketplaceVouchEntity>> {
+        return marketplaceDao.getVouchesForPostFlow(postId)
     }
 
     /**
@@ -170,12 +225,10 @@ class MarketplaceRepository @Inject constructor(
     }
 
     private suspend fun populateSamplePostsIfEmpty() {
-        val count = marketplaceDao.getAllPostsFlow()
-        // We will seed 4 realistic community loan posts
         val samplePosts = listOf(
             MarketplacePostEntity(
                 postId = "sample_post_1",
-                authorId = "community_lender_1",
+                authorId = "demo_vikram_malhotra",
                 authorName = "Vikram Aditya (Angel Investor)",
                 authorAvatarUrl = "",
                 authorKycVerified = true,
@@ -195,12 +248,16 @@ class MarketplaceRepository @Inject constructor(
                 vouchCount = 24,
                 bidsCount = 5,
                 status = "OPEN",
-                createdAt = System.currentTimeMillis() - 3600000 * 4
+                createdAt = System.currentTimeMillis() - 3600000 * 4,
+                coBorrowerName = "",
+                coBorrowerRelationship = "",
+                coBorrowerKycVerified = false,
+                coBorrowerTrustScore = 85
             ),
             MarketplacePostEntity(
                 postId = "sample_post_2",
-                authorId = "community_borrower_1",
-                authorName = "Sneha Patil",
+                authorId = "demo_sneha_roy",
+                authorName = "Sneha Roy",
                 authorAvatarUrl = "",
                 authorKycVerified = true,
                 authorTrustScore = 91,
@@ -219,12 +276,16 @@ class MarketplaceRepository @Inject constructor(
                 vouchCount = 19,
                 bidsCount = 3,
                 status = "OPEN",
-                createdAt = System.currentTimeMillis() - 3600000 * 8
+                createdAt = System.currentTimeMillis() - 3600000 * 8,
+                coBorrowerName = "Dr. Rohan Patil",
+                coBorrowerRelationship = "Spouse (Clinic Partner)",
+                coBorrowerKycVerified = true,
+                coBorrowerTrustScore = 94
             ),
             MarketplacePostEntity(
                 postId = "sample_post_3",
-                authorId = "community_lender_2",
-                authorName = "Rajeshwari Financials",
+                authorId = "demo_rajesh_gupta",
+                authorName = "Rajesh Gupta",
                 authorAvatarUrl = "",
                 authorKycVerified = true,
                 authorTrustScore = 95,
@@ -243,18 +304,22 @@ class MarketplaceRepository @Inject constructor(
                 vouchCount = 32,
                 bidsCount = 8,
                 status = "OPEN",
-                createdAt = System.currentTimeMillis() - 3600000 * 24
+                createdAt = System.currentTimeMillis() - 3600000 * 24,
+                coBorrowerName = "",
+                coBorrowerRelationship = "",
+                coBorrowerKycVerified = false,
+                coBorrowerTrustScore = 85
             ),
             MarketplacePostEntity(
                 postId = "sample_post_4",
-                authorId = "community_borrower_2",
-                authorName = "Arjun Mehra",
+                authorId = "demo_user_arjun",
+                authorName = "Arjun Mehta",
                 authorAvatarUrl = "",
                 authorKycVerified = true,
                 authorTrustScore = 87,
                 postType = "SEEKING_LOAN",
                 title = "Emergency Family Hospitalization Bill",
-                description = "Need urgent assistance to clear father's post-surgery hospital bill before discharge. Employed full-time as senior QA engineer with monthly salary of ₹65,000.",
+                description = "Need urgent assistance to clear father's post-surgery hospital bill before discharge. Employed full-time as senior QA engineer with monthly salary of Rs 65,000.",
                 minAmount = 35000.0,
                 maxAmount = 35000.0,
                 interestRate = 12.0,
@@ -267,9 +332,75 @@ class MarketplaceRepository @Inject constructor(
                 vouchCount = 14,
                 bidsCount = 4,
                 status = "OPEN",
-                createdAt = System.currentTimeMillis() - 3600000 * 32
+                createdAt = System.currentTimeMillis() - 3600000 * 32,
+                coBorrowerName = "Sunita Mehra",
+                coBorrowerRelationship = "Spouse (Co-Signer)",
+                coBorrowerKycVerified = true,
+                coBorrowerTrustScore = 89
             )
         )
         marketplaceDao.insertPosts(samplePosts)
+
+        // Seed initial vibrant vouchers for community posts
+        val sampleVouches = listOf(
+            MarketplaceVouchEntity(
+                vouchId = "vouch_1_1",
+                postId = "sample_post_1",
+                voucherUserId = "demo_lender_priya",
+                voucherName = "Priya Patel",
+                vouchReason = "PAST_REPAYMENT",
+                comment = "Known Vikram for 4 years in Bangalore angel syndicates. Exceptional track record.",
+                voucherKycVerified = true,
+                voucherTrustScore = 96,
+                voucherRole = "P2P Lender & MSME Capital Deployer"
+            ),
+            MarketplaceVouchEntity(
+                vouchId = "vouch_1_2",
+                postId = "sample_post_1",
+                voucherUserId = "demo_amit_verma",
+                voucherName = "Amit Verma",
+                vouchReason = "BUSINESS_PEER",
+                comment = "Highly professional capital deployer. Clear terms, no hidden fees.",
+                voucherKycVerified = true,
+                voucherTrustScore = 93,
+                voucherRole = "MSME Retailer & CNC Operator"
+            ),
+            MarketplaceVouchEntity(
+                vouchId = "vouch_2_1",
+                postId = "sample_post_2",
+                voucherUserId = "demo_coborrower_rohan",
+                voucherName = "Dr. Rohan Patil",
+                vouchReason = "COMMUNITY_REFERENCE",
+                comment = "Dr. Sneha is a respected medical professional in Pune. Clinic serves 40+ patients daily.",
+                voucherKycVerified = true,
+                voucherTrustScore = 97,
+                voucherRole = "Clinic Partner & Co-Borrower"
+            ),
+            MarketplaceVouchEntity(
+                vouchId = "vouch_2_2",
+                postId = "sample_post_2",
+                voucherUserId = "demo_guarantor_nirmala",
+                voucherName = "Nirmala Devi",
+                vouchReason = "PAST_REPAYMENT",
+                comment = "Honored all previous vendor credits on time. Highly recommended borrower.",
+                voucherKycVerified = true,
+                voucherTrustScore = 91,
+                voucherRole = "Guarantor & Community Elder"
+            ),
+            MarketplaceVouchEntity(
+                vouchId = "vouch_4_1",
+                postId = "sample_post_4",
+                voucherUserId = "demo_vikram_malhotra",
+                voucherName = "Vikram Malhotra",
+                vouchReason = "BUSINESS_PEER",
+                comment = "Arjun is a reliable senior colleague at our IT firm. Genuine medical emergency.",
+                voucherKycVerified = true,
+                voucherTrustScore = 92,
+                voucherRole = "VP of Engineering"
+            )
+        )
+        for (v in sampleVouches) {
+            marketplaceDao.insertVouch(v)
+        }
     }
 }

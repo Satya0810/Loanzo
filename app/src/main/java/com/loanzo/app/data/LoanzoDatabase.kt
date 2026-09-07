@@ -26,9 +26,10 @@ import com.loanzo.app.data.entity.*
         MediationMeetingEntity::class,
         CollateralVaultEntity::class,
         NocCertificateEntity::class,
-        VaultDocumentEntity::class
+        VaultDocumentEntity::class,
+        MarketplaceVouchEntity::class
     ],
-    version = 15,
+    version = 18,
     exportSchema = false
 )
 abstract class LoanzoDatabase : RoomDatabase() {

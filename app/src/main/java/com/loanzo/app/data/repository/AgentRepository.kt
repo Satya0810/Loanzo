@@ -2,6 +2,8 @@ package com.loanzo.app.data.repository
 
 import com.loanzo.app.data.dao.AgentDao
 import com.loanzo.app.data.dao.UserDao
+import com.loanzo.app.data.dao.NotificationDao
+import com.loanzo.app.data.entity.NotificationEntity
 import com.loanzo.app.data.entity.AgentApplicationEntity
 import com.loanzo.app.data.entity.AgentVisitEntity
 import kotlinx.coroutines.flow.Flow
@@ -12,7 +14,8 @@ import javax.inject.Singleton
 @Singleton
 class AgentRepository @Inject constructor(
     private val agentDao: AgentDao,
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val notificationDao: NotificationDao
 ) {
 
     // --- Applications ---
@@ -21,9 +24,9 @@ class AgentRepository @Inject constructor(
         agentDao.insertApplication(application)
         val user = userDao.getUserById(application.userId)
         if (user != null) {
+            // Keep user's active role (MEMBER) intact so they never lose progress while application is under review!
             userDao.updateUser(
                 user.copy(
-                    role = "AGENT",
                     agentStatus = "PENDING"
                 )
             )
@@ -64,6 +67,20 @@ class AgentRepository @Inject constructor(
                     isOnDuty = true
                 )
             )
+            try {
+                notificationDao.insertNotification(
+                    NotificationEntity(
+                        notificationId = "notif_agent_appr_" + UUID.randomUUID().toString().take(8),
+                        userId = user.userId,
+                        title = "Agent Empanelment Approved! 🎉",
+                        message = "Congratulations! Your field verification agent credentials have been verified and activated by the Master Admin.",
+                        type = "AGENT_VERIFICATION",
+                        timestamp = System.currentTimeMillis(),
+                        isRead = false,
+                        actionRoute = "agent_main"
+                    )
+                )
+            } catch (_: Exception) {}
         }
 
         // Seed sample visits for this agent if they don't have any

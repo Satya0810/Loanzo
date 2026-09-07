@@ -42,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -145,10 +146,14 @@ fun LoginScreen(
                     )
 
                     AnimatedVisibility(visible = error != null) {
+                        val isSuccess = error?.contains("success", ignoreCase = true) == true ||
+                                        error?.contains("created", ignoreCase = true) == true ||
+                                        error?.contains("registered", ignoreCase = true) == true ||
+                                        error?.contains("linked", ignoreCase = true) == true
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = Red400.copy(alpha = 0.12f),
-                            border = BorderStroke(1.dp, Red400.copy(alpha = 0.3f)),
+                            color = if (isSuccess) Emerald400.copy(alpha = 0.15f) else Red400.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, if (isSuccess) Emerald400.copy(alpha = 0.4f) else Red400.copy(alpha = 0.3f)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 12.dp)
@@ -157,12 +162,18 @@ fun LoginScreen(
                                 modifier = Modifier.padding(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.ErrorOutline, null, tint = Red400, modifier = Modifier.size(18.dp))
+                                Icon(
+                                    imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    tint = if (isSuccess) Emerald400 else Red400,
+                                    modifier = Modifier.size(18.dp)
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = error ?: "",
-                                    color = Red400,
-                                    style = MaterialTheme.typography.bodySmall
+                                    color = if (isSuccess) Emerald400 else Red400,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = if (isSuccess) FontWeight.SemiBold else FontWeight.Normal
                                 )
                             }
                         }
@@ -297,53 +308,7 @@ fun LoginScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Text(
-                            text = "Quick Select Account:",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Gray400,
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
-                        )
-
-                        // Quick Selectable User Accounts with Golden Coin Box Coloring
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val demoAccounts = listOf(
-                                Triple("satyam0810", "👑 satyam0810", "Master Admin"),
-                                Triple("agent_demo", "🕵️ agent_demo", "Field Agent"),
-                                Triple("user_demo", "👤 user_demo", "Member")
-                            )
-                            demoAccounts.forEach { (uName, uLabel, uRole) ->
-                                val isSelected = userId.trim().equals(uName, ignoreCase = true)
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        userId = uName
-                                        userRole = uRole
-                                        onClearError()
-                                    },
-                                    label = {
-                                        Text(
-                                            uLabel,
-                                            fontSize = 11.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = goldFilterChipColors(),
-                                    border = goldFilterChipBorder(isSelected),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
+                        
 
                         // Username Input Field (the option to enter username)
                         OutlinedTextField(
@@ -396,15 +361,33 @@ fun LoginScreen(
                                 onClick = { onBiometricLogin(userId.trim(), userRole.trim()) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(50.dp),
+                                    .heightIn(min = 50.dp),
                                 shape = RoundedCornerShape(14.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 enabled = !isLoading
                             ) {
-                                Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text("Sign in with Biometrics", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Fingerprint,
+                                        contentDescription = "Biometric Login",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Sign in with Fingerprint / Face",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.5.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     } else {
@@ -502,15 +485,33 @@ fun LoginScreen(
                                 onClick = { onBiometricLogin(userId.trim(), userRole.trim()) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(50.dp),
+                                    .heightIn(min = 50.dp),
                                 shape = RoundedCornerShape(14.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 enabled = !isLoading
                             ) {
-                                Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text("Sign in with Biometrics", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Fingerprint,
+                                        contentDescription = "Biometric Login",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Sign in with Fingerprint / Face",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.5.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
 

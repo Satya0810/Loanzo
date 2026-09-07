@@ -3,6 +3,7 @@ package com.loanzo.app.util
 import android.content.Context
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -11,18 +12,21 @@ import androidx.fragment.app.FragmentActivity
 object BiometricAuthManager {
 
     /**
-     * Checks if biometric authentication (fingerprint, face unlock, or device PIN/pattern)
+     * Checks if biometric authentication (fingerprint, face unlock, or device credentials)
      * is supported and currently enrolled on the device.
      */
     fun isBiometricAvailable(context: Context): Boolean {
         return try {
             val biometricManager = BiometricManager.from(context)
-            val authenticators = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-            } else {
-                BIOMETRIC_STRONG
+            val canAuthWeakOrStrong = biometricManager.canAuthenticate(BIOMETRIC_STRONG or BIOMETRIC_WEAK)
+            if (canAuthWeakOrStrong == BiometricManager.BIOMETRIC_SUCCESS) {
+                return true
             }
-            biometricManager.canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                biometricManager.canAuthenticate(BIOMETRIC_STRONG or DEVICE_CREDENTIAL) == BiometricManager.BIOMETRIC_SUCCESS
+            } else {
+                false
+            }
         } catch (_: Throwable) {
             false
         }
@@ -43,12 +47,12 @@ object BiometricAuthManager {
     }
 
     /**
-     * Shows the official Android Biometric Prompt modal (Fingerprint / Face ID / PIN).
+     * Shows the official Android Biometric Prompt modal allowing Fingerprint or Face ID.
      */
     fun authenticate(
         activity: FragmentActivity,
-        title: String = "Biometric Login",
-        subtitle: String = "Verify your identity to sign in to Loanzo",
+        title: String = "Biometric Authentication",
+        subtitle: String = "Verify fingerprint or face to sign in to Loanzo",
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -78,7 +82,9 @@ object BiometricAuthManager {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
-            .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
+            .setDescription("Scan your fingerprint or face to verify identity")
+            .setAllowedAuthenticators(BIOMETRIC_STRONG or BIOMETRIC_WEAK)
+            .setNegativeButtonText("Use Password")
             .build()
 
         val biometricPrompt = BiometricPrompt(activity, executor, callback)

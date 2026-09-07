@@ -12,7 +12,7 @@
 [![Kotlin Version](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Android SDK](https://img.shields.io/badge/Android%20SDK-26%20..%2034-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.09.00-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![Room Database](https://img.shields.io/badge/Room%20DB-v12%20SQLite-00599C.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
+[![Room Database](https://img.shields.io/badge/Room%20DB-v18%20SQLite-00599C.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Dagger Hilt](https://img.shields.io/badge/Dagger%20Hilt-2.51.1-26A69A.svg?style=for-the-badge)](https://dagger.dev/hilt/)
 [![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore%20%7C%20FCM-FFCA28.svg?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
@@ -191,7 +191,7 @@ stateDiagram-v2
 
 ---
 
-## 🗄️ Database Architecture (Room v12)
+## 🗄️ Database Architecture (Room v18)
 
 Loanzo uses an offline-first **Room Database v12** with 13 relational entities ensuring zero data loss even during network disconnections:
 
@@ -278,12 +278,14 @@ classDiagram
 
 All project research, master documentation, system architectural blueprints, and full graphic novel comic books are committed directly to this repository:
 
-| Document / Asset | Format | Size | Description |
+| Document / Asset | Format | Location | Description |
 | :--- | :--- | :--- | :--- |
-
-| **[Loanzo Full Project Report](Loanzo_Full_Project_Report.pdf)** | `PDF` | 5.5 MB | **12-Page Master Technical Engineering Document** covering SRS, IEEE 829 testing strategy, RBAC, Room v12 ERDs, and mathematical models |
-| **[Loanzo Master Presentation](Loanzo_Master_Presentation.pptx)** | `PPTX` | 11.1 MB | **Executive Pitch Deck & System Walkthrough** for investors, bankers, and regulatory reviewers |
-
+| **[Loanzo Full Project Report](docs/reports/Loanzo_Full_Project_Report.pdf)** | `PDF` | `docs/reports/` | **Master Technical Engineering Document** covering SRS, IEEE 829 testing strategy, RBAC, Room v18 ERDs, and mathematical models |
+| **[Loanzo Master Executive Report](docs/reports/LOANZO_MASTER_EXECUTIVE_REPORT.pdf)** | `PDF` | `docs/reports/` | **Executive Pitch Deck & Regulatory System Report** covering multi-asset collateral, verified data sources, RBAC, and FMEA risk matrix |
+| **[Loanzo Master Presentation](docs/reports/Loanzo_Master_Presentation.pptx)** | `PPTX` | `docs/reports/` | **Investor & Institutional Pitch Presentation** for financial institutions and regulatory auditors |
+| **[Loanzo Speaker Pitch & Defense Guide](docs/reports/SPEAKER_PITCH_SCRIPT_AND_DEFENSE_GUIDE.md)** | `Markdown` | `docs/reports/` | **Comprehensive Speaker Pitch Script & System Defense Guide** covering fraud-proof architecture and economic models |
+| **[Loanzo Unified Master Graphic Novel](docs/reports/Loanzo_Unified_Master_Comic_Book.pdf)** | `PDF` | `docs/reports/` | **Complete Graphic Novel Edition** illustrating borrower-lender mechanics, fraud mitigation, and tranche disbursements |
+| **[Loanzo Manga Edition](docs/reports/Loanzo_Manga_Edition.pdf)** | `PDF` | `docs/reports/` | **Manga Narrative** detailing micro-entrepreneurs transitioning to secure institutional P2P finance |
 
 ---
 

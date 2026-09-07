@@ -26,28 +26,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.loanzo.app.data.entity.MarketplacePostEntity
+import com.loanzo.app.data.entity.MarketplaceVouchEntity
 import com.loanzo.app.ui.components.*
 import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.toFormattedString
 import com.loanzo.app.util.toRelativeTime
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
-import com.loanzo.app.ui.components.ContextualGuideCard
 
+/**
+ * P2P Social Community Wall / Feed Screen.
+ *
+ * Displays direct peer lending offers & borrowing requests with trust scores,
+ * verified identities, co-borrower credentials, and social vouches.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MarketplaceFeedScreen(
     state: MarketplaceUiState,
+    viewModel: MarketplaceViewModel? = null,
     onTabSelected: (MarketplaceTabFilter) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onCategoryTagSelected: (String) -> Unit,
-    onVouchPost: (String) -> Unit,
+    onVouchPost: (postId: String, reason: String, note: String) -> Unit,
     onSubmitBid: (postId: String, amount: Double, rate: Double, tenure: Int, message: String) -> Unit,
     onNavigateToCreatePost: (String) -> Unit, // "OFFER_TO_LEND" or "SEEKING_LOAN"
     onNavigateBack: () -> Unit
 ) {
     var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
+    var postToVouch by remember { mutableStateOf<MarketplacePostEntity?>(null) }
+    var activeProfileToView by remember { mutableStateOf<UserProfileViewData?>(null) }
+    var activePostForVouchers by remember { mutableStateOf<MarketplacePostEntity?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
@@ -55,7 +66,7 @@ fun MarketplaceFeedScreen(
         .collectAsStateWithLifecycle(initialValue = true)
     val scope = rememberCoroutineScope()
 
-    val tabs = listOf("All Offers", "💰 Lenders", "🙋 Borrowers", "⭐ My Posts")
+    val tabs = listOf("All Offers", "💼 Lenders", "🤝 Borrowers", "👤 My Posts")
     val selectedTabIndex = when (state.selectedTab) {
         MarketplaceTabFilter.ALL -> 0
         MarketplaceTabFilter.LENDERS -> 1
@@ -75,250 +86,384 @@ fun MarketplaceFeedScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "Community Loan Wall",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Emerald400.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
+                                ) {
+                                    Text(
+                                        "LIVE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Emerald400,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                             Text(
-                                "Community Loan Wall",
+                                "Verified direct P2P lending opportunities",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { onNavigateToCreatePost("SEEKING_LOAN") }) {
+                            Icon(
+                                imageVector = Icons.Default.AddCircleOutline,
+                                contentDescription = "Create Post",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                // Segmented Tabs: All, Lenders, Borrowers, My Posts
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    SegmentedCapsuleTab(
+                        tabs = tabs,
+                        selectedIndex = selectedTabIndex,
+                        onTabSelected = { index ->
+                            val filter = when (index) {
+                                0 -> MarketplaceTabFilter.ALL
+                                1 -> MarketplaceTabFilter.LENDERS
+                                2 -> MarketplaceTabFilter.BORROWERS
+                                3 -> MarketplaceTabFilter.MY_POSTS
+                                else -> MarketplaceTabFilter.ALL
+                            }
+                            onTabSelected(filter)
+                        }
+                    )
+                }
+
+                // Search Bar + Quick Filter Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = state.searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        placeholder = { Text("Search by purpose, city, or name...", fontSize = 13.sp) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        trailingIcon = {
+                            if (state.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { onSearchQueryChange("") }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                    )
+                }
+
+                // Purpose Category Chips (Filter Bar)
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    items(categories) { cat ->
+                        val isSelected = state.selectedCategoryTag.equals(cat, ignoreCase = true)
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onCategoryTagSelected(cat) },
+                            label = {
+                                Text(
+                                    if (cat == "ALL") "All Categories" else "#$cat",
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            colors = goldFilterChipColors(),
+                            border = goldFilterChipBorder(isSelected),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Feed Content List
+                if (state.isLoading && state.posts.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Gold500)
+                    }
+                } else if (state.posts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Outlined.Forum,
+                                contentDescription = null,
+                                tint = Gray500,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "No Community Posts Found",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Emerald400.copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "Be the first to publish a lending offer or post a loan request!",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { onNavigateToCreatePost("OFFER_TO_LEND") },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text(
-                                    "LIVE",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Emerald400,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                                Text("Create a Post", fontWeight = FontWeight.Bold)
                             }
                         }
-                        Text(
-                            "Verified direct P2P lending opportunities",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.sp
-                        )
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        items(state.posts, key = { it.postId }) { post ->
+                            val isVouched = post.postId in state.vouchedPostIds
+                            val isSelf = post.authorId == state.currentUserId
+                            val postVouches = state.vouchesByPost[post.postId] ?: emptyList()
+
+                            SocialPostCard(
+                                post = post,
+                                isVouched = isVouched,
+                                isSelf = isSelf,
+                                vouchers = postVouches,
+                                onAuthorClick = {
+                                    scope.launch {
+                                        activeProfileToView = viewModel?.getAuthorProfile(post) ?: UserProfileViewData(
+                                            userId = post.authorId,
+                                            name = post.authorName,
+                                            roleTitle = if (post.postType == "OFFER_TO_LEND") "CAPITAL PROVIDER (LENDER)" else "PRIMARY BORROWER (LOAN SEEKER)",
+                                            avatarUrl = post.authorAvatarUrl,
+                                            locationCity = post.locationCity.ifBlank { "Bengaluru" },
+                                            trustScore = post.authorTrustScore,
+                                            verificationLevel = if (post.authorKycVerified) "Tier 3: Institutional Gold" else "Tier 2: National ID Verified",
+                                            verificationTier = if (post.authorKycVerified) 3 else 2,
+                                            aadhaarVerified = post.authorKycVerified,
+                                            panVerified = post.authorKycVerified,
+                                            vouchesReceivedCount = post.vouchCount
+                                        )
+                                    }
+                                },
+                                onCoBorrowerClick = {
+                                    activeProfileToView = viewModel?.getCoBorrowerProfile(post) ?: UserProfileViewData(
+                                        userId = "coborrower_${post.postId}",
+                                        name = post.coBorrowerName,
+                                        roleTitle = "CO-BORROWER / GUARANTOR",
+                                        avatarUrl = post.coBorrowerAvatarUrl,
+                                        locationCity = post.locationCity,
+                                        trustScore = post.coBorrowerTrustScore,
+                                        verificationLevel = "Tier 2: National ID & Income Verified",
+                                        verificationTier = 2,
+                                        aadhaarVerified = post.coBorrowerKycVerified,
+                                        panVerified = post.coBorrowerKycVerified,
+                                        relationshipToBorrower = post.coBorrowerRelationship.ifBlank { "Spouse (Co-Signer)" }
+                                    )
+                                },
+                                onVoucherClick = { v ->
+                                    activeProfileToView = viewModel?.getVoucherProfile(v) ?: UserProfileViewData(
+                                        userId = v.voucherUserId,
+                                        name = v.voucherName,
+                                        roleTitle = "COMMUNITY ENDORSER (VOUCHER)",
+                                        avatarUrl = v.voucherAvatarUrl,
+                                        locationCity = "Community Peer",
+                                        trustScore = v.voucherTrustScore,
+                                        verificationLevel = "Tier 3: Verified Peer Endorser",
+                                        verificationTier = 3,
+                                        vouchReason = v.vouchReason,
+                                        vouchComment = v.comment
+                                    )
+                                },
+                                onViewAllVouchersClick = {
+                                    activePostForVouchers = post
+                                },
+                                onVouch = {
+                                    if (isSelf) {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("You cannot vouch for your own post.")
+                                        }
+                                    } else if (isVouched) {
+                                        onVouchPost(post.postId, "", "")
+                                    } else {
+                                        postToVouch = post
+                                    }
+                                },
+                                onPrimaryAction = { selectedPostForBid = post }
+                            )
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { onNavigateToCreatePost("OFFER_TO_LEND") }) {
-                        Icon(
-                            imageVector = Icons.Default.AddCircleOutline,
-                            contentDescription = "Create Post",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                }
+            }
+        }
+
+        // Vouch Reason Selection Dialog
+        postToVouch?.let { post ->
+            VouchReasonDialog(
+                authorName = post.authorName,
+                onDismiss = { postToVouch = null },
+                onConfirmVouch = { reason, note ->
+                    onVouchPost(post.postId, reason, note)
+                    postToVouch = null
+                }
             )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Mode Switcher Tabs
+        }
+
+        // Interactive Bid / Proposal Bottom Sheet
+        selectedPostForBid?.let { post ->
+            BidProposalBottomSheet(
+                post = post,
+                onDismiss = { selectedPostForBid = null },
+                onSubmitBid = { amount, rate, tenure, msg ->
+                    onSubmitBid(post.postId, amount, rate, tenure, msg)
+                    selectedPostForBid = null
+                }
+            )
+        }
+
+        // User Profile Inspection Bottom Sheet (Opened by clicking author, co-borrower, or voucher circular avatar!)
+        activeProfileToView?.let { profile ->
+            UserProfileDetailBottomSheet(
+                profile = profile,
+                onDismiss = { activeProfileToView = null },
+                onConnectClick = {
+                    activeProfileToView = null
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Direct messaging initiated with ${profile.name}")
+                    }
+                }
+            )
+        }
+
+        // Community Endorsements / Vouchers Bottom Sheet
+        activePostForVouchers?.let { post ->
+            PostVouchersBottomSheet(
+                post = post,
+                vouches = state.vouchesByPost[post.postId] ?: emptyList(),
+                onDismiss = { activePostForVouchers = null },
+                onVoucherProfileClick = { voucher ->
+                    activeProfileToView = viewModel?.getVoucherProfile(voucher) ?: UserProfileViewData(
+                        userId = voucher.voucherUserId,
+                        name = voucher.voucherName,
+                        roleTitle = "COMMUNITY ENDORSER (VOUCHER)",
+                        avatarUrl = voucher.voucherAvatarUrl,
+                        locationCity = "Community Peer",
+                        trustScore = voucher.voucherTrustScore,
+                        verificationLevel = "Tier 3: Verified Peer Endorser",
+                        verificationTier = 3,
+                        vouchReason = voucher.vouchReason,
+                        vouchComment = voucher.comment
+                    )
+                }
+            )
+        }
+
+        if (!marketplaceGuideSeen) {
             Box(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                SegmentedCapsuleTab(
-                    tabs = tabs,
-                    selectedIndex = selectedTabIndex,
-                    onTabSelected = { idx ->
-                        val selected = when (idx) {
-                            0 -> MarketplaceTabFilter.ALL
-                            1 -> MarketplaceTabFilter.LENDERS
-                            2 -> MarketplaceTabFilter.BORROWERS
-                            else -> MarketplaceTabFilter.MY_POSTS
+                ContextualGuideCard(
+                    visible = true,
+                    icon = Icons.Default.Storefront,
+                    title = "P2P Lending Marketplace",
+                    body = "Browse verified lender offers, submit bids, or post your own lending offer. Vouch for trusted community posts.",
+                    onDismiss = {
+                        scope.launch {
+                            userRepository.markGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_MARKETPLACE_SEEN)
                         }
-                        onTabSelected(selected)
-                    }
+                    },
+                    autoDismissSeconds = 8
                 )
             }
-
-            // Embedded Search Bar
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = onSearchQueryChange,
-                placeholder = { Text("Search by purpose, name, city (#Medical, #Education)...", fontSize = 13.sp, color = Gray400) },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = Gold500, modifier = Modifier.size(20.dp))
-                },
-                trailingIcon = {
-                    if (state.searchQuery.isNotBlank()) {
-                        IconButton(onClick = { onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = Gray400, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                },
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-
-            // Category Filter Pills
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(categories) { cat ->
-                    val isSelected = state.selectedCategoryTag.equals(cat, ignoreCase = true)
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { onCategoryTagSelected(cat) },
-                        label = {
-                            Text(
-                                if (cat == "ALL") "All Categories" else "#$cat",
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        colors = goldFilterChipColors(),
-                        border = goldFilterChipBorder(isSelected),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Feed Content List
-            if (state.isLoading && state.posts.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Gold500)
-                }
-            } else if (state.posts.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Outlined.Forum,
-                            contentDescription = null,
-                            tint = Gray500,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            "No Community Posts Found",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            "Be the first to publish a lending offer or post a loan request!",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { onNavigateToCreatePost("OFFER_TO_LEND") },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Create a Post", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    items(state.posts, key = { it.postId }) { post ->
-                        SocialPostCard(
-                            post = post,
-                            onVouch = { onVouchPost(post.postId) },
-                            onPrimaryAction = { selectedPostForBid = post }
-                        )
-                    }
-                }
-            }
         }
-    }
-
-    // Interactive Bid / Proposal Bottom Sheet
-    selectedPostForBid?.let { post ->
-        BidProposalBottomSheet(
-            post = post,
-            onDismiss = { selectedPostForBid = null },
-            onSubmitBid = { amount, rate, tenure, msg ->
-                onSubmitBid(post.postId, amount, rate, tenure, msg)
-                selectedPostForBid = null
-            }
-        )
-    }
-
-    if (!marketplaceGuideSeen) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            ContextualGuideCard(
-                visible = true,
-                icon = Icons.Default.Storefront,
-                title = "P2P Lending Marketplace",
-                body = "Browse verified lender offers, submit bids, or post your own lending offer. Vouch for trusted community posts.",
-                onDismiss = {
-                    scope.launch {
-                        userRepository.markGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_MARKETPLACE_SEEN)
-                    }
-                },
-                autoDismissSeconds = 8
-            )
-        }
-    }
     }
 }
 
 /**
- * Rich Social Post Card with Author Header, Verification Badges, Financial Terms, and Social Actions.
+ * Rich Social Post Card with Author Header, Verification Badges, Co-Borrower Support,
+ * Financial Terms, and Clickable Vouch Endorsers.
  */
 @Composable
 fun SocialPostCard(
     post: MarketplacePostEntity,
+    isVouched: Boolean = false,
+    isSelf: Boolean = false,
+    vouchers: List<MarketplaceVouchEntity> = emptyList(),
+    onAuthorClick: () -> Unit = {},
+    onCoBorrowerClick: () -> Unit = {},
+    onVoucherClick: (MarketplaceVouchEntity) -> Unit = {},
+    onViewAllVouchersClick: () -> Unit = {},
     onVouch: () -> Unit,
     onPrimaryAction: () -> Unit
 ) {
@@ -329,47 +474,60 @@ fun SocialPostCard(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header: Author Info + Badges
+            // Header: Author Circular Avatar + Info (Clickable!)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 val authorPhoto = post.authorAvatarUrl.ifBlank { null }
-                if (authorPhoto != null) {
-                    coil.compose.AsyncImage(
-                        model = authorPhoto,
-                        contentDescription = post.authorName,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, accentColor.copy(alpha = 0.5f), CircleShape),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(accentColor.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isLenderOffer) Icons.Default.VolunteerActivism else Icons.Default.AccountBalanceWallet,
-                            contentDescription = null,
-                            tint = accentColor,
-                            modifier = Modifier.size(24.dp)
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .clickable { onAuthorClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (authorPhoto != null) {
+                        AsyncImage(
+                            model = authorPhoto,
+                            contentDescription = post.authorName,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .border(1.5.dp, accentColor.copy(alpha = 0.5f), CircleShape),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(accentColor.copy(alpha = 0.15f))
+                                .border(1.5.dp, accentColor.copy(alpha = 0.4f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isLenderOffer) Icons.Default.VolunteerActivism else Icons.Default.AccountBalanceWallet,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onAuthorClick() }
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = post.authorName,
@@ -432,7 +590,79 @@ fun SocialPostCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // ─────────────────────────────────────────────────────────────────
+            // Co-Borrower Row (if present on seeking loan post)
+            // ─────────────────────────────────────────────────────────────────
+            if (post.coBorrowerName.isNotBlank()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFFAF5FF),
+                    border = BorderStroke(1.dp, Color(0xFFE9D5FF)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onCoBorrowerClick() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Co-Borrower Circular Avatar (Clickable!)
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF3E8FF))
+                                .border(1.2.dp, Color(0xFF9333EA), CircleShape)
+                                .clickable { onCoBorrowerClick() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = post.coBorrowerName.take(2).uppercase(),
+                                color = Color(0xFF7E22CE),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Co-Borrower: ${post.coBorrowerName}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF581C87)
+                                )
+                                if (post.coBorrowerKycVerified) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = "Verified",
+                                        tint = Emerald600,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "${post.coBorrowerRelationship.ifBlank { "Co-Signer" }} • Tier 2 ID Verified • ⭐ ${post.coBorrowerTrustScore}/100",
+                                fontSize = 10.5.sp,
+                                color = Color(0xFF7E22CE)
+                            )
+                        }
+
+                        Text(
+                            text = "View Profile ➔",
+                            color = Color(0xFF9333EA),
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Post Title
             Text(
@@ -473,7 +703,7 @@ fun SocialPostCard(
             Surface(
                 shape = RoundedCornerShape(14.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -546,65 +776,121 @@ fun SocialPostCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Footer: Social Counters + Primary CTA
+            // Footer: Social Counters & Endorsers + Primary CTA
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Vouch counter
-                Surface(
-                    onClick = onVouch,
-                    shape = RoundedCornerShape(10.dp),
-                    color = Red400.copy(alpha = 0.12f)
+                // Vouch Counter & Vouch Clickers Circular Avatars
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    // Vouch Button
+                    Surface(
+                        onClick = onVouch,
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isVouched) Red400.copy(alpha = 0.22f) else Red400.copy(alpha = 0.10f),
+                        border = if (isVouched) BorderStroke(1.dp, Red400.copy(alpha = 0.6f)) else null
                     ) {
-                        Icon(Icons.Default.Favorite, contentDescription = "Vouch", tint = Red400, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            "Vouch (${post.vouchCount})",
-                            color = Red400,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isVouched) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Vouch",
+                                tint = Red400,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isVouched) "Vouched (${post.vouchCount})" else "Vouch (${post.vouchCount})",
+                                color = Red400,
+                                fontSize = 11.sp,
+                                fontWeight = if (isVouched) FontWeight.ExtraBold else FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Vouch Clickers Circular Avatars Stack (Clickable!)
+                    if (vouchers.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onViewAllVouchersClick() }
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        ) {
+                            vouchers.take(3).forEach { v ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .background(EmeraldLight)
+                                        .border(1.dp, Emerald600, CircleShape)
+                                        .clickable { onVoucherClick(v) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = v.voucherName.take(1).uppercase(),
+                                        color = Emerald600,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(3.dp))
+                            }
+                            if (vouchers.size > 3 || post.vouchCount > vouchers.size) {
+                                Text(
+                                    text = "+${maxOf(vouchers.size - 3, post.vouchCount - 3)}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextSlateMedium
+                                )
+                            }
+                        }
                     }
                 }
 
-                // Inquiries / Bids counter
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Blue400.copy(alpha = 0.12f)
+                // Inquiries / Bids counter & Primary Action CTA
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Blue400.copy(alpha = 0.12f)
                     ) {
-                        Icon(Icons.Default.Bolt, contentDescription = "Bids", tint = Blue400, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Bolt, contentDescription = "Bids", tint = Blue400, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                "${post.bidsCount} Offers",
+                                color = Blue400,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Primary CTA Button
+                    Button(
+                        onClick = onPrimaryAction,
+                        colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Navy900),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
                         Text(
-                            "${post.bidsCount} Offers",
-                            color = Blue400,
-                            fontSize = 11.sp,
+                            text = if (isLenderOffer) "Apply Now ➔" else "Fund / Bid ➔",
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
-                }
-
-                // Primary CTA Button
-                Button(
-                    onClick = onPrimaryAction,
-                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Navy900),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = if (isLenderOffer) "Apply Now ➔" else "Fund / Bid ➔",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }

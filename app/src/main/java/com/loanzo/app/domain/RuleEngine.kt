@@ -8,15 +8,21 @@ import javax.inject.Singleton
 /**
  * Loanzo Rule Engine
  *
- * Implements the transparent, rule-based checks from the project spec:
+ * Implements transparent, rule-based checks and statutory compliance validations:
  * - Amount limit validation
  * - Payee verification check
  * - Purpose-payee category consistency
  * - Auto-approval threshold logic
  * - Pattern-based review triggers
+ * - Statutory Usury & State Money Lenders Acts (via CasualLendingGuard)
+ * - Income Tax Act Sections 269SS & 269T cash bars (via DigitalBankingAuditValidator)
+ * - RBI Circular RBI/2023-24/53 banning compound penal interest
  */
 @Singleton
-class RuleEngine @Inject constructor() {
+class RuleEngine @Inject constructor(
+    val casualLendingGuard: CasualLendingGuard,
+    val digitalBankingAuditValidator: DigitalBankingAuditValidator
+) {
 
     companion object {
         /** Default auto-approval threshold in INR */
@@ -64,16 +70,6 @@ class RuleEngine @Inject constructor() {
 
     /**
      * Evaluate a tranche request against the rule engine.
-     *
-     * @param requestedAmount Amount requested in this tranche
-     * @param remainingLimit Remaining sanctioned limit on the loan
-     * @param isPayeeVerified Whether the payee has been verified (UPI name-match / GST)
-     * @param purposeCategory The declared purpose category
-     * @param payeeCategory The payee's business category
-     * @param autoApprovalThreshold Lender-configurable auto-approval threshold
-     * @param previousDisbursementCount Number of prior disbursements on this loan
-     * @param hasPriorMismatches Whether any prior disbursements had mismatches
-     * @return RuleResult indicating the evaluation outcome
      */
     fun evaluate(
         requestedAmount: Double,
@@ -105,7 +101,7 @@ class RuleEngine @Inject constructor() {
         }
         checks.add(amountCheck)
 
-        // Hard block — return immediately
+        // Hard block -> return immediately
         if (!amountCheck.passed) {
             return RuleEvaluation(
                 result = RuleResult.BLOCKED,
@@ -207,7 +203,7 @@ class RuleEngine @Inject constructor() {
             else -> {
                 result = RuleResult.CONSISTENT
                 canAutoApprove = false
-                requiresLenderApproval = true // Above threshold still needs approval
+                requiresLenderApproval = true
             }
         }
 
@@ -217,6 +213,105 @@ class RuleEngine @Inject constructor() {
             requiresLenderApproval = requiresLenderApproval,
             canAutoApprove = canAutoApprove
         )
+    }
+
+    /**
+     * Evaluates full statutory legal compliance for a proposed loan under:
+     * 1. State Money Lenders Acts & G. Pankajakshi Amma doctrine (via CasualLendingGuard)
+     * 2. Income Tax Act 1961 Section 269SS/269T cash limits (via DigitalBankingAuditValidator)
+     * 3. RBI Circular RBI/2023-24/53 banning compounding penalty models
+     */
+    fun evaluateStatutoryCompliance(
+        activeLoansCount: Int,
+        proposedInterestRate: Double,
+        lenderState: String,
+        isInstitutionalLender: Boolean,
+        licenseNumber: String? = null,
+        gstin: String? = null,
+        principalAmount: Double,
+        isCashDisbursement: Boolean,
+        utrNumber: String? = null,
+        penaltyModel: String = "PERCENTAGE"
+    ): List<RuleCheck> {
+        val checks = mutableListOf<RuleCheck>()
+
+        // Check 1: State Usury & Casual Lending Safe Harbor
+        val casualResult = casualLendingGuard.validateLoanTerms(
+            activeLoansCount = activeLoansCount,
+            proposedInterestRate = proposedInterestRate,
+            lenderState = lenderState,
+            isInstitutionalLender = isInstitutionalLender,
+            licenseNumber = licenseNumber,
+            gstin = gstin
+        )
+        if (!casualResult.isAllowed) {
+            checks.add(
+                RuleCheck(
+                    name = "Statutory Usury & Licensing",
+                    passed = false,
+                    message = casualResult.violationReason ?: "Violates State Money Lenders Act usury ceilings",
+                    severity = RuleSeverity.HARD_BLOCK
+                )
+            )
+        } else {
+            checks.add(
+                RuleCheck(
+                    name = "Statutory Usury & Licensing",
+                    passed = true,
+                    message = "Within legal rate cap (${casualResult.maxAllowedRate}%) under State Law",
+                    severity = RuleSeverity.INFO
+                )
+            )
+        }
+
+        // Check 2: Income Tax Act Section 269SS/T (Cash Limit Audit)
+        val taxResult = digitalBankingAuditValidator.auditTransaction(
+            amount = principalAmount,
+            isCash = isCashDisbursement,
+            utrNumber = utrNumber
+        )
+        if (!taxResult.isCompliant) {
+            checks.add(
+                RuleCheck(
+                    name = "Income Tax §269SS/T Compliance",
+                    passed = false,
+                    message = taxResult.advisoryMessage,
+                    severity = if (taxResult.isCashBlocked) RuleSeverity.HARD_BLOCK else RuleSeverity.WARNING
+                )
+            )
+        } else {
+            checks.add(
+                RuleCheck(
+                    name = "Income Tax §269SS/T Compliance",
+                    passed = true,
+                    message = "Compliant with Section 269SS/T digital banking mandate",
+                    severity = RuleSeverity.INFO
+                )
+            )
+        }
+
+        // Check 3: RBI Fair Lending Directive (Prohibition of Compound Penalties)
+        if (penaltyModel.equals("COMPOUND", ignoreCase = true)) {
+            checks.add(
+                RuleCheck(
+                    name = "RBI Fair Lending Penal Charges",
+                    passed = false,
+                    message = "Compounding penal interest is prohibited under RBI Circular RBI/2023-24/53. Only simple interest is permitted.",
+                    severity = RuleSeverity.HARD_BLOCK
+                )
+            )
+        } else {
+            checks.add(
+                RuleCheck(
+                    name = "RBI Fair Lending Penal Charges",
+                    passed = true,
+                    message = "Complies with simple penal interest ceiling under RBI Fair Lending Directions",
+                    severity = RuleSeverity.INFO
+                )
+            )
+        }
+
+        return checks
     }
 
     private fun formatAmount(amount: Double): String {

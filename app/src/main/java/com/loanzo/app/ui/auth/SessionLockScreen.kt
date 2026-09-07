@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -91,15 +93,7 @@ fun SessionLockScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF070F1E),
-                        Color(0xFF0F1B2E),
-                        Color(0xFF050B14)
-                    )
-                )
-            ),
+            .background(CanvasPorcelain),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -107,7 +101,7 @@ fun SessionLockScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 28.dp)
+                .padding(horizontal = 24.dp)
         ) {
             // Glowing Institutional Shield Icon
             Box(
@@ -119,7 +113,7 @@ fun SessionLockScreen(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Gold500.copy(alpha = 0.22f),
+                                GoldCoinBright.copy(alpha = 0.25f),
                                 Color.Transparent
                             )
                         )
@@ -128,15 +122,16 @@ fun SessionLockScreen(
                 Box(
                     modifier = Modifier
                         .size(76.dp)
+                        .shadow(8.dp, CircleShape)
                         .clip(CircleShape)
-                        .background(Color(0xFF13233D))
+                        .background(Color.White)
                         .padding(2.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = "Session Locked",
-                        tint = GoldCoinAmber,
+                        tint = BrandAmberGold,
                         modifier = Modifier.size(38.dp)
                     )
                 }
@@ -149,7 +144,7 @@ fun SessionLockScreen(
                 text = "Session Locked for Security",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = TextNavyDark,
                 textAlign = TextAlign.Center
             )
 
@@ -158,18 +153,19 @@ fun SessionLockScreen(
             Text(
                 text = "Your active banking session was locked after inactivity to safeguard your financial balances and ledger.",
                 fontSize = 13.sp,
-                color = Color(0xFF94A3B8),
+                color = TextSlateMedium,
                 textAlign = TextAlign.Center,
                 lineHeight = 18.sp
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // User Profile Pill
+            // User Profile Card
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF14243B),
-                border = BorderStroke(1.dp, Color(0xFF2A3F60)),
+                color = Color.White,
+                shadowElevation = 2.dp,
+                border = BorderStroke(1.dp, BrandIceBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -180,13 +176,13 @@ fun SessionLockScreen(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(Gold500.copy(alpha = 0.2f)),
+                            .background(BrandIceBlue),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.VerifiedUser,
                             contentDescription = "User Avatar",
-                            tint = GoldCoinAmber,
+                            tint = BrandRoyalBlue,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -198,12 +194,13 @@ fun SessionLockScreen(
                             text = userName.ifBlank { "Verified Member" },
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                            color = TextNavyDark
                         )
                         Text(
                             text = "$userRole • Protected Device",
                             fontSize = 12.sp,
-                            color = Emerald400
+                            fontWeight = FontWeight.Medium,
+                            color = Emerald600
                         )
                     }
                 }
@@ -211,30 +208,39 @@ fun SessionLockScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Primary Unlock CTA: Biometric Quick Unlock
+            // Primary Unlock CTA: Biometric Quick Unlock (Fingerprint / Face)
             Button(
                 onClick = { triggerBiometricPrompt() },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Gold500,
-                    contentColor = Navy900
+                    containerColor = BrandRoyalBlue,
+                    contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Fingerprint,
-                    contentDescription = "Biometrics",
-                    tint = Navy900,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "Quick Unlock with Biometrics",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Fingerprint,
+                        contentDescription = "Biometrics",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Face,
+                        contentDescription = "Face Unlock",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Quick Unlock (Fingerprint / Face)",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -243,9 +249,9 @@ fun SessionLockScreen(
             OutlinedButton(
                 onClick = { showPinDialog = true },
                 shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, Color(0xFF334B6E)),
+                border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color.White
+                    contentColor = TextNavyDark
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -254,7 +260,7 @@ fun SessionLockScreen(
                 Icon(
                     imageVector = Icons.Default.Pin,
                     contentDescription = "App PIN",
-                    tint = Color.White,
+                    tint = TextNavyDark,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -306,7 +312,8 @@ fun SessionLockScreen(
                 Text(
                     text = "Enter Security PIN",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 18.sp,
+                    color = TextNavyDark
                 )
             },
             text = {
@@ -354,14 +361,18 @@ fun SessionLockScreen(
                         } else {
                             pinError = true
                         }
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandRoyalBlue,
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("Unlock")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPinDialog = false }) {
-                    Text("Cancel")
+                    Text("Cancel", color = TextSlateMedium)
                 }
             }
         )

@@ -37,5 +37,12 @@ data class MarketplacePostEntity(
     val vouchCount: Int = 0,
     val bidsCount: Int = 0,
     val status: String = "OPEN", // OPEN, IN_NEGOTIATION, FUNDED, CLOSED
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+
+    // Co-Borrower & Guarantor Support
+    val coBorrowerName: String = "",
+    val coBorrowerRelationship: String = "", // e.g. "Spouse", "Brother", "Business Partner"
+    val coBorrowerAvatarUrl: String = "",
+    val coBorrowerKycVerified: Boolean = false,
+    val coBorrowerTrustScore: Int = 88
 )
