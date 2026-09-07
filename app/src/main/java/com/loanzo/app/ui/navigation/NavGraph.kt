@@ -161,17 +161,28 @@ fun LoanzoNavGraph(
             SplashScreen()
             val userRepository = com.loanzo.app.util.LocalUserRepository.current
 
-            LaunchedEffect(authState.isSessionChecking, authState.isLoggedIn) {
-                if (!authState.isSessionChecking) {
-                    val destination = if (authState.isLoggedIn) {
-                        Routes.MAIN
-                    } else {
-                        Routes.LOGIN
-                    }
-                    navController.navigate(destination) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
-                        launchSingleTop = true
-                    }
+            LaunchedEffect(Unit) {
+                val splashStartTime = System.currentTimeMillis()
+                val minSplashDurationMs = 3500L // Enforce 3.5 seconds persistence for the cinematic logo animation
+
+                val elapsed = System.currentTimeMillis() - splashStartTime
+                if (elapsed < minSplashDurationMs) {
+                    kotlinx.coroutines.delay(minSplashDurationMs - elapsed)
+                }
+
+                // Await session checking resolution
+                while (authState.isSessionChecking) {
+                    kotlinx.coroutines.delay(80)
+                }
+
+                val destination = if (authState.isLoggedIn) {
+                    Routes.MAIN
+                } else {
+                    Routes.LOGIN
+                }
+                navController.navigate(destination) {
+                    popUpTo(Routes.SPLASH) { inclusive = true }
+                    launchSingleTop = true
                 }
             }
         }
