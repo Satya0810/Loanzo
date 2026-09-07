@@ -151,9 +151,9 @@ fun SplashScreen(
     }
 
     val statusText = when (statusStage) {
-        0 -> "Connecting to Decentralized P2P Ledger..."
-        1 -> "Decrypting Hardware Vault & Biometrics..."
-        else -> "✓ Cryptographic Security Clearance Verified"
+        0 -> "Auditing Hardware Cryptographic Signature..."
+        1 -> "Validating Bank-Grade Session Vault & Biometrics..."
+        else -> "Security Clearance Granted — Pre-warmed & Secure"
     }
 
     val statusColor = when (statusStage) {

@@ -1,5 +1,8 @@
 package com.loanzo.app.ui.navigation
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -51,6 +54,7 @@ import com.loanzo.app.util.toDateString
 // Route definitions
 object Routes {
     const val SPLASH = "splash"
+    const val SESSION_LOCK = "session_lock"
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val FORGOT_PASSWORD = "forgot_password"
@@ -119,6 +123,24 @@ fun LoanzoNavGraph(
     authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val sessionManager = com.loanzo.app.util.LocalBankingSessionManager.current
+    val sessionState by sessionManager.sessionState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(sessionState) {
+        if (sessionState == com.loanzo.app.data.session.SessionState.LOCKED) {
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            if (currentRoute != Routes.SPLASH && currentRoute != Routes.LOGIN && currentRoute != Routes.SESSION_LOCK) {
+                navController.navigate(Routes.SESSION_LOCK) {
+                    launchSingleTop = true
+                }
+            }
+        } else if (sessionState == com.loanzo.app.data.session.SessionState.EXPIRED) {
+            authViewModel.logout()
+            navController.navigate(Routes.LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -156,35 +178,80 @@ fun LoanzoNavGraph(
             ) + fadeOut(animationSpec = tween(250))
         }
     ) {
-        // Session Gate / Branded Splash
+        // Session Gate / Branded Splash with Parallel Warmup & Bank-Grade Security
         composable(Routes.SPLASH) {
             SplashScreen()
-            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val warmupCoordinator = com.loanzo.app.util.LocalSplashWarmupCoordinator.current
 
             LaunchedEffect(Unit) {
+                val minSplashDurationMs = 3500L
                 val splashStartTime = System.currentTimeMillis()
-                val minSplashDurationMs = 3500L // Enforce 3.5 seconds persistence for the cinematic logo animation
 
-                val elapsed = System.currentTimeMillis() - splashStartTime
-                if (elapsed < minSplashDurationMs) {
-                    kotlinx.coroutines.delay(minSplashDurationMs - elapsed)
+                // Simultaneously await 3.5s animation completion and background IO database warmup
+                val warmupResult = kotlinx.coroutines.coroutineScope {
+                    val timerDeferred = async {
+                        val elapsed = System.currentTimeMillis() - splashStartTime
+                        if (elapsed < minSplashDurationMs) {
+                            kotlinx.coroutines.delay(minSplashDurationMs - elapsed)
+                        }
+                    }
+
+                    val warmupDeferred = async {
+                        warmupCoordinator.executeParallelWarmup()
+                    }
+
+                    timerDeferred.await()
+                    warmupDeferred.await()
                 }
 
-                // Await session checking resolution
+                // Await session checking resolution in AuthViewModel
                 while (authState.isSessionChecking) {
-                    kotlinx.coroutines.delay(80)
+                    kotlinx.coroutines.delay(40)
                 }
 
-                val destination = if (authState.isLoggedIn) {
+                // Deterministic Atomic Navigation — ZERO layout jump, ZERO flicker
+                val targetDestination = if (warmupResult.isUntrustedDevice) {
+                    Routes.FORGOT_PASSWORD
+                } else if (warmupResult.isSessionLocked) {
+                    Routes.SESSION_LOCK
+                } else if (authState.isLoggedIn) {
                     Routes.MAIN
                 } else {
-                    Routes.LOGIN
+                    warmupResult.targetRoute
                 }
-                navController.navigate(destination) {
+
+                navController.navigate(targetDestination) {
                     popUpTo(Routes.SPLASH) { inclusive = true }
                     launchSingleTop = true
                 }
             }
+        }
+
+        // Bank-Grade Inactivity Quick Unlock Screen
+        composable(Routes.SESSION_LOCK) {
+            val sessionMgr = com.loanzo.app.util.LocalBankingSessionManager.current
+            val userRepo = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepo.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val user by (if (activeUserId.isNotBlank()) userRepo.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            com.loanzo.app.ui.auth.SessionLockScreen(
+                userName = user?.name ?: "Valued Member",
+                userRole = user?.role?.uppercase() ?: "MEMBER",
+                onUnlockSuccess = {
+                    sessionMgr.unlockSession()
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.SESSION_LOCK) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onLogout = {
+                    authViewModel.logout()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         // Auth flow
@@ -450,9 +517,8 @@ fun LoanzoNavGraph(
 
         // Main scaffold with bottom nav (Strictly for Normal Members: Borrowers & Lenders)
         composable(Routes.MAIN) {
-            val userRepository = com.loanzo.app.util.LocalUserRepository.current
-            LaunchedEffect(authState.isLoggedIn) {
-                if (!authState.isLoggedIn) {
+            LaunchedEffect(authState.isSessionChecking, authState.isLoggedIn) {
+                if (!authState.isSessionChecking && !authState.isLoggedIn) {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                         launchSingleTop = true
@@ -1067,8 +1133,10 @@ fun MainScaffold(
     val activeTourStep by userRepository.getActiveTourStep()
         .collectAsStateWithLifecycle(initialValue = 0)
 
-    val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
-    val currentUser by (if (!currentUserId.isNullOrBlank()) userRepository.observeUser(currentUserId!!) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = authState.currentUserId)
+    val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+    val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
     val isKycCompleted = currentUser?.kycStatus == "VERIFIED"
 
     val userRole = currentUser?.role?.uppercase() ?: "USER"

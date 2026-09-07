@@ -21,7 +21,8 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class UserRepository @Inject constructor(
     private val userDao: UserDao,
     private val appSyncManager: AppSyncManager,
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val sessionManager: com.loanzo.app.data.session.BankingSessionManager
 ) {
     companion object {
         private val CURRENT_USER_ID = stringPreferencesKey("current_user_id")
@@ -83,6 +84,7 @@ class UserRepository @Inject constructor(
             prefs[IS_LOGGED_IN] = true
             prefs[USER_ROLE] = role
         }
+        sessionManager.saveSession(userId, role)
     }
 
     suspend fun clearSession() {
@@ -91,6 +93,7 @@ class UserRepository @Inject constructor(
             prefs[IS_LOGGED_IN] = false
             prefs.remove(USER_ROLE)
         }
+        sessionManager.clearSession()
     }
 
     fun getCurrentUserId(): Flow<String?> = context.dataStore.data.map { it[CURRENT_USER_ID] }

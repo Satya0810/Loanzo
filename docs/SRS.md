@@ -138,6 +138,22 @@ Loanzo is a unified Android application where any registered user can act as a L
     - **System Notification**: The highest-priority alert (overdue > deadline) also posts an Android status-bar notification via `NotificationCompat` with a `IMPORTANCE_HIGH` channel.
     - **Computed EMI Fallback**: For loans with no explicit `RepaymentEntity` schedule, the scanner computes the next EMI date from `createdAt + (paidCount + 1) months` and generates deadline/overdue alerts accordingly.
 
+
+### 2.3 Bank-Grade Session Lifecycle & Zero-Glitch Startup Engine
+1. **Parallel 3.5s Logo Warm-Up Pipeline**:
+   - The application enforces a minimum 3.5-second cinematic logo entrance animation on cold start.
+   - During this 3.5-second window, an asynchronous IO pipeline (`SplashWarmupCoordinator`) executes concurrent security audits and cache warming:
+     - **Phase 1 (0–1100ms)**: Hardware device cryptographic signature inspection (`DeviceSecurityHelper.getHardwareDeviceId`). Cross-checks against `UserEntity.registeredDeviceId` to detect hardware mismatch or unauthorized cloning.
+     - **Phase 2 (1100–2200ms)**: Banking session vault & token integrity audit. Evaluates elapsed background time against inactivity thresholds.
+     - **Phase 3 (2200–3500ms)**: Cold-to-hot database priming. Pre-loads user identity (`UserDao`), loan commitments & totals (`LoanDao`), and unread alert counts (`NotificationDao`) into memory.
+     - **Phase 4 (3500ms)**: Deterministic atomic navigation. Dispatches navigation only once both the visual animation and data priming are complete (`awaitAll`), guaranteeing ZERO layout shifts, ZERO spinning loaders, and ZERO mid-flight screen jumps.
+2. **Institutional Session Management (Banking Standard)**:
+   - **Background Inactivity Auto-Lock (3-Minute Grace Window)**: When the app is minimized, a 3-minute grace countdown begins. If the user returns within 3 minutes (e.g. copying an OTP or checking an SMS), the session resumes instantaneously with no interruption or data loss. If minimized for > 3 minutes, the session is non-destructively transitioned to `SessionState.LOCKED`.
+   - **Non-Destructive Quick Unlock Shield (`SessionLockScreen`)**: Returning to a locked session presents the user with a biometric shield (Fingerprint / Face ID) and 4-digit PIN fallback. Upon verification, the user resumes immediately on their active screen with form drafts intact.
+   - **Hard Session Expiration (2-Day / 48-Hour Rule)**: If the app remains inactive for > 2 days (48 hours), the session is cryptographically invalidated. All active tokens are purged (`clearSession()`), requiring a full re-authentication from the login screen.
+   - **Foreground Touch Idle Guard (5 Minutes)**: Inactivity on the device screen while the app is foregrounded triggers an auto-lock after 5 minutes of zero touch interaction.
+   - **Hardware Device Binding Anchor**: Each session is cryptographically anchored to the device hardware UID. Session tokens restored on an unrecognized device immediately trigger an untrusted device grievance workflow.
+
 ## 3. Non-Functional Requirements
 - **Offline-First Resilience**: All core features (Loans, Users, Repayments) are backed by a local Room Database. 
 - **Cloud Synchronization**: A robust `SyncWorker` (via Android WorkManager) handles bidirectional sync with Firebase Firestore, ensuring data is eventually consistent even with poor network conditions.

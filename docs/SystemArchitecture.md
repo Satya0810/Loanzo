@@ -319,3 +319,88 @@ sequenceDiagram
    - Primary Key: `nocId: String`
    - Fields: `loanId`, `borrowerName`, `borrowerId`, `lenderName`, `lenderId`, `totalAmountRepaid`, `loanSettledDate`, `digitalSignatureSha256` (unique 64-char cryptographic verification signature), `certificatePdfUrl`, `status` (`ACTIVE_VALID`, `REVOKED`).
 
+
+## 3. Banking-Grade Session Lifecycle & Zero-Glitch Startup Engine
+
+### 3.1 Overview
+Loanzo integrates an institutional-grade session architecture modeled after Tier-1 banking applications (HDFC Bank, CRED, Revolut, Chase). The architecture guarantees two critical operational invariants:
+1. **Zero-Glitch, Deterministic Cold Launch**: The mandatory 3.5-second cinematic entrance animation is utilized as an active background IO window to pre-warm Room database DAOs, audit device hardware binding, and determine the exact target route before the first non-splash frame renders.
+2. **Non-Destructive Session Guarding**: Multi-tasking users are never penalized with lost form drafts or redundant logins. Short background app switches (< 3 minutes) resume immediately. Extended inactivity (> 3 minutes) engages a secure Biometric/PIN lock. Hard token revocation only occurs after prolonged inactivity (> 2 days / 48 hours).
+
+### 3.2 Startup Parallel Warmup Pipeline Architecture
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant UI as SplashScreen (3.5s Animation)
+    participant Worker as SplashWarmupCoordinator (IO)
+    participant Sec as DeviceSecurityHelper
+    participant Sess as BankingSessionManager
+    participant DB as Room SQLite Memory Cache
+    participant Nav as NavHostController
+
+    User->>UI: Cold Launch Application
+    par Cinematic Animation
+        UI->>UI: Animate dual orbital rings, breathing pulse & aura (3500ms)
+    and Asynchronous IO Warm-Up
+        Worker->>Sec: Extract hardware UID (androidId + hardware signature)
+        Worker->>Sess: Validate device binding against UserEntity.registeredDeviceId
+        alt Device Mismatch
+            Worker-->>Nav: Flag UNTRUSTED_DEVICE -> Route to Security Grievance
+        else Device Valid
+            Worker->>Sess: Evaluate session age & background inactivity
+            alt Inactivity > 2 days
+                Worker->>Sess: Purge session tokens (clearSession)
+                Worker-->>Nav: Flag EXPIRED -> Route to LOGIN
+            else Inactivity >= 3 minutes
+                Worker->>Sess: Flag LOCKED -> Route to SESSION_LOCK
+            else Session Active
+                Worker->>DB: Pre-warm UserDao (Active UserEntity)
+                Worker->>DB: Pre-warm LoanDao (Portfolio totals & commitments)
+                Worker->>DB: Pre-warm NotificationDao (Unread badge counts)
+                Worker-->>Nav: Flag ACTIVE -> Route to MAIN Dashboard
+            end
+        end
+    end
+    UI->>Nav: awaitAll(AnimationTimer, WarmupResult)
+    Nav->>Nav: Single-Shot Atomic Navigation (Zero Flicker / Zero Jump)
+```
+
+### 3.3 Banking Session State Machine
+```mermaid
+stateDiagram-v2
+    [*] --> UNAUTHENTICATED: Fresh Install / No Saved Credentials
+    UNAUTHENTICATED --> ACTIVE: Login / OTP / Registration Success
+
+    state ACTIVE {
+        [*] --> InAppForeground: User Navigating / Transacting
+        InAppForeground --> InAppForeground: Touch Event (Resets 5-min timer)
+        InAppForeground --> AutoLocked: Foreground Idle > 5 Minutes
+    }
+
+    ACTIVE --> BackgroundGrace: User Minimizes / Switches App (e.g. SMS/OTP)
+    
+    state BackgroundGrace {
+        [*] --> TimerRunning: Start Inactivity Countdown (0 to 180s)
+        TimerRunning --> ACTIVE: Return < 3 Minutes (Instant Seamless Resume)
+        TimerRunning --> LOCKED: Return >= 3 Minutes (Inactivity Lock Triggered)
+        TimerRunning --> EXPIRED: Inactive > 2 Days (48 Hours)
+    }
+
+    state LOCKED {
+        [*] --> BiometricPrompt: Display SessionLockScreen
+        BiometricPrompt --> ACTIVE: Fingerprint / Face / 4-Digit PIN Verified
+        BiometricPrompt --> UNAUTHENTICATED: Explicit "Log Out / Switch Account"
+    }
+
+    EXPIRED --> UNAUTHENTICATED: Hard Token Purge -> Redirect to Login Screen
+    ACTIVE --> UNAUTHENTICATED: User Clicks "Sign Out"
+```
+
+### 3.4 Key Invariants & Parameters
+| Parameter | Value | Enforcement Layer | Operational Description |
+| :--- | :--- | :--- | :--- |
+| `MIN_SPLASH_DURATION_MS` | 3,500 ms | `NavGraph.kt` & `SplashScreen.kt` | Enforces complete orbital animation playback while hiding IO warmup latency. |
+| `INACTIVITY_LOCK_TIMEOUT_MS` | 180,000 ms (3 min) | `BankingSessionManager.kt` | Seamless grace window for checking OTPs, SMS, or phone calls without annoying re-auth. |
+| `HARD_EXPIRY_TIMEOUT_MS` | 172,800,000 ms (2 days) | `BankingSessionManager.kt` | Hard invalidation threshold preventing stale credential accumulation. |
+| `FOREGROUND_IDLE_TIMEOUT_MS` | 300,000 ms (5 min) | `MainActivity.kt` & `BankingSessionManager.kt` | Screen-on idle protection against shoulder surfing or unattended unlocked devices. |
