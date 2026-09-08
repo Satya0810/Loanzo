@@ -56,7 +56,7 @@ Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12,
 
 ---
 
-## 🌟 Key Innovations & Core Features
+## 🌟 Key Innovations & Core Feature
 
 ### 1. 🎯 Purpose-Linked Tranche Disbursements
 - Rather than releasing lump-sum cash directly into borrower accounts where funds can be misappropriated, disbursements are released in verified milestones (*Tuition, Hospital Invoices, Raw Materials*).
