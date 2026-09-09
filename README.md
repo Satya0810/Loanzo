@@ -96,7 +96,7 @@ Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12,
 - **Post-KYC Role Partitioning**: Choose between **Normal Member** (borrowing & lending) or apply to become a **Loanzo Certified Agent** (earning ₹500 – ₹1,500/visit).
 - **Bank-Grade Empanelment Form**: Captures verification background, Police Clearance Certificate (PCC) verification, operational territory radius (5 km - 50 km), and vehicle details with a formal legal clean-record declaration.
 - **Master Admin Approval Console**: Direct review queue in the App Owner Hub (`@satyam0810`) with one-tap empanelment approvals, rejections, and automatic visit seeding.
-- **Isolated Field Agent Control Center**: Strict role isolation prevents agent access to consumer borrowing/lending features; provides live on-duty/break toggles, daily earnings meters, categorized visits feeds (*Collateral Assaying, Borrower Residence, Lender Verification*), direct Call/WhatsApp/Maps navigation, and an in-app appraisal checklist with live photo audit capture.
+- **Isolated Field Agent Control Center**: Strict role isolation prevents agent access to consumer borrowing/lending features; provides live on-duty/break toggles, daily earnings meters, categorized visits feeds (*Collateral Assaying, Borrower Residence, Lender Verification*), direct Call/WhatsApp/Maps navigation, and an in-app appraisal checklist with live photo audit capture
 
 ### 9. 🛡️ Multi-Asset Collateral Vault & Escrow Architecture
 Unlike single-asset pawn systems, Loanzo supports **5 distinct collateral categories** tracked in SQLite Room v12 (`CollateralVaultEntity`):
