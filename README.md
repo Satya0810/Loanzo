@@ -38,7 +38,7 @@ Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12,
 
 ---
 
-## 📱 Application Visual Showcase & Screenshots
+## 📱 Application Visual Showcase & Screenshot
 
 <div align="center">
 <p><i>Live production interfaces captured from the Loanzo Android client, demonstrating biometric authentication, peer-to-peer social bidding, legal promissory note execution, and UPI escrow disbursement.</i></p>
