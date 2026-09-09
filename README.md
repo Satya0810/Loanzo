@@ -79,7 +79,7 @@ Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12,
 - **5 Guided Interactive Tours**: Step-by-step walkthroughs (`How to Request a Loan`, `Setting Up Your Profile`, `Using the Marketplace`, `Track Your Loans`, `Document Vault and Security`).
 
 ### 5. 🔐 Zero-Flicker Session Gate & Fluid Transitions
-- **Session Gate**: Eliminates cold-start login flash by evaluating session state inside an ambient breathing-pulse Splash Screen.
+- **Sessions Gate**: Eliminates cold-start login flash by evaluating session state inside an ambient breathing-pulse Splash Screen.
 - **Shared-Axis Horizontal Slide Transitions**: 320ms 25% parallax animations across outer and sub-page navigations.
 - **Predictive Back Navigation**: Native gesture animations enabled via `android:enableOnBackInvokedCallback`.
 
