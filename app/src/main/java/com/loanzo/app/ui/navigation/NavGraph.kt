@@ -1097,10 +1097,24 @@ fun LoanzoNavGraph(
             val targetUserId = backStackEntry.arguments?.getString("targetUserId")
             val effectiveLoanId = if (!loanIdArg.isNullOrBlank()) loanIdArg else if (!channelId.startsWith("direct_") && !channelId.startsWith("support_")) channelId.removePrefix("loan_") else null
 
+            val chatHubEntry = remember(backStackEntry) {
+                try {
+                    navController.getBackStackEntry(Routes.CHAT_HUB)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val chatViewModel: com.loanzo.app.ui.loan.ChatViewModel = if (chatHubEntry != null) {
+                hiltViewModel(chatHubEntry)
+            } else {
+                hiltViewModel()
+            }
+
             com.loanzo.app.ui.loan.ChatScreen(
                 channelId = channelId,
                 loanId = effectiveLoanId,
                 targetUserId = targetUserId,
+                chatViewModel = chatViewModel,
                 onBack = { navController.popBackStack() },
                 onViewLoanAgreement = { lId -> navController.navigate(Routes.agreementSigning(lId)) }
             )

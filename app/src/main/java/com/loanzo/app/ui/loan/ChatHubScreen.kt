@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.loanzo.app.data.entity.UserEntity
 import com.loanzo.app.ui.theme.*
@@ -41,12 +42,28 @@ fun ChatHubScreen(
     onOpenChat: (channelId: String, loanId: String?, targetUserId: String?) -> Unit
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val state by chatViewModel.uiState.collectAsStateWithLifecycle()
     var showNewChatDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentUserId) {
         if (currentUserId.isNotBlank()) {
             chatViewModel.initUser(currentUserId)
+        }
+    }
+
+    // Automatically refresh conversations whenever returning to this screen
+    DisposableEffect(lifecycleOwner, currentUserId) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                if (currentUserId.isNotBlank()) {
+                    chatViewModel.loadUserConversations(currentUserId)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

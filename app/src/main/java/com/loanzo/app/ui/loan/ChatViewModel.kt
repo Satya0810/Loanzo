@@ -1589,9 +1589,51 @@ class ChatViewModel @Inject constructor(
                 )
                 firestore.collection("channels").document(channelId).set(channelDoc).await()
 
+                // Immediately update local conversation summary so ChatHub reflects the new message without latency
+                val now = System.currentTimeMillis()
+                val lastPreview = if (messageType == "PROPOSAL") "Loan Proposal Sent" else text.trim()
+                _uiState.update { currState ->
+                    val currentList = currState.conversations.toMutableList()
+                    val idx = currentList.indexOfFirst { it.channelId == channelId }
+                    if (idx != -1) {
+                        val existing = currentList[idx]
+                        currentList[idx] = existing.copy(
+                            lastMessage = lastPreview,
+                            lastTimestamp = now
+                        )
+                    } else {
+                        val cParty = currState.activeCounterparty
+                        currentList.add(
+                            ChatConversationSummary(
+                                channelId = channelId,
+                                channelType = if (channelId.startsWith("direct_")) "DIRECT" else if (channelId.startsWith("support_")) "SUPPORT" else "LOAN",
+                                targetUserId = cParty?.userId ?: otherId,
+                                targetUserName = cParty?.name ?: cParty?.username ?: "Community Member",
+                                targetUserRole = cParty?.role ?: "MEMBER",
+                                targetUserPhone = cParty?.phone ?: "",
+                                targetUserKycStatus = cParty?.kycStatus ?: "VERIFIED",
+                                loanId = currState.activeLoan?.loanId,
+                                loanTitle = currState.activeLoan?.let { "Loan INR ${it.sanctionedAmount.toInt()} (${it.status})" },
+                                loanPrincipal = currState.activeLoan?.sanctionedAmount ?: 0.0,
+                                lastMessage = lastPreview,
+                                lastTimestamp = now,
+                                unreadCount = 0,
+                                isOnline = true
+                            )
+                        )
+                    }
+                    val sorted = currentList.sortedByDescending { it.lastTimestamp }
+                    currState.copy(
+                        conversations = sorted,
+                        filteredConversations = applyFilterAndSearch(sorted, currState.selectedFilter, currState.searchQuery)
+                    )
+                }
+
                 Log.d(TAG, "Message sent successfully to channel $channelId with participants $allParticipants")
             } catch (e: Exception) {
                 Log.w(TAG, "Cloud send message failed (applying local instant delivery): ${e.message}")
+                val localNow = System.currentTimeMillis()
+                val localPreview = if (messageType == "PROPOSAL") "Loan Proposal Sent" else text.trim()
                 val localMsg = FirestoreChatMessage(
                     messageId = "local_" + java.util.UUID.randomUUID().toString().take(8),
                     channelId = channelId,
@@ -1600,13 +1642,29 @@ class ChatViewModel @Inject constructor(
                     senderRole = role,
                     recipientId = (state.activeCounterparty?.userId ?: ""),
                     text = text.trim(),
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = localNow,
                     isMe = true,
                     status = "SENT",
                     messageType = messageType,
                     metaPayload = metaPayload
                 )
-                _uiState.update { it.copy(messages = it.messages + localMsg) }
+                _uiState.update { currState ->
+                    val currentList = currState.conversations.toMutableList()
+                    val idx = currentList.indexOfFirst { it.channelId == channelId }
+                    if (idx != -1) {
+                        val existing = currentList[idx]
+                        currentList[idx] = existing.copy(
+                            lastMessage = localPreview,
+                            lastTimestamp = localNow
+                        )
+                    }
+                    val sorted = currentList.sortedByDescending { it.lastTimestamp }
+                    currState.copy(
+                        messages = currState.messages + localMsg,
+                        conversations = sorted,
+                        filteredConversations = applyFilterAndSearch(sorted, currState.selectedFilter, currState.searchQuery)
+                    )
+                }
             }
         }
     }
