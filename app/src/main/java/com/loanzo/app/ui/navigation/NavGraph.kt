@@ -1215,6 +1215,15 @@ fun LoanzoNavGraph(
             val agentApplications by database.agentDao().getAllApplications()
                 .collectAsStateWithLifecycle(initialValue = emptyList())
             val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
+            val adminRepository = com.loanzo.app.util.LocalAdminRepository.current
+
+            LaunchedEffect(Unit) {
+                adminRepository.startRealtimeAdminCloudSync(scope)
+                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    adminRepository.refreshAgentApplicationsFromCloud()
+                    adminRepository.refreshUsersFromCloud()
+                }
+            }
 
             com.loanzo.app.ui.admin.AppOwnerVerificationScreen(
                 allUsers = allUsers,

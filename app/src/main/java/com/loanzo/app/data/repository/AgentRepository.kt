@@ -23,7 +23,9 @@ class AgentRepository @Inject constructor(
     private val userDao: UserDao,
     private val notificationDao: NotificationDao,
     private val telegramManager: TelegramManager,
-    private val loanDao: com.loanzo.app.data.dao.LoanDao
+    private val loanDao: com.loanzo.app.data.dao.LoanDao,
+    private val appSyncManager: com.loanzo.app.data.sync.AppSyncManager,
+    private val gson: com.google.gson.Gson
 ) {
 
     // --- Applications ---
@@ -46,10 +48,27 @@ class AgentRepository @Inject constructor(
             firestore.collection("agent_applications")
                 .document(application.applicationId)
                 .set(application)
+                .await()
             firestore.collection("users")
                 .document(application.userId)
                 .update("agentStatus", "PENDING")
-        } catch (_: Exception) {}
+                .await()
+        } catch (e: Exception) {
+            android.util.Log.w("AgentRepository", "Direct Firestore write note: ${e.message}")
+        }
+
+        // Guarantee background sync retry via AppSyncManager
+        try {
+            val payload = gson.toJson(application)
+            appSyncManager.enqueueSync(
+                entityType = "AGENT_APPLICATION",
+                entityId = application.applicationId,
+                operation = "CREATE",
+                payload = payload
+            )
+        } catch (e: Exception) {
+            android.util.Log.w("AgentRepository", "AppSyncManager enqueue note: ${e.message}")
+        }
 
         // 2. Push Admin In-App Notification to Firestore (cloud sync will deliver to Admin device)
         val notifId = "notif_agent_app_" + application.applicationId
@@ -148,6 +167,16 @@ class AgentRepository @Inject constructor(
             FirebaseFirestore.getInstance().collection("agent_applications")
                 .document(applicationId)
                 .set(updatedApp)
+                .await()
+        } catch (_: Exception) {}
+
+        try {
+            appSyncManager.enqueueSync(
+                entityType = "AGENT_APPLICATION",
+                entityId = applicationId,
+                operation = "UPDATE",
+                payload = gson.toJson(updatedApp)
+            )
         } catch (_: Exception) {}
 
         // Elevate user in Firestore directly (guarantees remote applicant gets updated role even if not in admin's local Room)
@@ -198,6 +227,7 @@ class AgentRepository @Inject constructor(
             FirebaseFirestore.getInstance().collection("notifications")
                 .document(notif.notificationId)
                 .set(notif)
+                .await()
         } catch (_: Exception) {}
 
         // Seed sample visits for this agent and push them to Firestore
@@ -229,6 +259,16 @@ class AgentRepository @Inject constructor(
             FirebaseFirestore.getInstance().collection("agent_applications")
                 .document(applicationId)
                 .set(updatedApp)
+                .await()
+        } catch (_: Exception) {}
+
+        try {
+            appSyncManager.enqueueSync(
+                entityType = "AGENT_APPLICATION",
+                entityId = applicationId,
+                operation = "UPDATE",
+                payload = gson.toJson(updatedApp)
+            )
         } catch (_: Exception) {}
 
         // Update user status in Firestore directly

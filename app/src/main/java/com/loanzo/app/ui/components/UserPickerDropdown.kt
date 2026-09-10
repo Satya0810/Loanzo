@@ -182,14 +182,25 @@ fun UserPickerDropdown(
     label: String = "Select User",
     placeholder: String = "Search or scroll down to pick member...",
     preferredRole: String? = null,
-    candidateUsers: List<UserEntity> = emptyList()
+    candidateUsers: List<UserEntity> = emptyList(),
+    onSearchOnline: (suspend (String) -> List<UserEntity>)? = null
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedRoleFilter by remember { mutableStateOf(preferredRole ?: "ALL") }
+    var onlineUsers by remember { mutableStateOf<List<UserEntity>>(emptyList()) }
 
-    val allUsers = remember(candidateUsers) {
-        val merged = (candidateUsers + DEFAULT_DEMO_CANDIDATE_USERS).distinctBy { it.userId }
+    LaunchedEffect(searchQuery) {
+        val q = searchQuery.trim().removePrefix("@")
+        if (q.length >= 2 && onSearchOnline != null) {
+            try {
+                onlineUsers = onSearchOnline(q)
+            } catch (_: Exception) {}
+        }
+    }
+
+    val allUsers = remember(candidateUsers, onlineUsers) {
+        val merged = (candidateUsers + onlineUsers + DEFAULT_DEMO_CANDIDATE_USERS).distinctBy { it.userId }
         merged
     }
 

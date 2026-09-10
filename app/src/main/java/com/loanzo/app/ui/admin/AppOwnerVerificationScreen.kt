@@ -95,9 +95,14 @@ fun AppOwnerVerificationScreen(
     val unassignedVisits = remember(allVisits) { allVisits.filter { it.agentId == "UNASSIGNED" || it.agentId.isBlank() } }
     val crossVerificationVisits = remember(allVisits) { allVisits.filter { it.isCrossVerification } }
 
-    // Seed sample data on first entry
+    // Seed sample data and start real-time cloud sync on first entry
     LaunchedEffect(Unit) {
         adminRepository.seedSampleAdminDataIfEmpty()
+        adminRepository.startRealtimeAdminCloudSync(scope)
+        scope.launch(Dispatchers.IO) {
+            adminRepository.refreshAgentApplicationsFromCloud()
+            adminRepository.refreshUsersFromCloud()
+        }
     }
 
     // Active Tab state:
@@ -168,6 +173,38 @@ fun AppOwnerVerificationScreen(
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A))
+                            }
+                        },
+                        actions = {
+                            var isSyncingCloud by remember { mutableStateOf(false) }
+                            IconButton(
+                                onClick = {
+                                    if (!isSyncingCloud) {
+                                        isSyncingCloud = true
+                                        scope.launch(Dispatchers.IO) {
+                                            try {
+                                                adminRepository.startRealtimeAdminCloudSync(scope)
+                                                adminRepository.refreshAgentApplicationsFromCloud()
+                                                adminRepository.refreshUsersFromCloud()
+                                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                                    Toast.makeText(context, "Cloud sync complete: Applications & users up-to-date", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } catch (e: Exception) {
+                                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                                    Toast.makeText(context, "Sync failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } finally {
+                                                isSyncingCloud = false
+                                            }
+                                        }
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = "Sync Cloud Data",
+                                    tint = Color(0xFF0F172A)
+                                )
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -284,7 +321,15 @@ fun AppOwnerVerificationScreen(
                             )
                         },
                         onSuspend = { agentId -> scope.launch(Dispatchers.IO) { adminRepository.suspendAgent(agentId, "Admin suspension") } },
-                        onReactivate = { agentId -> scope.launch(Dispatchers.IO) { adminRepository.reactivateAgent(agentId) } }
+                        onReactivate = { agentId -> scope.launch(Dispatchers.IO) { adminRepository.reactivateAgent(agentId) } },
+                        onRefreshCloud = {
+                            scope.launch(Dispatchers.IO) {
+                                adminRepository.refreshAgentApplicationsFromCloud()
+                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "Agent applications refreshed from cloud", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     )
                     2 -> DocumentKycTab(
                         pendingUsers = allUsers.filter {
@@ -1537,7 +1582,8 @@ private fun AgentsTab(
     onReject: (String, String) -> Unit,
     onInspectDoc: (AgentApplicationEntity) -> Unit,
     onSuspend: (String) -> Unit,
-    onReactivate: (String) -> Unit
+    onReactivate: (String) -> Unit,
+    onRefreshCloud: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     var selectedFilter by remember { mutableStateOf("ALL") } // ALL, PENDING, APPROVED
@@ -1587,11 +1633,28 @@ private fun AgentsTab(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             FilterChipItem("All Agents (${agents.size})", selectedFilter == "ALL") { selectedFilter = "ALL" }
             FilterChipItem("Pending (${agents.count { it.status == "PENDING" }})", selectedFilter == "PENDING") { selectedFilter = "PENDING" }
             FilterChipItem("Empaneled (${agents.count { it.status == "APPROVED" }})", selectedFilter == "APPROVED") { selectedFilter = "APPROVED" }
             FilterChipItem("Suspended (${agents.count { it.status == "SUSPENDED" }})", selectedFilter == "SUSPENDED") { selectedFilter = "SUSPENDED" }
+
+            if (onRefreshCloud != null) {
+                Button(
+                    onClick = onRefreshCloud,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Sync from Cloud", modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Sync Cloud", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))

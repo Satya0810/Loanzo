@@ -19,6 +19,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -580,5 +586,158 @@ class UserRepository @Inject constructor(
                 isOwnProfile = (user.userId == getCurrentUserIdSync())
             )
         }
+    }
+
+    /**
+     * Cross-device online user search:
+     * Searches both local Room SQLite and Cloud Firestore (by userId, username, phone, email, and name).
+     * Automatically syncs discovered remote users into local Room SQLite.
+     */
+    suspend fun searchUsersOnline(query: String): List<UserEntity> = withContext(Dispatchers.IO) {
+        val cleanQuery = query.trim().removePrefix("@")
+        if (cleanQuery.isBlank()) return@withContext emptyList()
+
+        // 1. Fetch local Room matches
+        val localMatches = userDao.searchUsers(cleanQuery).firstOrNull() ?: emptyList()
+
+        // 2. Query Firestore Cloud
+        val remoteMatches = mutableListOf<UserEntity>()
+        try {
+            val firestore = FirebaseFirestore.getInstance()
+            val usersRef = firestore.collection("users")
+
+            // Lookup by exact userId doc
+            val docSnap = usersRef.document(cleanQuery).get().await()
+            if (docSnap.exists()) {
+                parseUserFromFirestoreDoc(docSnap.data, docSnap.id)?.let { remoteMatches.add(it) }
+            }
+
+            // Query by username (exact and lowercase)
+            val byUsername = usersRef.whereEqualTo("username", cleanQuery.lowercase()).limit(5).get().await()
+            for (doc in byUsername.documents) {
+                parseUserFromFirestoreDoc(doc.data, doc.id)?.let { remoteMatches.add(it) }
+            }
+
+            // Query by phone
+            val cleanPhone = cleanQuery.replace(" ", "").replace("-", "")
+            if (cleanPhone.length >= 6) {
+                val byPhone = usersRef.whereEqualTo("phone", cleanPhone).limit(5).get().await()
+                for (doc in byPhone.documents) {
+                    parseUserFromFirestoreDoc(doc.data, doc.id)?.let { remoteMatches.add(it) }
+                }
+                if (!cleanPhone.startsWith("+91")) {
+                    val byPhoneWithPrefix = usersRef.whereEqualTo("phone", "+91$cleanPhone").limit(5).get().await()
+                    for (doc in byPhoneWithPrefix.documents) {
+                        parseUserFromFirestoreDoc(doc.data, doc.id)?.let { remoteMatches.add(it) }
+                    }
+                }
+            }
+
+            // Query by email
+            if (cleanQuery.contains("@")) {
+                val byEmail = usersRef.whereEqualTo("email", cleanQuery.lowercase()).limit(5).get().await()
+                for (doc in byEmail.documents) {
+                    parseUserFromFirestoreDoc(doc.data, doc.id)?.let { remoteMatches.add(it) }
+                }
+            }
+
+            // Cache discovered remote users into local Room DB
+            for (u in remoteMatches) {
+                val existing = userDao.getUserById(u.userId)
+                if (existing == null) {
+                    userDao.insertUser(u)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("UserRepository", "Cloud user search note: ${e.message}")
+        }
+
+        // Merge, deduplicate, and sanitize
+        (localMatches + remoteMatches)
+            .distinctBy { it.userId }
+            .map { sanitizeUserRole(it) }
+    }
+
+    /**
+     * Resolves a user by ID from local database or Cloud Firestore, ensuring cross-device consistency.
+     */
+    suspend fun syncUserById(userId: String): UserEntity? = withContext(Dispatchers.IO) {
+        if (userId.isBlank()) return@withContext null
+        var user = getUserById(userId)
+        if (user != null) return@withContext user
+
+        try {
+            val firestore = FirebaseFirestore.getInstance()
+            val doc = firestore.collection("users").document(userId).get().await()
+            if (doc.exists()) {
+                val remoteUser = parseUserFromFirestoreDoc(doc.data, doc.id)
+                if (remoteUser != null) {
+                    userDao.insertUser(remoteUser)
+                    return@withContext sanitizeUserRole(remoteUser)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("UserRepository", "syncUserById error: ${e.message}")
+        }
+        null
+    }
+
+    private fun parseUserFromFirestoreDoc(data: Map<String, Any>?, fallbackId: String): UserEntity? {
+        if (data == null) return null
+        val userId = (data["userId"] as? String)?.ifBlank { null } ?: fallbackId
+        val name = (data["name"] as? String) ?: "User"
+        val email = (data["email"] as? String) ?: ""
+        val phone = (data["phone"] as? String) ?: ""
+        val password = (data["password"] as? String) ?: ""
+        val username = (data["username"] as? String) ?: ""
+        val role = (data["role"] as? String) ?: "BORROWER"
+        val kycStatus = (data["kycStatus"] as? String) ?: "PENDING"
+        val panNumber = (data["panNumber"] as? String) ?: ""
+        val aadhaarNumber = (data["aadhaarNumber"] as? String) ?: ""
+        val emailVerified = (data["emailVerified"] as? Boolean) ?: false
+        val phoneVerified = (data["phoneVerified"] as? Boolean) ?: false
+        val panVerified = (data["panVerified"] as? Boolean) ?: false
+        val aadhaarVerified = (data["aadhaarVerified"] as? Boolean) ?: false
+        val selfieVerified = (data["selfieVerified"] as? Boolean) ?: false
+        val upiId = (data["upiId"] as? String) ?: ""
+        val bankAccountNumber = (data["bankAccountNumber"] as? String) ?: ""
+        val profilePhotoUri = (data["profilePhotoUri"] as? String) ?: ""
+        val panImageUrl = (data["panImageUrl"] as? String) ?: ""
+        val aadhaarImageUrl = (data["aadhaarImageUrl"] as? String) ?: ""
+        val dateOfBirth = (data["dateOfBirth"] as? String) ?: ""
+        val address = (data["address"] as? String) ?: ""
+        val fcmToken = (data["fcmToken"] as? String) ?: ""
+        val createdAt = when (val c = data["createdAt"]) {
+            is Timestamp -> c.toDate().time
+            is Number -> c.toLong()
+            else -> System.currentTimeMillis()
+        }
+
+        return UserEntity(
+            userId = userId,
+            name = name,
+            email = email,
+            phone = phone,
+            username = username,
+            password = password,
+            role = role,
+            kycStatus = kycStatus,
+            panNumber = panNumber,
+            aadhaarNumber = aadhaarNumber,
+            emailVerified = emailVerified,
+            phoneVerified = phoneVerified,
+            panVerified = panVerified,
+            aadhaarVerified = aadhaarVerified,
+            selfieVerified = selfieVerified,
+            upiId = upiId,
+            bankAccountNumber = bankAccountNumber,
+            profilePhotoUri = profilePhotoUri,
+            panImageUrl = panImageUrl,
+            aadhaarImageUrl = aadhaarImageUrl,
+            dateOfBirth = dateOfBirth,
+            address = address,
+            fcmToken = fcmToken,
+            createdAt = createdAt
+        )
     }
 }

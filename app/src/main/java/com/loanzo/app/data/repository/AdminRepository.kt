@@ -38,6 +38,8 @@ class AdminRepository @Inject constructor(
     private val telegramManager: TelegramManager
 ) {
 
+    private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
+
     val allComplaints: Flow<List<ComplaintEntity>> = complaintDao.getAllComplaints()
     val allMeetings: Flow<List<MediationMeetingEntity>> = mediationMeetingDao.getAllMeetings()
     val upcomingMeetings: Flow<List<MediationMeetingEntity>> = mediationMeetingDao.getUpcomingMeetings()
@@ -1382,5 +1384,47 @@ class AdminRepository @Inject constructor(
                 null
             }
         }
+    }
+
+    suspend fun refreshAgentApplicationsFromCloud(): List<AgentApplicationEntity> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val list = mutableListOf<AgentApplicationEntity>()
+        try {
+            val snapshot = firestore.collection("agent_applications").get().await()
+            for (doc in snapshot.documents) {
+                val app = doc.toAgentApplication()
+                if (app != null && app.applicationId.isNotBlank()) {
+                    agentDao.insertApplication(app)
+                    list.add(app)
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("AdminRepository", "refreshAgentApplicationsFromCloud error: ${e.message}")
+        }
+        list
+    }
+
+    suspend fun refreshUsersFromCloud(): List<UserEntity> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val list = mutableListOf<UserEntity>()
+        try {
+            val snapshot = firestore.collection("users").get().await()
+            for (doc in snapshot.documents) {
+                val u = doc.toSafeUserEntity()
+                if (u != null && u.userId.isNotBlank()) {
+                    val existing = userDao.getUserById(u.userId)
+                    if (existing == null) {
+                        userDao.insertUser(u)
+                    } else {
+                        val merged = u.copy(
+                            role = if (existing.role == "ADMIN") "ADMIN" else u.role
+                        )
+                        userDao.updateUser(merged)
+                    }
+                    list.add(u)
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("AdminRepository", "refreshUsersFromCloud error: ${e.message}")
+        }
+        list
     }
 }

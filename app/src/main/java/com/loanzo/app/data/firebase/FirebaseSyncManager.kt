@@ -54,6 +54,8 @@ class FirebaseSyncManager @Inject constructor(
             "PLEDGE" -> "pledges"
             "USER" -> "users"
             "AGREEMENT" -> "agreements"
+            "AGENT_APPLICATION" -> "agent_applications"
+            "VERIFICATION" -> "verifications"
             else -> entityType.lowercase() + "s"
         }
     }

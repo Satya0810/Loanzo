@@ -284,6 +284,7 @@ private fun AddGuarantorDialog(
     onDismiss: () -> Unit,
     onAdd: (name: String, phone: String, email: String, pan: String, relationship: String) -> Unit
 ) {
+    val userRepository = com.loanzo.app.util.LocalUserRepository.current
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -316,7 +317,8 @@ private fun AddGuarantorDialog(
                     label = "Pick Registered Member (Auto-Fill)",
                     placeholder = "Select @dr_rohan_patil, @nirmala_devi...",
                     preferredRole = "BORROWER",
-                    candidateUsers = com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS
+                    candidateUsers = com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS,
+                    onSearchOnline = { query -> userRepository.searchUsersOnline(query) }
                 )
 
                 OutlinedTextField(

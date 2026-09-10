@@ -111,6 +111,7 @@ fun CreateMarketplacePostScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val userRepository = com.loanzo.app.util.LocalUserRepository.current
 
     var postType by remember { mutableStateOf(if (initialMode == "SEEKING_LOAN") "SEEKING_LOAN" else "OFFER_TO_LEND") }
     val isLenderOffer = postType == "OFFER_TO_LEND"
@@ -857,7 +858,8 @@ fun CreateMarketplacePostScreen(
                             label = "Pick Registered Co-Borrower (Optional)",
                             placeholder = "Search @username or name e.g. Dr. Rohan Patil...",
                             preferredRole = "BORROWER",
-                            candidateUsers = DEFAULT_DEMO_CANDIDATE_USERS
+                            candidateUsers = DEFAULT_DEMO_CANDIDATE_USERS,
+                            onSearchOnline = { query -> userRepository.searchUsersOnline(query) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(

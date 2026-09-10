@@ -279,6 +279,7 @@ fun ReportActionBottomSheet(
 ) {
     val context = LocalContext.current
     val adminRepository = com.loanzo.app.util.LocalAdminRepository.current
+    val userRepository = com.loanzo.app.util.LocalUserRepository.current
     val coroutineScope = rememberCoroutineScope()
     var targetPerson by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Default / Non-Payment") }
@@ -417,7 +418,8 @@ fun ReportActionBottomSheet(
                     targetPerson = if (user.userId.isNotBlank()) user.name.ifBlank { user.username.ifBlank { user.userId } } else ""
                 },
                 label = "Target Member to Report",
-                placeholder = "Scroll down to select or search user..."
+                placeholder = "Scroll down to select or search user...",
+                onSearchOnline = { query -> userRepository.searchUsersOnline(query) }
             )
 
             Spacer(modifier = Modifier.height(16.dp))

@@ -1219,7 +1219,7 @@ class ChatViewModel @Inject constructor(
                 val (partnerRole, timeOffset) = meta
                 if (partnerId != userId) {
                     val partnerUser = userDao.getUserById(partnerId)
-                    val chId = "direct_${userId}_${partnerId}"
+                    val chId = getDirectChannelId(userId, partnerId)
                     list.add(
                         ChatConversationSummary(
                             channelId = chId,
@@ -1279,7 +1279,9 @@ class ChatViewModel @Inject constructor(
                             } else {
                                 val participants = doc.get("participants") as? List<*> ?: emptyList<Any>()
                                 val otherUserId = participants.mapNotNull { it?.toString() }.firstOrNull { it != userId } ?: ""
-                                val otherUser = if (otherUserId.isNotBlank()) userDao.getUserById(otherUserId) else null
+                                val otherUser = if (otherUserId.isNotBlank()) {
+                                    userDao.getUserById(otherUserId) ?: userRepository.syncUserById(otherUserId)
+                                } else null
                                 currentList.add(
                                     ChatConversationSummary(
                                         channelId = chId,
@@ -1370,7 +1372,7 @@ class ChatViewModel @Inject constructor(
         }
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isSearchingUsers = true) }
-            val roomUsers = userDao.searchUsers(cleanQuery).firstOrNull() ?: emptyList()
+            val onlineAndLocalUsers = userRepository.searchUsersOnline(cleanQuery)
             val me = _uiState.value.currentUserId
 
             // Also search DEFAULT_DEMO_CANDIDATE_USERS so any search matches immediately
@@ -1382,7 +1384,7 @@ class ChatViewModel @Inject constructor(
                 user.email.lowercase().contains(cleanQuery)
             }
 
-            val merged = (roomUsers + demoMatches)
+            val merged = (onlineAndLocalUsers + demoMatches)
                 .distinctBy { it.userId }
                 .filter { it.userId != me }
 
@@ -1428,14 +1430,14 @@ class ChatViewModel @Inject constructor(
             } else null
 
             val counterparty = if (!targetUserId.isNullOrBlank()) {
-                userDao.getUserById(targetUserId)
+                userDao.getUserById(targetUserId) ?: userRepository.syncUserById(targetUserId)
             } else if (loan != null) {
                 val cId = if (loan.lenderId == resolvedUserId) loan.borrowerId else loan.lenderId
-                userDao.getUserById(cId)
+                userDao.getUserById(cId) ?: userRepository.syncUserById(cId)
             } else if (channelId.startsWith("direct_")) {
                 val parts = channelId.removePrefix("direct_").split("_")
                 val otherId = parts.firstOrNull { it != resolvedUserId } ?: parts.lastOrNull() ?: ""
-                if (otherId.isNotBlank()) userDao.getUserById(otherId) else null
+                if (otherId.isNotBlank()) userDao.getUserById(otherId) ?: userRepository.syncUserById(otherId) else null
             } else null
 
             _uiState.update {
@@ -1449,21 +1451,24 @@ class ChatViewModel @Inject constructor(
             }
         }
 
-        // Connect real-time Firestore listener
-        val isLegacyLoan = !channelId.startsWith("direct_") && !channelId.startsWith("support_")
-        val collectionRef = if (isLegacyLoan && loanId != null) {
-            firestore.collection("loans").document(loanId).collection("chat")
-        } else {
-            firestore.collection("channels").document(channelId).collection("messages")
-        }
+        val isDemoChannel = channelId.contains("demo", ignoreCase = true) ||
+                channelId.contains("mock", ignoreCase = true) ||
+                channelId == "general" || channelId == "support"
+
+        // Connect real-time Firestore listener to canonical channels/{channelId}/messages
+        val collectionRef = firestore.collection("channels").document(channelId).collection("messages")
 
         activeChatListener = collectionRef
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e(TAG, "Chat listener error (using local demo fallback)", error)
-                    val fallback = DemoChatMessages.getDemoMessagesForChannel(channelId, userId, _uiState.value.activeCounterparty?.name ?: "Member")
-                    _uiState.update { it.copy(isLoading = false, messages = fallback) }
+                    Log.e(TAG, "Chat listener error (channel: $channelId)", error)
+                    if (isDemoChannel) {
+                        val fallback = DemoChatMessages.getDemoMessagesForChannel(channelId, userId, _uiState.value.activeCounterparty?.name ?: "Member")
+                        _uiState.update { it.copy(isLoading = false, messages = fallback) }
+                    } else {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
                     return@addSnapshotListener
                 }
 
@@ -1494,7 +1499,7 @@ class ChatViewModel @Inject constructor(
                     )
                 } ?: emptyList()
 
-                val finalMessages = if (messages.isEmpty()) {
+                val finalMessages = if (messages.isEmpty() && isDemoChannel) {
                     DemoChatMessages.getDemoMessagesForChannel(channelId, userId, _uiState.value.activeCounterparty?.name ?: "Member")
                 } else {
                     messages
@@ -1555,12 +1560,16 @@ class ChatViewModel @Inject constructor(
                     "metaPayload" to metaPayload
                 )
 
-                // Write message
-                val isLegacyLoan = !channelId.startsWith("direct_") && !channelId.startsWith("support_")
-                if (isLegacyLoan && state.activeLoan != null) {
-                    firestore.collection("loans").document(state.activeLoan.loanId).collection("chat").add(messageData).await()
-                } else {
-                    firestore.collection("channels").document(channelId).collection("messages").add(messageData).await()
+                // Write message to canonical channels collection
+                firestore.collection("channels").document(channelId).collection("messages").add(messageData).await()
+
+                // If active loan exists, mirror to loans/{loanId}/chat for backwards compatibility
+                if (state.activeLoan != null) {
+                    try {
+                        firestore.collection("loans").document(state.activeLoan.loanId).collection("chat").add(messageData).await()
+                    } catch (mirrorErr: Exception) {
+                        Log.d(TAG, "Loan mirror chat note: ${mirrorErr.message}")
+                    }
                 }
 
                 // Update channel metadata with both participants guaranteed
@@ -1571,6 +1580,8 @@ class ChatViewModel @Inject constructor(
 
                 val channelDoc = hashMapOf(
                     "channelId" to channelId,
+                    "channelType" to (if (channelId.startsWith("direct_")) "DIRECT" else "LOAN"),
+                    "loanId" to (state.activeLoan?.loanId ?: (if (channelId.startsWith("loan_")) channelId.removePrefix("loan_") else null)),
                     "lastMessage" to (if (messageType == "PROPOSAL") "Loan Proposal Sent" else text.trim()),
                     "lastTimestamp" to System.currentTimeMillis(),
                     "lastSenderId" to userId,

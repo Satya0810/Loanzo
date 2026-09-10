@@ -62,6 +62,7 @@ fun CreateLoanScreen(
     registeredUsers: List<com.loanzo.app.data.entity.UserEntity> = emptyList(),
     onNavigateToCreatePost: ((String) -> Unit)? = null
 ) {
+    val userRepository = com.loanzo.app.util.LocalUserRepository.current
     var counterpartyUserId by remember { mutableStateOf("") }
     var coBorrowerUserId by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("50000") }
@@ -331,7 +332,8 @@ fun CreateLoanScreen(
                     label = if (isGrantMode) "Select Borrower (Scroll Down or Search)" else "Select Lender (Scroll Down or Search)",
                     placeholder = if (isGrantMode) "Search name, @username, or scroll down..." else "Search name, @username, or scroll down...",
                     preferredRole = if (isGrantMode) "BORROWER" else "LENDER",
-                    candidateUsers = registeredUsers
+                    candidateUsers = registeredUsers,
+                    onSearchOnline = { query -> userRepository.searchUsersOnline(query) }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -570,7 +572,8 @@ fun CreateLoanScreen(
                     label = "Select Co-Borrower or Guarantor",
                     placeholder = "Pick registered member (e.g. @dr_rohan_patil, @nirmala_devi)...",
                     preferredRole = "BORROWER",
-                    candidateUsers = allCandidateUsers
+                    candidateUsers = allCandidateUsers,
+                    onSearchOnline = { query -> userRepository.searchUsersOnline(query) }
                 )
 
                 if (coBorrowerUserId.isNotBlank()) {
