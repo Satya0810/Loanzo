@@ -50,6 +50,14 @@ android {
         resources.excludes.add("META-INF/notice.txt")
         resources.excludes.add("META-INF/ASL2.0")
         resources.excludes.add("META-INF/*.kotlin_module") 
+        resources.excludes.add("META-INF/LICENSE.md")
+        resources.excludes.add("META-INF/LICENSE-notice.md")
+    }
+    @Suppress("UnstableApiUsage")
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
     }
 }
 
@@ -122,4 +130,40 @@ dependencies {
     // OTPless
     implementation("io.github.otpless-tech:otpless-android-sdk:2.1.8")
 
+    // Google ML Kit On-Device Translation (downloads word/model files & translates internally)
+    implementation("com.google.mlkit:translate:17.0.3")
+
+    // ── Unit Tests (JVM) ──
+    testImplementation(libs.junit5.api)
+    testRuntimeOnly(libs.junit5.engine)
+    testImplementation(libs.junit5.params)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.truth)
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.hilt.android.testing)
+    testImplementation(libs.androidx.test.core)
+    kspTest(libs.hilt.android.compiler)
+
+    // ── Compose UI Tests (Device/Emulator) ──
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
+
+    // ── Instrumented Tests (Device/Emulator) ──
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.uiautomator)
+    androidTestImplementation(libs.mockk.android)
+    androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation(libs.androidx.test.runner)
+    kspAndroidTest(libs.hilt.android.compiler)
+    androidTestImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.turbine)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+
+    // ── Debug Tools ──
+    debugImplementation(libs.leakcanary)
 }

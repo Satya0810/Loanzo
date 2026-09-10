@@ -22,6 +22,17 @@ okhttp = "4.12.0"
 truecaller = "3.3.0"
 biometric = "1.2.0-alpha05"
 playServicesAuth = "21.3.0"
+# Testing
+junit5 = "5.10.2"
+mockk = "1.13.12"
+turbine = "1.2.0"
+truth = "1.4.4"
+robolectric = "4.14.1"
+espressoCore = "3.6.1"
+uiAutomator = "2.3.0"
+leakcanary = "2.14"
+androidxTestCore = "1.6.1"
+androidxTestRunner = "1.6.2"
 
 [libraries]
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
@@ -60,6 +71,31 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database" 
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 truecaller-sdk = { group = "com.truecaller.android.sdk", name = "truecaller-sdk", version.ref = "truecaller" }
+# Testing - Unit Tests (JVM)
+junit5-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit5" }
+junit5-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit5" }
+junit5-params = { group = "org.junit.jupiter", name = "junit-jupiter-params", version.ref = "junit5" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
+androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "roomRuntime" }
+# Testing - Compose UI Tests
+androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+# Testing - Integration
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hiltAndroid" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "workRuntimeKtx" }
+androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+# Testing - Instrumented / E2E
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiAutomator" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
+# Debug Tools
+leakcanary = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
