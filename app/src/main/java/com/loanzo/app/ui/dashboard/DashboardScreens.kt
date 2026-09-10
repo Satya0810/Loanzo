@@ -1,5 +1,6 @@
 package com.loanzo.app.ui.dashboard
 
+import com.loanzo.app.util.isSuperAdmin
 import com.loanzo.app.ui.marketplace.VouchReasonDialog
 
 import androidx.compose.animation.*
@@ -71,6 +72,8 @@ fun DashboardScreen(
     onNavigateToChatHub: () -> Unit = {},
     onNavigateToKyc: () -> Unit = {},
     onNavigateToAdminHub: (Int) -> Unit = {},
+    onNavigateToSupport: () -> Unit = {},
+    onNavigateToUserProfile: (String) -> Unit = {},
     onPushDemoData: () -> Unit = {}
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
@@ -104,6 +107,7 @@ fun DashboardScreen(
     val adminNocs by adminRepository.allNocs.collectAsStateWithLifecycle(initialValue = emptyList())
     val adminMeetings by adminRepository.allMeetings.collectAsStateWithLifecycle(initialValue = emptyList())
     val adminApplications by adminRepository.allAgentApplications.collectAsStateWithLifecycle(initialValue = emptyList())
+    val adminRequests by adminRepository.allAdminRequests.collectAsStateWithLifecycle(initialValue = emptyList())
 
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -152,8 +156,9 @@ fun DashboardScreen(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
+                                val displayName = state.user?.name?.trim()?.split(" ")?.firstOrNull()?.takeIf { it.isNotBlank() }
                                 Text(
-                                    text = "Hello, ${state.user?.name?.split(" ")?.firstOrNull() ?: "User"} 👋",
+                                    text = if (displayName != null) stringResource(R.string.hello_user, displayName) else stringResource(R.string.welcome_to_loanzo),
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onBackground,
@@ -162,7 +167,7 @@ fun DashboardScreen(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    text = "Welcome to Loanzo",
+                                    text = stringResource(R.string.welcome_to_loanzo),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -189,7 +194,7 @@ fun DashboardScreen(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Text("🧭", fontSize = 12.sp)
-                                    Text("Guide", color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
+                                    Text(stringResource(R.string.guide), color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
                                 }
                             }
 
@@ -221,13 +226,13 @@ fun DashboardScreen(
                                     text = {
                                         Column {
                                             Text(
-                                                text = "Chat",
+                                                text = stringResource(R.string.chat),
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
-                                                text = "Direct messages & bot",
+                                                text = stringResource(R.string.chat_subtitle),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 fontSize = 11.sp
@@ -261,13 +266,13 @@ fun DashboardScreen(
                                     text = {
                                         Column {
                                             Text(
-                                                text = "Report",
+                                                text = stringResource(R.string.report),
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
-                                                text = "Take action on anyone",
+                                                text = stringResource(R.string.report_subtitle),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = Red400,
                                                 fontSize = 11.sp
@@ -301,13 +306,13 @@ fun DashboardScreen(
                                     text = {
                                         Column {
                                             Text(
-                                                text = "Simulator",
+                                                text = stringResource(R.string.simulator),
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
-                                                text = "Loan & EMI calculator",
+                                                text = stringResource(R.string.simulator_subtitle),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = Emerald400,
                                                 fontSize = 11.sp
@@ -341,13 +346,13 @@ fun DashboardScreen(
                                     text = {
                                         Column {
                                             Text(
-                                                text = "Interactive Guide",
+                                                text = stringResource(R.string.interactive_guide),
                                                 fontWeight = FontWeight.Bold,
                                                 color = MaterialTheme.colorScheme.onSurface,
                                                 fontSize = 14.sp
                                             )
                                             Text(
-                                                text = "Step-by-step feature walkthrough",
+                                                text = stringResource(R.string.guide_subtitle),
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = BrandAmberGold,
                                                 fontSize = 11.sp
@@ -372,6 +377,46 @@ fun DashboardScreen(
                                         }
                                     }
                                 )
+
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+
+                                // Option 5: Help & Support
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(
+                                                text = stringResource(R.string.help_support),
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                fontSize = 14.sp
+                                            )
+                                            Text(
+                                                text = stringResource(R.string.support_subtitle),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = BrandSapphire,
+                                                fontSize = 11.sp
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        isMenuExpanded = false
+                                        onNavigateToSupport()
+                                    },
+                                    leadingIcon = {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = BrandIceBlue,
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.SupportAgent,
+                                                contentDescription = "Help & Support",
+                                                tint = BrandRoyalBlue,
+                                                modifier = Modifier.padding(7.dp)
+                                            )
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
@@ -381,8 +426,8 @@ fun DashboardScreen(
     }
 
         val userRole = state.user?.role?.uppercase() ?: "USER"
-        val isAgent = userRole == "AGENT" && state.user?.agentStatus == "APPROVED"
-        val isAdmin = userRole == "ADMIN" || com.loanzo.app.util.VerificationManager.isAppOwner(state.user)
+        val isAgent = com.loanzo.app.util.VerificationManager.isFieldAgent(state.user)
+        val isAdmin = com.loanzo.app.util.VerificationManager.isAppOwner(state.user)
 
         if (isAgent) {
             // ==========================================
@@ -446,7 +491,7 @@ fun DashboardScreen(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (isOnDuty) "ON DUTY" else "OFF DUTY",
+                                        text = if (isOnDuty) stringResource(R.string.on_duty) else stringResource(R.string.off_duty),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isOnDuty) Emerald500 else TextSlateMuted
@@ -632,14 +677,14 @@ fun DashboardScreen(
             item {
                 val totalVol = state.totalLentDisbursed + state.totalBorrowedDisbursed
                 val adminVaultTotalValue = remember(adminVaultItems) { adminVaultItems.sumOf { it.estimatedValue } }
-                val unassignedVisitsCount = remember(adminVisits) { adminVisits.count { it.agentId == "UNASSIGNED" } }
+                val unassignedVisitsCount = remember(adminVisits) { adminVisits.count { it.agentId == "UNASSIGNED" || it.agentId.isBlank() } }
                 val pendingDocsCount = remember(adminApplications) { adminApplications.count { it.status == "PENDING" } }
                 val openComplaintsCount = remember(adminComplaints) { adminComplaints.count { it.status == "OPEN" || it.status == "INVESTIGATING" } }
 
                 Card(
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1E36)),
-                    border = BorderStroke(1.2.dp, Gold500.copy(alpha = 0.7f)),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
@@ -653,7 +698,7 @@ fun DashboardScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = Gold500.copy(alpha = 0.2f),
+                                    color = Gold500.copy(alpha = 0.15f),
                                     border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
                                     modifier = Modifier.size(42.dp)
                                 ) {
@@ -663,19 +708,19 @@ fun DashboardScreen(
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
-                                    Text("APP OWNER & MASTER ADMIN", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Gold500)
+                                    Text("APP OWNER & MASTER ADMIN", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFB45309))
                                     Text(
-                                        text = "@${state.user?.username?.ifBlank { "satyam0810" }}",
+                                        text = state.user?.username?.let { if (it.startsWith("@")) it else "@$it" } ?: "@admin",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = Color(0xFF0F172A)
                                     )
-                                    Text("Institutional Reserve Custodian", fontSize = 10.sp, color = Color(0xFFCBD5E1))
+                                    Text("Institutional Reserve Custodian", fontSize = 10.sp, color = Color(0xFF64748B))
                                 }
                             }
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = Gold500.copy(alpha = 0.2f),
+                                color = Gold500.copy(alpha = 0.15f),
                                 border = BorderStroke(1.dp, Gold500),
                                 modifier = Modifier.clickable { onNavigateToAdminHub(0) }
                             ) {
@@ -684,8 +729,8 @@ fun DashboardScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Text("HUB", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Gold500)
-                                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Gold500, modifier = Modifier.size(12.dp))
+                                    Text("HUB", fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFB45309))
+                                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(12.dp))
                                 }
                             }
                         }
@@ -699,52 +744,195 @@ fun DashboardScreen(
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF162544),
-                                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.4f)),
+                                color = Color(0xFFF8FAFC),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("ESCROW VAULT", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8))
+                                    Text(stringResource(R.string.escrow_vault), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
                                     Text(
                                         text = "₹${(adminVaultTotalValue / 100000).formatDecimal(1)}L",
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        color = GoldCoinBright
+                                        color = Color(0xFFB45309)
                                     )
                                 }
                             }
 
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF162544),
-                                border = BorderStroke(1.dp, Color(0xFF1E3250)),
+                                color = Color(0xFFF8FAFC),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("PLATFORM VOL", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8))
+                                    Text(stringResource(R.string.platform_vol), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
                                     Text(
                                         text = totalVol.toInrString(),
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        color = Color.White
+                                        color = Color(0xFF0F172A)
                                     )
                                 }
                             }
 
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF162544),
-                                border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.4f)),
+                                color = Color(0xFFF8FAFC),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("ACTIVE LOANS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8))
+                                    Text("ACTIVE LOANS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
                                     Text(
                                         text = "${state.loansAsLender.count { it.status == "ACTIVE" } + state.loansAsBorrower.count { it.status == "ACTIVE" }} Active",
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        color = Emerald400
+                                        color = Emerald500
                                     )
+                                }
+                            }
+                        }
+
+                        // Urgent Pending Review & Police Clearance Queue
+                        val pendingAgentApps = remember(adminApplications) { adminApplications.filter { it.status == "PENDING" } }
+                        val pendingAdminReqs = remember(adminRequests) { adminRequests.filter { it.status == "PENDING" } }
+
+                        if (pendingAgentApps.isNotEmpty() || pendingAdminReqs.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+                                border = BorderStroke(1.5.dp, Gold500.copy(alpha = 0.8f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("🚨", fontSize = 16.sp)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "ACTION REQUIRED: PENDING DOSSIERS",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color(0xFFB45309)
+                                            )
+                                        }
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = Color(0xFFEF4444)
+                                        ) {
+                                            Text(
+                                                text = "${pendingAgentApps.size + pendingAdminReqs.size}",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.White,
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // Display Pending Agent Empanelment & Police Clearance Applications
+                                    for (app in pendingAgentApps) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = Color.White,
+                                            border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp)
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            text = "👮 Police Clearance & Identity Check",
+                                                            fontSize = 12.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = Color(0xFF0F172A)
+                                                        )
+                                                        Text(
+                                                            text = "Applicant: ${app.applicantName.ifBlank { "Agent Applicant" }} • ${app.applicantPhone}",
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            color = Color(0xFF2563EB)
+                                                        )
+                                                        Text(
+                                                            text = "Station: ${app.policeStation.ifBlank { "Local Jurisdiction" }} • City: ${app.operatingCity.ifBlank { "India" }}",
+                                                            fontSize = 10.sp,
+                                                            color = Color(0xFF64748B)
+                                                        )
+                                                        if (app.policeVerificationNumber.isNotBlank()) {
+                                                            Text(
+                                                                text = "PCC #: ${app.policeVerificationNumber}",
+                                                                fontSize = 10.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = Color(0xFFD97706)
+                                                            )
+                                                        }
+                                                    }
+                                                    Button(
+                                                        onClick = { onNavigateToAdminHub(1) },
+                                                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                                    ) {
+                                                        Text("Audit & Empanel ➔", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Display Pending Admin Access Requests
+                                    for (req in pendingAdminReqs) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = Color.White,
+                                            border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = "👑 Admin Elevation Request",
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF0F172A)
+                                                    )
+                                                    Text(
+                                                        text = "${req.userName} requested ${req.requestedRole}",
+                                                        fontSize = 11.sp,
+                                                        color = Color(0xFF64748B)
+                                                    )
+                                                }
+                                                Button(
+                                                    onClick = { onNavigateToAdminHub(0) },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                                ) {
+                                                    Text("Review ➔", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -761,32 +949,35 @@ fun DashboardScreen(
                                 text = "OPERATIONAL COMMAND DESKS",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Gold500,
+                                color = Color(0xFF0F172A),
                                 letterSpacing = 0.5.sp
                             )
                             Text(
                                 text = "1-Tap Direct Desk Entry",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Emerald400
+                                color = Emerald500
                             )
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
                         val dashDesks = listOf(
-                            DashboardAdminDesk(0, "Agents", Icons.Default.Groups, "${adminApplications.size} Empaneled", pendingDocsCount, Gold500),
-                            DashboardAdminDesk(1, "KYC Docs", Icons.Default.AssignmentInd, "$pendingDocsCount Pending", pendingDocsCount, if (pendingDocsCount > 0) Gold500 else Emerald400),
-                            DashboardAdminDesk(2, "Dispatch", Icons.Default.NearMe, "$unassignedVisitsCount Unassigned", unassignedVisitsCount, if (unassignedVisitsCount > 0) Color(0xFFF97316) else Emerald400),
-                            DashboardAdminDesk(3, "Vault", Icons.Default.Diamond, "${adminVaultItems.size} Lockers", 0, Emerald400),
-                            DashboardAdminDesk(4, "Grievance", Icons.Default.Gavel, "$openComplaintsCount Open", openComplaintsCount, if (openComplaintsCount > 0) Color(0xFFEF4444) else Emerald400),
-                            DashboardAdminDesk(5, "Legal NOC", Icons.Default.Description, "${adminNocs.size} Certificates", 0, Emerald400),
-                            DashboardAdminDesk(6, "Hearings", Icons.Default.Event, "${adminMeetings.size} Scheduled", 0, Emerald400),
-                            DashboardAdminDesk(7, "SMS Tokens", Icons.Default.Key, "Live Overrule", 0, Emerald400)
+                            DashboardAdminDesk(0, "Users & KYC", Icons.Default.People, "Verification", pendingDocsCount, if (pendingDocsCount > 0) Gold500 else Emerald400),
+                            DashboardAdminDesk(1, "Agents", Icons.Default.Groups, "${adminApplications.size} Empaneled", pendingDocsCount, Gold500),
+                            DashboardAdminDesk(3, "Dispatch", Icons.Default.NearMe, "$unassignedVisitsCount Unassigned", unassignedVisitsCount, if (unassignedVisitsCount > 0) Color(0xFFF97316) else Emerald400),
+                            DashboardAdminDesk(4, "Vault", Icons.Default.Diamond, "${adminVaultItems.size} Lockers", 0, Emerald400),
+                            DashboardAdminDesk(5, "Grievance", Icons.Default.Gavel, "$openComplaintsCount Open", openComplaintsCount, if (openComplaintsCount > 0) Color(0xFFEF4444) else Emerald400),
+                            DashboardAdminDesk(6, "Legal NOC", Icons.Default.Description, "${adminNocs.size} Certificates", 0, Emerald400),
+                            DashboardAdminDesk(7, "Hearings", Icons.Default.Event, "${adminMeetings.size} Scheduled", 0, Emerald400),
+                            DashboardAdminDesk(8, "SMS Tokens", Icons.Default.Key, "Live Overrule", 0, Emerald400),
+                            DashboardAdminDesk(9, "Tickets", Icons.Default.SupportAgent, "Support & Callback", 0, Emerald400),
+                            DashboardAdminDesk(2, "Agent KYC", Icons.Default.AssignmentInd, "Agent Verification", 0, Emerald400)
                         )
 
-                        // 4 rows x 2 columns
-                        for (rowIndex in 0 until 4) {
+                        // 5 rows x 2 columns
+                        val rowCount = dashDesks.size / 2
+                        for (rowIndex in 0 until rowCount) {
                             val deskA = dashDesks[rowIndex * 2]
                             val deskB = dashDesks[rowIndex * 2 + 1]
                             Row(
@@ -804,19 +995,23 @@ fun DashboardScreen(
                                     modifier = Modifier.weight(1f)
                                 )
                             }
-                            if (rowIndex < 3) Spacer(modifier = Modifier.height(6.dp))
+                            if (rowIndex < rowCount - 1) Spacer(modifier = Modifier.height(6.dp))
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
                         OutlinedButton(
                             onClick = onNavigateToLoansTab,
                             shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color(0xFFF8FAFC),
+                                contentColor = Color(0xFF0F172A)
+                            ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Gold500, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color(0xFF0F172A), modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Manage Platform Loans & Custody Ledger", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Manage Platform Loans & Custody Ledger", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
                         }
                     }
                 }
@@ -890,13 +1085,13 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "Portfolio Overview",
+                                    text = stringResource(R.string.dashboard_portfolio_overview),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                                 Text(
-                                    text = "Real-time capital balance",
+                                    text = stringResource(R.string.realtime_capital_balance),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Gray400
                                 )
@@ -907,7 +1102,7 @@ fun DashboardScreen(
                             color = Emerald400.copy(alpha = 0.15f)
                         ) {
                             Text(
-                                text = "ACTIVE",
+                                text = stringResource(R.string.active),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Emerald400,
@@ -926,7 +1121,7 @@ fun DashboardScreen(
                     ) {
                         Column {
                             Text(
-                                text = "Active Portfolio Value",
+                                text = stringResource(R.string.active_portfolio_value),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Gray300
                             )
@@ -996,7 +1191,7 @@ fun DashboardScreen(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "Lent Out",
+                                        text = stringResource(R.string.lent_out),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Gray400
                                     )
@@ -1009,7 +1204,7 @@ fun DashboardScreen(
                                     color = Emerald400
                                 )
                                 Text(
-                                    text = "${state.loansAsLender.count { it.status == "ACTIVE" }} Active Loans",
+                                    text = stringResource(R.string.active_loans_count, state.loansAsLender.count { it.status == "ACTIVE" }),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Gray400
                                 )
@@ -1034,7 +1229,7 @@ fun DashboardScreen(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "Borrowed",
+                                        text = stringResource(R.string.borrowed),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Gray400
                                     )
@@ -1047,7 +1242,7 @@ fun DashboardScreen(
                                     color = GoldCoinBright
                                 )
                                 Text(
-                                    text = "${state.loansAsBorrower.count { it.status == "ACTIVE" }} Active Debts",
+                                    text = stringResource(R.string.active_debts_count, state.loansAsBorrower.count { it.status == "ACTIVE" }),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Gray400
                                 )
@@ -1073,7 +1268,7 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Manage All Loans in Loans Tab",
+                                text = stringResource(R.string.manage_all_loans_tab),
                                 color = Color.White,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -1107,7 +1302,7 @@ fun DashboardScreen(
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "Community Loan Wall",
+                                stringResource(R.string.community_loan_wall),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -1129,7 +1324,7 @@ fun DashboardScreen(
                             }
                         }
                         Text(
-                            "Verified direct P2P lending opportunities",
+                            stringResource(R.string.community_wall_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp
@@ -1138,7 +1333,7 @@ fun DashboardScreen(
 
                     Surface(
                         onClick = { 
-                            if (marketState.isKycVerified) onNavigateToCreatePost("OFFER_TO_LEND") else onNavigateToKyc() 
+                            onNavigateToCreatePost("OFFER_TO_LEND")
                         },
                         shape = RoundedCornerShape(10.dp),
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
@@ -1150,7 +1345,7 @@ fun DashboardScreen(
                         ) {
                             Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Post", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(stringResource(R.string.nav_post), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -1158,7 +1353,12 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Segmented Tabs (All Offers, Lenders, Borrowers, My Posts)
-                val tabs = listOf("All Offers", "💰 Lenders", "🙋 Borrowers", "⭐ My Posts")
+                val tabs = listOf(
+                    stringResource(R.string.tab_all_offers),
+                    stringResource(R.string.tab_lenders),
+                    stringResource(R.string.tab_borrowers),
+                    stringResource(R.string.tab_my_posts)
+                )
                 val selectedTabIndex = when (marketState.selectedTab) {
                     MarketplaceTabFilter.ALL -> 0
                     MarketplaceTabFilter.LENDERS -> 1
@@ -1282,7 +1482,7 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = { 
-                                    if (marketState.isKycVerified) onNavigateToCreatePost("OFFER_TO_LEND") else onNavigateToKyc() 
+                                    onNavigateToCreatePost("OFFER_TO_LEND")
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 shape = RoundedCornerShape(10.dp)
@@ -1302,6 +1502,7 @@ fun DashboardScreen(
                         post = post,
                         isVouched = isVouched,
                         isSelf = isSelf,
+                        onAuthorClick = { onNavigateToUserProfile(post.authorId) },
                         onVouch = {
                             if (isSelf) {
                                 // Self-post vouch blocked
@@ -1528,6 +1729,7 @@ fun DashboardScreen(
             visit = visit,
             onDismiss = { selectedVisitForInspection = null },
             onCompleteInspection = { remarks, collOk, bOk, lOk, proof ->
+                selectedVisitForInspection = null
                 scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     agentRepository.completeVisit(
                         visitId = visit.visitId,
@@ -1539,7 +1741,24 @@ fun DashboardScreen(
                     )
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                         android.widget.Toast.makeText(context, "Inspection completed & ₹${visit.payoutAmount.toInt()} payout credited!", android.widget.Toast.LENGTH_SHORT).show()
-                        selectedVisitForInspection = null
+                    }
+                }
+            },
+            onCompleteDetailedInspection = { remarks, collOk, bOk, lOk, proof, appraisal, rec ->
+                selectedVisitForInspection = null
+                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    agentRepository.completeVisit(
+                        visitId = visit.visitId,
+                        agentRemarks = remarks,
+                        isCollateralAuthentic = collOk,
+                        isBorrowerIdentityVerified = bOk,
+                        isLenderIdentityVerified = lOk,
+                        proofPhotoUris = proof,
+                        appraisedValue = appraisal,
+                        officerRecommendation = rec
+                    )
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        android.widget.Toast.makeText(context, "Inspection completed & ₹${visit.payoutAmount.toInt()} payout credited!", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -1603,8 +1822,8 @@ private fun DashboardAdminDeskCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
-        color = Color(0xFF162544),
-        border = BorderStroke(1.dp, if (desk.alertCount > 0) desk.alertColor.copy(alpha = 0.5f) else Color(0xFF1E3250)),
+        color = Color(0xFFF8FAFC),
+        border = BorderStroke(1.dp, if (desk.alertCount > 0) desk.alertColor.copy(alpha = 0.6f) else Color(0xFFE2E8F0)),
         modifier = modifier.height(54.dp)
     ) {
         Row(
@@ -1617,17 +1836,18 @@ private fun DashboardAdminDeskCard(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = Color(0xFF0F1E36),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     modifier = Modifier.size(30.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(desk.icon, contentDescription = desk.title, tint = Gold500, modifier = Modifier.size(16.dp))
+                        Icon(desk.icon, contentDescription = desk.title, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
-                    Text(desk.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, softWrap = false)
-                    Text(desk.subtitle, fontSize = 9.sp, color = Color(0xFFCBD5E1), maxLines = 1, softWrap = false)
+                    Text(desk.title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), maxLines = 1, softWrap = false)
+                    Text(desk.subtitle, fontSize = 9.sp, color = Color(0xFF64748B), maxLines = 1, softWrap = false)
                 }
             }
             if (desk.alertCount > 0) {
@@ -1639,7 +1859,7 @@ private fun DashboardAdminDeskCard(
                 ) {
                     Text(
                         text = "${desk.alertCount}",
-                        color = if (desk.alertColor == Gold500) Navy900 else Color.White,
+                        color = Color.White,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.ExtraBold
                     )

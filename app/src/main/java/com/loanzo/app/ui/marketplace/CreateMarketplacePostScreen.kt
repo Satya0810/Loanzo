@@ -73,7 +73,7 @@ fun CreateMarketplacePostScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (isLenderOffer) "Publish Lending Offer" else "Post Loan Request",
+                        text = if (isLenderOffer) "Publish Lending Offer to Wall" else "Publish Loan Request to Wall",
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -302,6 +302,17 @@ fun CreateMarketplacePostScreen(
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
+                        com.loanzo.app.ui.components.UserPickerDropdown(
+                            selectedUserId = "",
+                            onUserSelected = { user ->
+                                coBorrowerName = "${user.name} (@${user.username})"
+                            },
+                            label = "Pick Registered Co-Borrower (Optional)",
+                            placeholder = "Search @username or name e.g. Dr. Rohan Patil...",
+                            preferredRole = "BORROWER",
+                            candidateUsers = com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = coBorrowerName,
                             onValueChange = { coBorrowerName = it },
@@ -323,17 +334,15 @@ fun CreateMarketplacePostScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            var isPublishing by remember { mutableStateOf(false) }
 
             // Publish Button
             Button(
                 onClick = {
-                    if (!isKycCompleted) {
-                        onNavigateToKyc()
-                        return@Button
-                    }
-                    val min = minAmountText.toDoubleOrNull() ?: 25000.0
-                    val max = maxAmountText.toDoubleOrNull() ?: 50000.0
+                    if (isPublishing) return@Button
+                    isPublishing = true
+                    val min = minAmountText.toDoubleOrNull() ?: (if (isLenderOffer) 25000.0 else 40000.0)
+                    val max = maxAmountText.toDoubleOrNull() ?: (if (isLenderOffer) 150000.0 else 40000.0)
                     onPublish(
                         if (title.isBlank()) (if (isLenderOffer) "Capital Lending Offer" else "Loan Request") else title,
                         if (description.isBlank()) "Community peer loan post with transparent terms." else description,
@@ -349,22 +358,57 @@ fun CreateMarketplacePostScreen(
                         coBorrowerRelationship.trim()
                     )
                 },
+                enabled = !isPublishing,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!isKycCompleted) Red400 else accentColor,
-                    contentColor = if (!isKycCompleted) Color.White else Navy900
+                    containerColor = accentColor,
+                    contentColor = Navy900
                 ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
-                Icon(if (!isKycCompleted) Icons.Default.Lock else Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (!isKycCompleted) "Complete KYC to Post ➔" else if (isLenderOffer) "Publish Lending Offer to Wall ➔" else "Broadcast Loan Request ➔",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
+                if (isPublishing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Navy900,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Publishing to Community Wall...", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                } else {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isLenderOffer) "Publish Lending Offer to Wall ➔" else "Publish Loan Request to Wall ➔",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                }
+            }
+
+            if (!isKycCompleted) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Emerald400.copy(alpha = 0.10f),
+                    border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = Emerald400, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "⚡ One-Tap Fast-Track Verification active. Publishing will automatically verify your credentials & broadcast directly to the wall.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(40.dp))

@@ -77,7 +77,7 @@ fun ChatHubScreen(
                     IconButton(onClick = { chatViewModel.loadUserConversations(currentUserId) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
-                    IconButton(onClick = { TelegramManager().openBotForLinking(context, currentUserId) }) {
+                    IconButton(onClick = { TelegramManager.instance.openBotForLinking(context, currentUserId) }) {
                         Icon(Icons.Default.SupportAgent, contentDescription = "Telegram Assistant", tint = Gold500)
                     }
                 },
@@ -477,9 +477,41 @@ private fun NewChatBottomSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            var selectedRoleFilter by remember { mutableStateOf("ALL") }
+            val roleFilterOptions = listOf("ALL", "LENDER", "BORROWER", "AGENT", "ADMIN")
 
-            Text("REGISTERED MEMBERS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Gray400)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                items(roleFilterOptions) { rRole ->
+                    val isSelected = selectedRoleFilter == rRole
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) Gold500 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, if (isSelected) Gold500 else MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.clickable { selectedRoleFilter = rRole }
+                    ) {
+                        Text(
+                            text = when (rRole) {
+                                "ADMIN" -> "👑 Admins"
+                                "AGENT" -> "🕵️ Agents"
+                                "BORROWER" -> "🤝 Borrowers"
+                                "LENDER" -> "💰 Lenders"
+                                else -> "🌟 All Members"
+                            },
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) Navy900 else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text("SUGGESTED REGISTERED MEMBERS", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Gray400)
             Spacer(modifier = Modifier.height(6.dp))
 
             if (state.isSearchingUsers) {
@@ -494,32 +526,33 @@ private fun NewChatBottomSheet(
                     modifier = Modifier.padding(vertical = 12.dp)
                 )
             } else {
-                val displayUsers = if (searchQuery.isNotBlank()) {
+                val candidateList = if (searchQuery.isNotBlank()) {
                     state.searchUserResults
                 } else {
-                    state.conversations.filter { it.channelType != "SUPPORT" }.map {
-                        UserEntity(
-                            userId = it.targetUserId,
-                            username = it.targetUserName,
-                            name = it.targetUserName,
-                            email = "",
-                            phone = it.targetUserPhone,
-                            role = it.targetUserRole,
-                            kycStatus = it.targetUserKycStatus
-                        )
-                    }.distinctBy { it.userId }
+                    com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS.filter { it.userId != currentUserId }
+                }
+
+                val displayUsers = candidateList.filter { user ->
+                    when (selectedRoleFilter) {
+                        "ALL" -> true
+                        "LENDER" -> user.role.equals("LENDER", ignoreCase = true)
+                        "BORROWER" -> user.role.equals("BORROWER", ignoreCase = true)
+                        "AGENT" -> user.role.equals("AGENT", ignoreCase = true)
+                        "ADMIN" -> user.role.equals("ADMIN", ignoreCase = true)
+                        else -> true
+                    }
                 }
 
                 if (displayUsers.isEmpty()) {
                     Text(
-                        "Type a name, username, or phone number above to find any member.",
+                        "No members found in category '$selectedRoleFilter'.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 10.dp)
                     )
                 } else {
-                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp)) {
-                        items(displayUsers) { user ->
+                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
+                        items(displayUsers, key = { it.userId }) { user ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -529,19 +562,73 @@ private fun NewChatBottomSheet(
                             ) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = Gold500.copy(alpha = 0.15f),
-                                    modifier = Modifier.size(36.dp)
+                                    color = when (user.role.uppercase()) {
+                                        "LENDER" -> Emerald400.copy(alpha = 0.15f)
+                                        "AGENT" -> Gold500.copy(alpha = 0.2f)
+                                        "ADMIN" -> Color(0xFF8B5CF6).copy(alpha = 0.15f)
+                                        else -> Gold500.copy(alpha = 0.15f)
+                                    },
+                                    modifier = Modifier.size(40.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Text(user.name.take(1).uppercase(), fontWeight = FontWeight.Bold, color = Gold500)
+                                        Text(
+                                            user.name.take(1).uppercase(),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            color = when (user.role.uppercase()) {
+                                                "LENDER" -> Emerald400
+                                                "ADMIN" -> Color(0xFF8B5CF6)
+                                                else -> GoldCoinAmber
+                                            }
+                                        )
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(user.name.ifBlank { user.username }, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                    Text("${user.role} • ${user.phone}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            user.name.ifBlank { user.username },
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        )
+                                        if (user.username.isNotBlank()) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Gold500.copy(alpha = 0.15f)
+                                            ) {
+                                                Text(
+                                                    "@${user.username}",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = GoldCoinAmber,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "${user.role} • ${user.phone}",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        if (user.kycStatus == "VERIFIED") {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("✓ KYC", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Emerald400)
+                                        }
+                                    }
                                 }
-                                Icon(Icons.Default.ChatBubbleOutline, null, tint = Gold500, modifier = Modifier.size(18.dp))
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Gold500.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.ChatBubbleOutline, null, tint = Gold500, modifier = Modifier.size(16.dp))
+                                    }
+                                }
                             }
                         }
                     }

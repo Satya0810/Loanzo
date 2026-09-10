@@ -22,7 +22,7 @@ class FcmSender {
     companion object {
         private const val TAG = "FcmSender"
         // Replace this with your actual Firebase Project ID!
-        private const val PROJECT_ID = "loanzo-app-project" 
+        private const val PROJECT_ID = "loanzo-fdd8a" 
         private const val FCM_API_URL = "https://fcm.googleapis.com/v1/projects/$PROJECT_ID/messages:send"
         
         private val client = OkHttpClient()

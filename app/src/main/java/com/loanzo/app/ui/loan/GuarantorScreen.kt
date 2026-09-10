@@ -19,7 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.loanzo.app.data.entity.GuarantorEntity
+import com.loanzo.app.data.entity.UserEntity
 import com.loanzo.app.ui.components.GlassCard
 import com.loanzo.app.ui.components.StatusBadge
 import com.loanzo.app.ui.theme.*
@@ -34,6 +36,15 @@ fun GuarantorScreen(
     onUpdateConsent: (guarantorId: String, status: String) -> Unit,
     onBack: () -> Unit
 ) {
+    val userRepository = com.loanzo.app.util.LocalUserRepository.current
+    val currentUserId by userRepository.getCurrentUserId().collectAsState(initial = null)
+    var currentUser by remember { mutableStateOf<UserEntity?>(null) }
+    LaunchedEffect(currentUserId) {
+        if (!currentUserId.isNullOrBlank()) {
+            currentUser = userRepository.getUserById(currentUserId!!)
+        }
+    }
+
     var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -118,6 +129,8 @@ fun GuarantorScreen(
                 items(guarantors, key = { it.guarantorId }) { guarantor ->
                     GuarantorCard(
                         guarantor = guarantor,
+                        currentUserId = currentUserId,
+                        currentUserPhone = currentUser?.phone,
                         onUpdateConsent = { status -> onUpdateConsent(guarantor.guarantorId, status) }
                     )
                 }
@@ -139,8 +152,13 @@ fun GuarantorScreen(
 @Composable
 private fun GuarantorCard(
     guarantor: GuarantorEntity,
+    currentUserId: String?,
+    currentUserPhone: String?,
     onUpdateConsent: (String) -> Unit
 ) {
+    val cleanCurrent = currentUserPhone?.replace("\\D".toRegex(), "")?.takeLast(10) ?: ""
+    val cleanGuarantor = guarantor.phone.replace("\\D".toRegex(), "").takeLast(10)
+    val isGuarantorSelf = cleanCurrent.isNotEmpty() && cleanCurrent == cleanGuarantor
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -208,28 +226,51 @@ private fun GuarantorCard(
 
             if (guarantor.consentStatus == "PENDING") {
                 Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { onUpdateConsent("ACCEPTED") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900)
+                if (isGuarantorSelf) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Accept", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                        Button(
+                            onClick = { onUpdateConsent("ACCEPTED") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900)
+                        ) {
+                            Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Accept Guarantee", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                        }
+                        OutlinedButton(
+                            onClick = { onUpdateConsent("REJECTED") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Decline", maxLines = 1, softWrap = false)
+                        }
                     }
-                    OutlinedButton(
-                        onClick = { onUpdateConsent("REJECTED") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Gold500.copy(alpha = 0.12f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Gold500.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Reject", maxLines = 1, softWrap = false)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Shield, contentDescription = null, tint = Gold500, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Awaiting Guarantor's Independent Consent",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -262,6 +303,22 @@ private fun AddGuarantorDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                com.loanzo.app.ui.components.UserPickerDropdown(
+                    selectedUserId = "",
+                    onUserSelected = { user ->
+                        name = user.name
+                        phone = user.phone
+                        email = user.email
+                        if (user.panNumber.isNotBlank()) pan = user.panNumber
+                        if (user.userId.contains("nirmala")) relationship = "PARENT"
+                        else if (user.userId.contains("rohan")) relationship = "BUSINESS_PARTNER"
+                    },
+                    label = "Pick Registered Member (Auto-Fill)",
+                    placeholder = "Select @dr_rohan_patil, @nirmala_devi...",
+                    preferredRole = "BORROWER",
+                    candidateUsers = com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS
+                )
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },

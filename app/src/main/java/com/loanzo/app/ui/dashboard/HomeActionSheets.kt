@@ -99,7 +99,7 @@ fun ChatSelectionBottomSheet(
             Surface(
                 onClick = {
                     onDismiss()
-                    TelegramManager().openBotForLinking(context, currentUserId)
+                    TelegramManager.instance.openBotForLinking(context, currentUserId)
                 },
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -278,6 +278,7 @@ fun ReportActionBottomSheet(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val adminRepository = com.loanzo.app.util.LocalAdminRepository.current
     val coroutineScope = rememberCoroutineScope()
     var targetPerson by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Default / Non-Payment") }
@@ -380,7 +381,7 @@ fun ReportActionBottomSheet(
             // Quick Counterparty selector chips with Golden Coin Box Coloring
             val quickTransactors = listOf(
                 Triple("satyam0810", "👑 @satyam0810 (Admin)", "ADMIN"),
-                Triple("agent_demo", "🕵️ @agent_demo (Agent)", "AGENT"),
+                Triple("abhisi", "🕵️ @abhisi (Field Agent)", "AGENT"),
                 Triple("user_demo", "👤 @user_demo (Member)", "USER")
             )
             androidx.compose.foundation.lazy.LazyRow(
@@ -410,19 +411,13 @@ fun ReportActionBottomSheet(
                 }
             }
 
-            OutlinedTextField(
-                value = targetPerson,
-                onValueChange = { targetPerson = it },
-                placeholder = { Text("Enter Counterparty Name, Phone or User ID", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Red400,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                )
+            UserPickerDropdown(
+                selectedUserId = targetPerson,
+                onUserSelected = { user ->
+                    targetPerson = if (user.userId.isNotBlank()) user.name.ifBlank { user.username.ifBlank { user.userId } } else ""
+                },
+                label = "Target Member to Report",
+                placeholder = "Scroll down to select or search user..."
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -637,33 +632,53 @@ fun ReportActionBottomSheet(
                     isSubmitting = true
                     coroutineScope.launch {
                         try {
-                            if (requestTelegramAlert) {
-                                val reporterName = currentUser?.name ?: "User"
-                                val reporterPhone = currentUser?.phone ?: "Unknown"
-                                val requestedActions = buildList {
-                                    if (requestPlatformFreeze) add("Account Restriction")
-                                    if (requestLegalNotice) add("Legal Notice")
-                                    if (requestTelegramAlert) add("Admin Review")
-                                }.joinToString(", ")
+                            val reporterName = currentUser?.name ?: "User"
+                            val reporterPhone = currentUser?.phone ?: "Unknown"
+                            val requestedActions = buildList {
+                                if (requestPlatformFreeze) add("Account Restriction")
+                                if (requestLegalNotice) add("Legal Notice")
+                                if (requestTelegramAlert) add("Admin Review")
+                            }.joinToString(", ")
 
+                            val complaintId = "CMP-" + java.util.UUID.randomUUID().toString().take(8).uppercase()
+                            val complaint = com.loanzo.app.data.entity.ComplaintEntity(
+                                complaintId = complaintId,
+                                complainantId = currentUser?.userId ?: "ANONYMOUS",
+                                complainantName = reporterName,
+                                complainantPhone = reporterPhone,
+                                complainantRole = currentUser?.role ?: "BORROWER",
+                                targetPartyId = targetPerson,
+                                targetPartyName = targetPerson,
+                                category = selectedCategory,
+                                priority = severity.uppercase(),
+                                subject = "Action Request: $requestedActions",
+                                description = incidentDetails.ifBlank { "Action filed from Loanzo Home Screen: $selectedCategory ($severity). Requested Actions: $requestedActions" },
+                                status = "OPEN",
+                                loanId = null,
+                                createdAt = System.currentTimeMillis()
+                            )
+                            adminRepository.submitComplaint(complaint)
+
+                            if (requestTelegramAlert) {
                                 val alertMsg = """
                                     🚨 <b>USER REPORT & ACTION DEMAND</b>
                                     ━━━━━━━━━━━━━━━━━━━━
-                                    <b>Reporter:</b> $reporterName ($reporterPhone)
-                                    <b>Target Person:</b> $targetPerson
-                                    <b>Category:</b> $selectedCategory
-                                    <b>Severity:</b> $severity
-                                    <b>Requested Action:</b> $requestedActions
-                                    <b>Details:</b> ${incidentDetails.ifBlank { "N/A" }}
+                                    <b>Case ID:</b> ${TelegramManager.escapeHtml(complaintId)}
+                                    <b>Reporter:</b> ${TelegramManager.escapeHtml(reporterName)} (${TelegramManager.escapeHtml(reporterPhone)})
+                                    <b>Target Person:</b> ${TelegramManager.escapeHtml(targetPerson)}
+                                    <b>Category:</b> ${TelegramManager.escapeHtml(selectedCategory)}
+                                    <b>Severity:</b> ${TelegramManager.escapeHtml(severity)}
+                                    <b>Requested Action:</b> ${TelegramManager.escapeHtml(requestedActions)}
+                                    <b>Details:</b> ${TelegramManager.escapeHtml(incidentDetails.ifBlank { "N/A" })}
                                     ━━━━━━━━━━━━━━━━━━━━
-                                    <i>Action filed from Loanzo Home Screen</i>
+                                    <i>Action filed from Loanzo Home Screen — Synced to Admin Hub</i>
                                 """.trimIndent()
 
-                                TelegramManager().sendAdminAlert(alertMsg)
+                                TelegramManager.instance.sendAdminAlert(alertMsg)
                             }
                             Toast.makeText(
                                 context,
-                                "Report filed successfully. Administrative action has been initiated.",
+                                "Report filed successfully (Case ID: $complaintId). Platform team and Admin Hub alerted.",
                                 Toast.LENGTH_LONG
                             ).show()
                             onDismiss()

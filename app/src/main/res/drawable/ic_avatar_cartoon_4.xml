@@ -1,0 +1,51 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#FECDD3"
+        android:pathData="M48,48m-46,0a46,46 0,1 1,92 0a46,46 0,1 1,-92 0" />
+    <!-- Bob Hair Back -->
+    <path
+        android:fillColor="#451A03"
+        android:pathData="M30,32 C28,48 30,58 35,62 C32,54 32,40 32,32 Z M66,32 C68,48 66,58 61,62 C64,54 64,40 64,32 Z" />
+    <!-- Shoulders / Blazer -->
+    <path
+        android:fillColor="#E11D48"
+        android:pathData="M22,90 C24,72 34,66 48,66 C62,66 72,72 74,90 Z" />
+    <!-- Inner Top White -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,66 L48,74 L52,66 Z" />
+    <!-- Neck -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M43,54 L53,54 L53,66 L43,66 Z" />
+    <!-- Face -->
+    <path
+        android:fillColor="#FED7AA"
+        android:pathData="M34,36 C34,25 62,25 62,36 C62,52 34,52 34,36 Z" />
+    <!-- Ears & Small Pearl Earrings -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M31,38 A3,3.5 0,1 1,31,43 A3,3.5 0,1 1,31,38 M65,38 A3,3.5 0,1 1,65,43 A3,3.5 0,1 1,65,38" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M31,43 A1.5,1.5 0,1 1,31,44.5 A1.5,1.5 0,1 1,31,43 M65,43 A1.5,1.5 0,1 1,65,44.5 A1.5,1.5 0,1 1,65,43" />
+    <!-- Bob Hair Front -->
+    <path
+        android:fillColor="#451A03"
+        android:pathData="M31,32 C32,18 44,16 48,16 C58,16 65,20 65,32 C61,25 53,24 46,26 C38,28 34,30 31,32 Z" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#1F2937"
+        android:pathData="M41,38 A2,2 0,1 1,41,40 A2,2 0,1 1,41,38 M55,38 A2,2 0,1 1,55,40 A2,2 0,1 1,55,38" />
+    <!-- Smile -->
+    <path
+        android:strokeColor="#BE123C"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M44,46 Q48,49.5 52,46" />
+</vector>

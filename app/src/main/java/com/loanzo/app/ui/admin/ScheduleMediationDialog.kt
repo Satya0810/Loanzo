@@ -61,8 +61,9 @@ fun ScheduleMediationDialog(
                 .fillMaxWidth(0.95f)
                 .fillMaxHeight(0.92f)
                 .clip(RoundedCornerShape(20.dp)),
-            color = Color(0xFF0F1E36),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E3250))
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            shadowElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier
@@ -80,23 +81,23 @@ fun ScheduleMediationDialog(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = Emerald500.copy(alpha = 0.2f)
+                                color = Emerald500.copy(alpha = 0.15f)
                             ) {
                                 Text(
                                     text = "DISPUTE RESOLUTION",
-                                    color = Emerald400,
+                                    color = Color(0xFF047857),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Official Arbitration", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            Text("Official Arbitration", color = Color(0xFF64748B), fontSize = 11.sp)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Schedule Mediation Hearing",
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color(0xFF0F172A),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -107,16 +108,16 @@ fun ScheduleMediationDialog(
                         modifier = Modifier
                             .size(34.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF162544))
+                            .background(Color(0xFFF1F5F9))
                     ) {
-                        Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Close, null, tint = Color(0xFF475569), modifier = Modifier.size(18.dp))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Meeting Type Selector
-                Text("Hearing Mode", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Hearing Mode", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -125,9 +126,8 @@ fun ScheduleMediationDialog(
                     val isVideo = meetingType == "GOOGLE_MEET"
                     Card(
                         shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (isVideo) Color(0xFF1E3A5F) else Color(0xFF162544)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isVideo) Emerald400 else Color(0xFF1E3250)),
-                        
+                        colors = CardDefaults.cardColors(containerColor = if (isVideo) Color(0xFF0F172A) else Color(0xFFF8FAFC)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isVideo) Color(0xFF0F172A) else Color(0xFFE2E8F0)),
                         modifier = Modifier
                             .weight(1f)
                             .clickable { meetingType = "GOOGLE_MEET" }
@@ -136,11 +136,11 @@ fun ScheduleMediationDialog(
                             modifier = Modifier.padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.VideoCall, null, tint = if (isVideo) Emerald400 else Gray400, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.VideoCall, null, tint = if (isVideo) Emerald400 else Color(0xFF64748B), modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text("Google Meet", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Text("Virtual Video", color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                                Text("Google Meet", color = if (isVideo) Color.White else Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Virtual Video", color = if (isVideo) Color(0xFF94A3B8) else Color(0xFF64748B), fontSize = 10.sp)
                             }
                         }
                     }
@@ -148,9 +148,8 @@ fun ScheduleMediationDialog(
                     val isPhysical = meetingType == "PHYSICAL_VAULT"
                     Card(
                         shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (isPhysical) Color(0xFF1E3A5F) else Color(0xFF162544)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isPhysical) Gold500 else Color(0xFF1E3250)),
-                        
+                        colors = CardDefaults.cardColors(containerColor = if (isPhysical) Color(0xFF0F172A) else Color(0xFFF8FAFC)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isPhysical) Color(0xFF0F172A) else Color(0xFFE2E8F0)),
                         modifier = Modifier
                             .weight(1f)
                             .clickable { meetingType = "PHYSICAL_VAULT" }
@@ -159,11 +158,11 @@ fun ScheduleMediationDialog(
                             modifier = Modifier.padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.AccountBalance, null, tint = if (isPhysical) Gold500 else Gray400, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.AccountBalance, null, tint = if (isPhysical) Gold500 else Color(0xFF64748B), modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text("Central Vault", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Text("In-Person Office", color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                                Text("Central Vault", color = if (isPhysical) Color.White else Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("In-Person Office", color = if (isPhysical) Color(0xFF94A3B8) else Color(0xFF64748B), fontSize = 10.sp)
                             }
                         }
                     }
@@ -175,15 +174,15 @@ fun ScheduleMediationDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Hearing Title", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                    label = { Text("Hearing Title", color = Color(0xFF64748B), fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Gold500,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF162544),
-                        unfocusedContainerColor = Color(0xFF162544)
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedContainerColor = Color(0xFFF8FAFC),
+                        unfocusedContainerColor = Color(0xFFF8FAFC)
                     )
                 )
 
@@ -192,31 +191,31 @@ fun ScheduleMediationDialog(
                 OutlinedTextField(
                     value = agenda,
                     onValueChange = { agenda = it },
-                    label = { Text("Agenda & Topics to Settle", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                    label = { Text("Agenda & Topics to Settle", color = Color(0xFF64748B), fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Gold500,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF162544),
-                        unfocusedContainerColor = Color(0xFF162544)
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedContainerColor = Color(0xFFF8FAFC),
+                        unfocusedContainerColor = Color(0xFFF8FAFC)
                     )
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Time Slot Picker
-                Text("Select Scheduled Time Slot", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Select Scheduled Time Slot", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(6.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     timePresets.forEach { slot ->
                         val isSelected = selectedTimeSlot == slot
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isSelected) Color(0xFF1E3A5F) else Color(0xFF162544),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Gold500 else Color(0xFF1E3250)),
+                            color = if (isSelected) Color(0xFF0F172A) else Color(0xFFF8FAFC),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0)),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { selectedTimeSlot = slot }
@@ -230,11 +229,11 @@ fun ScheduleMediationDialog(
                                     Icon(
                                         Icons.Default.AccessTime,
                                         null,
-                                        tint = if (isSelected) Gold500 else Gray400,
+                                        tint = if (isSelected) Gold500 else Color(0xFF64748B),
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(slot, color = if (isSelected) Color.White else Color(0xFFCBD5E1), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                    Text(slot, color = if (isSelected) Color.White else Color(0xFF334155), fontSize = 12.sp, fontWeight = FontWeight.Medium)
                                 }
                                 if (isSelected) {
                                     Icon(Icons.Default.CheckCircle, null, tint = Gold500, modifier = Modifier.size(18.dp))
@@ -251,28 +250,32 @@ fun ScheduleMediationDialog(
                     OutlinedTextField(
                         value = meetLink,
                         onValueChange = { meetLink = it },
-                        label = { Text("Google Meet Video Link", color = Emerald400, fontSize = 12.sp) },
-                        leadingIcon = { Icon(Icons.Default.VideoCall, null, tint = Emerald400) },
+                        label = { Text("Google Meet Video Link", color = Color(0xFF047857), fontSize = 12.sp) },
+                        leadingIcon = { Icon(Icons.Default.VideoCall, null, tint = Emerald500) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Emerald400,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                            focusedBorderColor = Emerald500,
+                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC)
                         )
                     )
                 } else {
                     OutlinedTextField(
                         value = physicalLocation,
                         onValueChange = { physicalLocation = it },
-                        label = { Text("Vault Office Location", color = Gold500, fontSize = 12.sp) },
+                        label = { Text("Vault Office Location", color = Color(0xFFB45309), fontSize = 12.sp) },
                         leadingIcon = { Icon(Icons.Default.Place, null, tint = Gold500) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Gold500,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                            unfocusedBorderColor = Color(0xFFCBD5E1),
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFF8FAFC),
+                            unfocusedContainerColor = Color(0xFFF8FAFC)
                         )
                     )
                 }

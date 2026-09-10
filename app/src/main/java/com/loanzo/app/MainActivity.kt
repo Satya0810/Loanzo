@@ -40,40 +40,88 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var adminRepository: com.loanzo.app.data.repository.AdminRepository
     @Inject lateinit var sessionManager: BankingSessionManager
     @Inject lateinit var warmupCoordinator: SplashWarmupCoordinator
+    @Inject lateinit var supportTicketRepository: com.loanzo.app.data.repository.SupportTicketRepository
+    @Inject lateinit var notificationRepository: com.loanzo.app.data.repository.NotificationRepository
+    @Inject lateinit var translationHelper: com.loanzo.app.util.TranslationHelper
+
+    private var currentActivityLanguage: String = ""
+
+    val pendingNavigationRoute = androidx.compose.runtime.mutableStateOf<String?>(null)
+
+    fun consumePendingNavigation(): String? {
+        val route = pendingNavigationRoute.value
+        pendingNavigationRoute.value = null
+        return route
+    }
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val lang = com.loanzo.app.util.LocaleHelper.getPersistedLanguage(newBase)
+        currentActivityLanguage = lang
+        val localized = com.loanzo.app.util.LocaleHelper.createLocalizedContext(newBase, lang)
+        super.attachBaseContext(localized)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.loanzo.app.util.NotificationChannelHelper.setupNotificationChannels(this)
         enableEdgeToEdge()
         handleDeepLinkIntent(intent)
+        intent?.getStringExtra("navigate_to")?.let {
+            pendingNavigationRoute.value = it
+        }
+
+        // Proactively request notification permission on Android 13+ (API 33+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(
+                    this,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+            }
+        }
+
+        // Ensure offline translation model starts downloading if user chose Hindi or other language
+        val initialLang = com.loanzo.app.util.LocaleHelper.getPersistedLanguage(this)
+        com.loanzo.app.util.LocaleHelper.applyLocale(this, initialLang)
+        if (initialLang != "en") {
+            translationHelper.downloadModelIfNeeded(initialLang)
+        }
 
         setContent {
             val themeMode by userRepository.getThemeMode().collectAsState(initial = "LIGHT")
-            val appLanguage by userRepository.getAppLanguage().collectAsState(initial = "en")
+            val currentLanguageCode = com.loanzo.app.util.LocaleHelper.getPersistedLanguage(this@MainActivity)
+            val appLanguage by userRepository.getAppLanguage().collectAsState(initial = currentLanguageCode)
 
             val isDark = when (themeMode) {
                 "DARK" -> true
                 else -> false // Signature Brand Light Theme as primary default & system theme
             }
 
-            val currentContext = androidx.compose.ui.platform.LocalContext.current
             androidx.compose.runtime.LaunchedEffect(appLanguage) {
-                try {
-                    val locale = java.util.Locale(appLanguage)
-                    java.util.Locale.setDefault(locale)
-                    val resources = currentContext.resources
-                    val config = android.content.res.Configuration(resources.configuration)
-                    config.setLocale(locale)
-                    @Suppress("DEPRECATION")
-                    resources.updateConfiguration(config, resources.displayMetrics)
-                } catch (_: Exception) {}
+                // If language is changed, download on-device word/model files internally
+                if (appLanguage != "en") {
+                    translationHelper.downloadModelIfNeeded(appLanguage)
+                }
+
+                if (currentActivityLanguage.isNotBlank() && appLanguage != currentActivityLanguage) {
+                    com.loanzo.app.util.LocaleHelper.applyLocale(this@MainActivity, appLanguage)
+                    currentActivityLanguage = appLanguage
+                    this@MainActivity.recreate()
+                    return@LaunchedEffect
+                }
             }
 
             CompositionLocalProvider(
+                com.loanzo.app.util.LocalTranslationHelper provides translationHelper,
+                com.loanzo.app.util.LocalAppLanguage provides appLanguage,
                 LocalUserRepository provides userRepository,
                 LocalAgentRepository provides agentRepository,
                 LocalAdminRepository provides adminRepository,
                 LocalBankingSessionManager provides sessionManager,
-                LocalSplashWarmupCoordinator provides warmupCoordinator
+                LocalSplashWarmupCoordinator provides warmupCoordinator,
+                com.loanzo.app.util.LocalSupportTicketRepository provides supportTicketRepository,
+                com.loanzo.app.util.LocalNotificationRepository provides notificationRepository
             ) {
                 LoanzoTheme(darkTheme = isDark) {
                     Surface(
@@ -106,6 +154,9 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleDeepLinkIntent(intent)
+        intent.getStringExtra("navigate_to")?.let {
+            pendingNavigationRoute.value = it
+        }
     }
 
     private fun handleDeepLinkIntent(intent: Intent?) {

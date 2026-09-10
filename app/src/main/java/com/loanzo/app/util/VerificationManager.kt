@@ -15,17 +15,94 @@ class VerificationManager @Inject constructor(
         const val APP_OWNER_PHONE = "+917061559039"
         const val OTP_LENGTH = 6
 
-        fun isAppOwner(phone: String?, username: String? = null): Boolean {
-            val u = username?.trim()?.lowercase() ?: ""
-            if (u == "satyam0810" || u == "satyam_081" || u == "satyam") return true
-            if (phone == null) return false
-            val cleanPhone = phone.trim().removePrefix("+91").trim()
-            return cleanPhone == "7061559039" || cleanPhone == "0000000000" || phone.trim() == APP_OWNER_PHONE
+        fun isAppOwner(
+            phone: String? = null,
+            username: String? = null,
+            userId: String? = null,
+            email: String? = null
+        ): Boolean {
+            val u = username?.trim()?.lowercase()?.removePrefix("@") ?: ""
+            val uid = userId?.trim()?.lowercase()?.removePrefix("@") ?: ""
+            val em = email?.trim()?.lowercase() ?: ""
+            val p = phone?.trim()?.removePrefix("+91")?.trim() ?: ""
+
+            // abhisi is strictly the Field Agent, NEVER Admin
+            if (u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi") {
+                return false
+            }
+
+            // ONLY satyam0810 is the Platform Admin
+            if (u in listOf("satyam0810", "satyam_081", "satyam") ||
+                uid in listOf("satyam0810", "satyam_081", "satyam", "demo_admin_satyam") ||
+                em.startsWith("satyam0810") || em.startsWith("satyam_081") || em.startsWith("satyam@loanzo.app") ||
+                p == "7061559039" || phone?.trim() == APP_OWNER_PHONE
+            ) {
+                return true
+            }
+            return false
+        }
+
+        fun isEligibleAppOwner(user: com.loanzo.app.data.entity.UserEntity?): Boolean {
+            if (user == null) return false
+            val u = user.username.trim().lowercase().removePrefix("@")
+            val uid = user.userId.trim().lowercase().removePrefix("@")
+            if (u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi") return false
+            return isAppOwner(
+                phone = user.phone,
+                username = user.username,
+                userId = user.userId,
+                email = user.email
+            ) || (u in listOf("satyam0810", "satyam_081", "satyam") || user.phone.contains("7061559039"))
         }
 
         fun isAppOwner(user: com.loanzo.app.data.entity.UserEntity?): Boolean {
             if (user == null) return false
-            return isAppOwner(user.phone, user.username) || user.role == "ADMIN"
+            val u = user.username.trim().lowercase().removePrefix("@")
+            val uid = user.userId.trim().lowercase().removePrefix("@")
+            if (u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi") return false
+            val isSatyam = isEligibleAppOwner(user)
+            return if (isSatyam) {
+                user.role.uppercase() == "ADMIN"
+            } else {
+                false
+            }
+        }
+
+        fun isFieldAgent(user: com.loanzo.app.data.entity.UserEntity?): Boolean {
+            if (user == null) return false
+            val u = user.username.trim().lowercase().removePrefix("@")
+            val uid = user.userId.trim().lowercase().removePrefix("@")
+            val em = user.email.trim().lowercase()
+            val p = user.phone.trim().replace(" ", "").removePrefix("+91").trim()
+
+            // Dedicated Demo Agent account always operates in Field Agent mode
+            val isDedicatedAgent = u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi" ||
+                                   em.startsWith("abhisi") || p == "9810012345"
+            if (isDedicatedAgent) return true
+
+            // A user operating in an active Member / Consumer role is strictly NOT in Field Agent mode,
+            // regardless of background empanelment status.
+            val activeRole = user.role.trim().uppercase()
+            if (activeRole in listOf("USER", "MEMBER", "BORROWER", "LENDER")) {
+                return false
+            }
+
+            // If user is eligible app owner (Satyam), check if his chosen active role is AGENT
+            if (isEligibleAppOwner(user) || u in listOf("satyam0810", "satyam_081", "satyam") || uid == "demo_admin_satyam" || p == "7061559039") {
+                return activeRole == "AGENT"
+            }
+
+            return activeRole == "AGENT"
+        }
+
+        fun isFieldAgent(username: String?, userId: String? = null, email: String? = null, phone: String? = null): Boolean {
+            val u = username?.trim()?.lowercase()?.removePrefix("@") ?: ""
+            val uid = userId?.trim()?.lowercase()?.removePrefix("@") ?: ""
+            val em = email?.trim()?.lowercase() ?: ""
+            val p = phone?.trim()?.replace(" ", "")?.removePrefix("+91")?.trim() ?: ""
+
+            if (u in listOf("satyam0810", "satyam_081", "satyam") || uid == "demo_admin_satyam" || p == "7061559039") return false
+            return u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi" || em.startsWith("abhisi") || p == "9810012345"
         }
 
         fun generateSecureToken(): String {

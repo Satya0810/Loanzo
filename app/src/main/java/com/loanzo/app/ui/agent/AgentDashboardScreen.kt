@@ -1,57 +1,46 @@
 package com.loanzo.app.ui.agent
 
-import com.loanzo.app.ui.components.ExecutiveHeroCard
-import com.loanzo.app.ui.theme.Navy700
-import com.loanzo.app.ui.theme.Navy800
-import com.loanzo.app.ui.theme.Navy900
-import com.loanzo.app.ui.theme.SurfaceDarkElevated
-import com.loanzo.app.ui.theme.GoldCoinBright
-import com.loanzo.app.ui.theme.GoldCoinRich
-import com.loanzo.app.ui.theme.GoldCoinCream
-import com.loanzo.app.ui.theme.GoldCoinAmber
-import com.loanzo.app.ui.theme.GoldCoinBorder
-import com.loanzo.app.ui.theme.Gray300
-import com.loanzo.app.ui.theme.Gray400
-import com.loanzo.app.ui.theme.Emerald400
-import com.loanzo.app.ui.theme.BrandRoyalBlue
-import com.loanzo.app.util.toInrString
-import androidx.compose.ui.draw.shadow
-import androidx.compose.foundation.BorderStroke
-
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loanzo.app.data.entity.AgentVisitEntity
 import com.loanzo.app.data.entity.UserEntity
 import com.loanzo.app.ui.components.LoanzoAvatar
+import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.isSuperAdmin
+import com.loanzo.app.util.toInrString
 
+/**
+ * Daylight Enterprise Field Operations Dashboard for Loanzo Certified Officers.
+ * Designed for high legibility under outdoor sunlight conditions on Android devices.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentDashboardScreen(
@@ -66,6 +55,8 @@ fun AgentDashboardScreen(
         isLenderVerified: Boolean,
         photoProof: String
     ) -> Unit,
+    onUpdateVisitStage: (visitId: String, stage: String) -> Unit = { _, _ -> },
+    onNavigateToChat: (channelId: String, loanId: String?, targetUserId: String?) -> Unit = { _, _, _ -> },
     onSwitchToConsumer: () -> Unit = {},
     onSwitchToAdmin: () -> Unit = {},
     onLogout: () -> Unit
@@ -76,15 +67,20 @@ fun AgentDashboardScreen(
     var selectedFilter by remember { mutableStateOf("ALL") }
     var activeInspectionVisit by remember { mutableStateOf<AgentVisitEntity?>(null) }
     var showPayoutSuccessDialog by remember { mutableStateOf<Double?>(null) }
+    var showSosConfirmationDialog by remember { mutableStateOf(false) }
 
     val isOnDuty = user?.isOnDuty ?: true
     val totalEarnings = user?.totalAgentEarnings ?: 0.0
 
-    val darkBg = MaterialTheme.colorScheme.background
-    val cardBg = MaterialTheme.colorScheme.surface
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
-    val goldAccent = com.loanzo.app.ui.theme.Gold500
-    val emeraldAccent = com.loanzo.app.ui.theme.Emerald500
+    // Daylight Enterprise Palette (Non-AI, High-Contrast Outdoors)
+    val pageBackground = Color(0xFFF8FAFC) // Light Slate
+    val surfaceCard = Color.White
+    val borderNormal = Color(0xFFE2E8F0)
+    val textPrimary = Color(0xFF0F172A) // Deep Slate
+    val textSecondary = Color(0xFF64748B) // Slate 500
+    val textMuted = Color(0xFF94A3B8)
+    val emeraldOfficial = Color(0xFF059669) // Emerald 600
+    val amberSecurity = Color(0xFFB45309) // Amber 700
 
     val todayVisits = remember(visits) {
         visits.filter { it.scheduledDate.equals("Today", ignoreCase = true) }
@@ -104,53 +100,60 @@ fun AgentDashboardScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = pageBackground,
         topBar = {
             Surface(
-                color = MaterialTheme.colorScheme.background,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                color = surfaceCard,
+                border = BorderStroke(1.dp, borderNormal)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         LoanzoAvatar(
                             user = user,
-                            size = 42.dp,
+                            size = 40.dp,
                             showVerifiedBadge = true,
-                            borderColor = GoldCoinBright,
+                            borderColor = emeraldOfficial,
                             borderWidth = 2.dp
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = GoldCoinRich.copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, GoldCoinBright.copy(alpha = 0.4f))
-                            ) {
-                                Text(
-                                    text = "OFFICIAL FIELD OFFICER",
-                                    color = GoldCoinAmber,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = emeraldOfficial.copy(alpha = 0.12f)
+                                ) {
+                                    Text(
+                                        text = "OFFICIAL FIELD OFFICER",
+                                        color = emeraldOfficial,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                if (isOnDuty) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(emeraldOfficial)
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = user?.name?.ifBlank { "Loanzo Agent" } ?: "Loanzo Agent",
-                                fontSize = 16.sp,
+                                text = user?.name?.ifBlank { "Loanzo Officer" } ?: "Loanzo Officer",
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = textPrimary,
                                 maxLines = 1,
-                                softWrap = false,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -159,35 +162,40 @@ fun AgentDashboardScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (isSuperAdmin) {
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = GoldCoinRich.copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, GoldCoinBright.copy(alpha = 0.4f)),
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFF1F5F9),
+                                border = BorderStroke(1.dp, borderNormal),
                                 modifier = Modifier.clickable { showRoleSwitchDialog = true }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    Text("👑", fontSize = 12.sp)
+                                    Text("👑", fontSize = 11.sp)
                                     Text(
                                         text = "Role",
-                                        color = GoldCoinAmber,
+                                        color = textPrimary,
                                         fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        softWrap = false
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                         }
 
-                        IconButton(onClick = onLogout) {
+                        IconButton(
+                            onClick = onLogout,
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF1F5F9))
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Logout,
                                 contentDescription = "Sign Out",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = textSecondary,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
@@ -200,312 +208,184 @@ fun AgentDashboardScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(vertical = 14.dp)
+            contentPadding = PaddingValues(vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Off Duty Alert Banner
-            if (!isOnDuty) {
-                item {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 14.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFF26180B),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF97316).copy(alpha = 0.4f))
-                    ) {
+            // 1. Shift & GPS Operations Bar
+            item {
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = surfaceCard),
+                    border = BorderStroke(1.dp, if (isOnDuty) emeraldOfficial.copy(alpha = 0.3f) else borderNormal),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
                         Row(
-                            modifier = Modifier.padding(14.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Coffee,
-                                contentDescription = null,
-                                tint = Color(0xFFF97316),
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isOnDuty) emeraldOfficial else Color(0xFFEA580C))
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (isOnDuty) "ACTIVE ON DUTY" else "SHIFT PAUSED (ON BREAK)",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (isOnDuty) emeraldOfficial else Color(0xFFEA580C)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Break Active — Duty Paused",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                                Text(
-                                    text = "You will not receive new emergency field verification requests while on break.",
+                                    text = if (isOnDuty) "📍 Live GPS Broadcast Active (±4m Accuracy)" else "Emergency field dispatches temporarily paused",
                                     fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = 15.sp
+                                    color = textSecondary
                                 )
                             }
+
+                            Button(
+                                onClick = { onToggleDutyStatus(!isOnDuty) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isOnDuty) Color(0xFFF1F5F9) else emeraldOfficial,
+                                    contentColor = if (isOnDuty) textPrimary else Color.White
+                                ),
+                                border = BorderStroke(1.dp, if (isOnDuty) borderNormal else emeraldOfficial),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isOnDuty) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isOnDuty) "Take Break" else "Go On Duty",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Daily Shift Metrics
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            MetricBox(
+                                modifier = Modifier.weight(1f),
+                                label = "Today's Stops",
+                                value = "${todayVisits.size} Stops",
+                                icon = Icons.Default.AltRoute,
+                                iconColor = Color(0xFF0284C7)
+                            )
+                            MetricBox(
+                                modifier = Modifier.weight(1.2f),
+                                label = "Total Credited",
+                                value = totalEarnings.toInrString(),
+                                icon = Icons.Default.Payments,
+                                iconColor = emeraldOfficial
+                            )
+                            MetricBox(
+                                modifier = Modifier.weight(1f),
+                                label = "Attested",
+                                value = "$completedVisitsCount Done",
+                                icon = Icons.Default.Verified,
+                                iconColor = amberSecurity
+                            )
                         }
                     }
                 }
             }
 
-            // Executive Obsidian Hero Card (Signature Black Hero Card)
+            // 2. Emergency Safety & SOS Quick Trigger
             item {
-                ExecutiveHeroCard(
-                    modifier = Modifier.fillMaxWidth()
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFFEF2F2),
+                    border = BorderStroke(1.dp, Color(0xFFFCA5A5)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showSosConfirmationDialog = true }
                 ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, null, tint = Color(0xFFDC2626), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Field Officer Safety SOS Hotline",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF991B1B)
+                                )
+                                Text(
+                                    text = "Tap if facing on-ground dispute, safety threat or emergency assistance",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFB91C1C)
+                                )
+                            }
+                        }
+                        Icon(Icons.Default.ChevronRight, null, tint = Color(0xFFDC2626), modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // 3. Filter Row
+            item {
+                Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = CircleShape,
-                                color = GoldCoinRich.copy(alpha = 0.2f),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Security,
-                                    contentDescription = null,
-                                    tint = GoldCoinBright,
-                                    modifier = Modifier.padding(8.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Agent Cockpit",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "Verified Ground Operations",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Gray400
-                                )
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (isOnDuty) Emerald400.copy(alpha = 0.2f) else Color(0xFFF97316).copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, if (isOnDuty) Emerald400.copy(alpha = 0.4f) else Color(0xFFF97316).copy(alpha = 0.4f))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .clip(CircleShape)
-                                        .background(if (isOnDuty) Emerald400 else Color(0xFFF97316))
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = if (isOnDuty) "ON DUTY" else "ON BREAK",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (isOnDuty) Emerald400 else Color(0xFFF97316),
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                        Text(
+                            text = "Today's Route & Inspections",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = textPrimary
+                        )
+                        Text(
+                            text = "${filteredVisits.size} Assigned",
+                            fontSize = 12.sp,
+                            color = textSecondary
+                        )
                     }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = "Total Verified Earnings",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Gray300
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = totalEarnings.toInrString(),
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Emerald400
-                            )
-                        }
-
-                        Button(
-                            onClick = { onToggleDutyStatus(!isOnDuty) },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isOnDuty) Color(0xFF1E293B) else Emerald400,
-                                contentColor = if (isOnDuty) Gray300 else Navy900
-                            ),
-                            border = BorderStroke(1.dp, if (isOnDuty) Color(0xFF334155) else Emerald400),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isOnDuty) Icons.Default.Coffee else Icons.Default.FlashOn,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isOnDuty) "Take Break" else "Go On Duty",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = SurfaceDarkElevated,
-                            border = BorderStroke(0.8.dp, Color(0xFF38BDF8).copy(alpha = 0.35f)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.EventNote,
-                                        contentDescription = null,
-                                        tint = Color(0xFF38BDF8),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Today",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Gray400
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "${todayVisits.size}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "Scheduled",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Gray400
-                                )
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = SurfaceDarkElevated,
-                            border = BorderStroke(0.8.dp, Emerald400.copy(alpha = 0.35f)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Payments,
-                                        contentDescription = null,
-                                        tint = Emerald400,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Earned",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Gray400
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "₹${totalEarnings.toInt()}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Emerald400
-                                )
-                                Text(
-                                    text = "Credited",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Gray400
-                                )
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = SurfaceDarkElevated,
-                            border = BorderStroke(0.8.dp, GoldCoinBright.copy(alpha = 0.35f)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.TaskAlt,
-                                        contentDescription = null,
-                                        tint = GoldCoinBright,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Done",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Gray400
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "$completedVisitsCount",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = GoldCoinBright
-                                )
-                                Text(
-                                    text = "Inspections",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Gray400
-                                )
-                            }
-                        }
+                        item { DaylightFilterChip("ALL", "All Visits", selectedFilter == "ALL") { selectedFilter = "ALL" } }
+                        item { DaylightFilterChip("COLLATERAL", "🏷️ Gold / Collateral", selectedFilter == "COLLATERAL") { selectedFilter = "COLLATERAL" } }
+                        item { DaylightFilterChip("BORROWER", "🟢 Borrower KYC", selectedFilter == "BORROWER") { selectedFilter = "BORROWER" } }
+                        item { DaylightFilterChip("LENDER", "🔵 Lender KYC", selectedFilter == "LENDER") { selectedFilter = "LENDER" } }
+                        item { DaylightFilterChip("COMPLETED", "✅ Attested", selectedFilter == "COMPLETED") { selectedFilter = "COMPLETED" } }
                     }
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(18.dp)) }
-
-            // Filter Chips
-            item {
-                Text(
-                    text = "Scheduled Field Inspections",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item { FilterChipItem("ALL", "All Visits", selectedFilter == "ALL") { selectedFilter = "ALL" } }
-                    item { FilterChipItem("COLLATERAL", "🏷️ Collateral", selectedFilter == "COLLATERAL") { selectedFilter = "COLLATERAL" } }
-                    item { FilterChipItem("BORROWER", "🟢 Borrower", selectedFilter == "BORROWER") { selectedFilter = "BORROWER" } }
-                    item { FilterChipItem("LENDER", "🔵 Lender", selectedFilter == "LENDER") { selectedFilter = "LENDER" } }
-                    item { FilterChipItem("COMPLETED", "✅ Completed", selectedFilter == "COMPLETED") { selectedFilter = "COMPLETED" } }
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-            }
-
-            // Visits Feed
+            // 4. Visits Feed
             if (filteredVisits.isEmpty()) {
                 item {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 30.dp),
+                            .padding(vertical = 24.dp),
                         shape = RoundedCornerShape(12.dp),
-                        color = cardBg,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+                        color = surfaceCard,
+                        border = BorderStroke(1.dp, borderNormal)
                     ) {
                         Column(
                             modifier = Modifier.padding(24.dp),
@@ -514,34 +394,37 @@ fun AgentDashboardScreen(
                             Icon(
                                 imageVector = Icons.Default.AssignmentLate,
                                 contentDescription = null,
-                                tint = Color(0xFF6B7280),
-                                modifier = Modifier.size(40.dp)
+                                tint = textMuted,
+                                modifier = Modifier.size(36.dp)
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
                                 text = "No Inspections Found",
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = textPrimary
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "New physical verification visits dispatched by Master Admin will appear here.",
-                                fontSize = 12.sp,
-                                color = Color(0xFF9CA3AF),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                text = "New physical verification stops dispatched by the Master Admin will appear here in chronological order.",
+                                fontSize = 11.sp,
+                                color = textSecondary,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
                 }
             } else {
-                items(filteredVisits, key = { it.visitId }) { visit ->
-                    AgentVisitCard(
+                itemsIndexed(filteredVisits, key = { _, visit -> visit.visitId }) { index, visit ->
+                    DaylightVisitStopCard(
+                        stopNumber = index + 1,
                         visit = visit,
+                        onUpdateStage = { stage -> onUpdateVisitStage(visit.visitId, stage) },
                         onNavigateMaps = {
                             val uri = Uri.parse("geo:0,0?q=${Uri.encode(visit.targetAddress)}")
-                            val mapIntent = Intent(Intent.ACTION_VIEW, uri)
-                            mapIntent.setPackage("com.google.android.apps.maps")
+                            val mapIntent = Intent(Intent.ACTION_VIEW, uri).apply {
+                                setPackage("com.google.android.apps.maps")
+                            }
                             try {
                                 context.startActivity(mapIntent)
                             } catch (_: Exception) {
@@ -554,46 +437,32 @@ fun AgentDashboardScreen(
                                 val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${visit.borrowerPhone}"))
                                 context.startActivity(intent)
                             } catch (_: Exception) {
-                                android.widget.Toast.makeText(context, "Unable to launch dialer", android.widget.Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Unable to launch dialer", Toast.LENGTH_SHORT).show()
                             }
                         },
                         onWhatsAppBorrower = {
                             try {
                                 val cleanNumber = visit.borrowerPhone.replace("+", "").replace(" ", "")
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber&text=Hello%20${visit.borrowerName},%20I%20am%20the%20Loanzo%20Verification%20Officer%20scheduled%20for%20your%20loan%20verification."))
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber&text=Hello%20${visit.borrowerName},%20I%20am%20the%20Loanzo%20Verification%20Officer%20scheduled%20for%20your%20verification."))
                                 context.startActivity(intent)
                             } catch (_: Exception) {
-                                android.widget.Toast.makeText(context, "WhatsApp is not installed on this device", android.widget.Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "WhatsApp not installed", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        onCallLender = {
-                            try {
-                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${visit.lenderPhone}"))
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                android.widget.Toast.makeText(context, "Unable to launch dialer", android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        onWhatsAppLender = {
-                            try {
-                                val cleanNumber = visit.lenderPhone.replace("+", "").replace(" ", "")
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$cleanNumber&text=Hello%20${visit.lenderName},%20I%20am%20the%20Loanzo%20Verification%20Officer%20scheduled%20for%20your%20loan%20verification."))
-                                context.startActivity(intent)
-                            } catch (_: Exception) {
-                                android.widget.Toast.makeText(context, "WhatsApp is not installed on this device", android.widget.Toast.LENGTH_SHORT).show()
-                            }
+                        onChatBorrower = {
+                            val channelId = if (visit.loanId.isNotBlank()) "chat_agent_${visit.loanId}" else "chat_agent_${visit.visitId}"
+                            onNavigateToChat(channelId, visit.loanId.ifBlank { null }, null)
                         },
                         onStartInspection = {
                             activeInspectionVisit = visit
                         }
                     )
-                    Spacer(modifier = Modifier.height(14.dp))
                 }
             }
         }
     }
 
-    // Modal Inspection Sheet
+    // Modal Inspection Attestation Sheet
     activeInspectionVisit?.let { visit ->
         AgentInspectionSheet(
             visit = visit,
@@ -618,40 +487,41 @@ fun AgentDashboardScreen(
     showPayoutSuccessDialog?.let { amount ->
         AlertDialog(
             onDismissRequest = { showPayoutSuccessDialog = null },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = surfaceCard,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = emeraldAccent,
+                        tint = emeraldOfficial,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Inspection Verified!",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold
+                        text = "Attestation Successfully Logged!",
+                        color = textPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
                     )
                 }
             },
             text = {
                 Column {
                     Text(
-                        text = "Field inspection report successfully logged and cryptographically attested.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp
+                        text = "Physical verification report and proof have been attested and saved to immutable ledger.",
+                        color = textSecondary,
+                        fontSize = 12.sp
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = emeraldAccent.copy(alpha = 0.15f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, emeraldAccent.copy(alpha = 0.4f))
+                        color = emeraldOfficial.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, emeraldOfficial.copy(alpha = 0.3f))
                     ) {
                         Text(
-                            text = "+ ₹${amount.toInt()} Credited to Agent Balance",
-                            color = emeraldAccent,
-                            fontSize = 14.sp,
+                            text = "+ ₹${amount.toInt()} Credited to Officer Balance",
+                            color = emeraldOfficial,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.ExtraBold,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
@@ -661,49 +531,80 @@ fun AgentDashboardScreen(
             confirmButton = {
                 Button(
                     onClick = { showPayoutSuccessDialog = null },
-                    colors = ButtonDefaults.buttonColors(containerColor = emeraldAccent)
+                    colors = ButtonDefaults.buttonColors(containerColor = emeraldOfficial)
                 ) {
-                    Text(
-                        text = "Continue",
-                        color = Navy900,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Continue Shift", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         )
     }
 
-    // 👑 Super Admin Role Switcher Dialog
+    // Emergency SOS Confirmation Dialog
+    if (showSosConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showSosConfirmationDialog = false },
+            containerColor = surfaceCard,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Emergency, null, tint = Color(0xFFDC2626), modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Emergency Field Assistance", color = Color(0xFF991B1B), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            },
+            text = {
+                Text(
+                    text = "Do you want to immediately call the Loanzo Master Admin / Emergency Assistance team for support at your current location?",
+                    fontSize = 13.sp,
+                    color = textSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSosConfirmationDialog = false
+                        try {
+                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:+919876543210"))
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Unable to dial helpline", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                ) {
+                    Text("Call Safety Hotline", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSosConfirmationDialog = false }) {
+                    Text("Cancel", color = textSecondary)
+                }
+            }
+        )
+    }
+
+    // 👑 Role Switcher Dialog for SuperAdmin
     if (showRoleSwitchDialog) {
         AlertDialog(
             onDismissRequest = { showRoleSwitchDialog = false },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = surfaceCard,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("👑", fontSize = 18.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Master Role Switcher",
-                        color = goldAccent,
+                        text = "Operational View Switcher",
+                        color = textPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
                 }
             },
             text = {
-                Column {
-                    Text(
-                        text = "Hello @${user?.username?.ifBlank { "satyam0810" } ?: "satyam0810"}, switch your operational view instantly:",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 13.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Option 1: Switch to Consumer Member Dashboard
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFF1F5F9),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, borderNormal),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -712,34 +613,22 @@ fun AgentDashboardScreen(
                             }
                     ) {
                         Row(
-                            modifier = Modifier.padding(14.dp),
+                            modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("👤", fontSize = 20.sp)
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("📱", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
                             Column {
-                                Text(
-                                    text = "Normal Member Dashboard",
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = "P2P loans, wallet, marketplace feed",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 11.sp
-                                )
+                                Text("Borrower / Lender View", color = textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("Switch to consumer loan application screens", color = textSecondary, fontSize = 11.sp)
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Option 2: Switch to Master Admin Hub
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFF1F5F9),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, borderNormal),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
@@ -748,23 +637,14 @@ fun AgentDashboardScreen(
                             }
                     ) {
                         Row(
-                            modifier = Modifier.padding(14.dp),
+                            modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("🛡️", fontSize = 20.sp)
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("🛡️", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
                             Column {
-                                Text(
-                                    text = "Master Admin Hub",
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = "Empanelment approvals & verification tokens",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 11.sp
-                                )
+                                Text("Master Admin Hub", color = textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text("Dispatch engine, approvals & ledger oversight", color = textSecondary, fontSize = 11.sp)
                             }
                         }
                     }
@@ -772,7 +652,7 @@ fun AgentDashboardScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showRoleSwitchDialog = false }) {
-                    Text("Stay as Agent", color = goldAccent)
+                    Text("Stay as Officer", color = textPrimary, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -780,48 +660,46 @@ fun AgentDashboardScreen(
 }
 
 @Composable
-private fun StatCard(
+private fun MetricBox(
     modifier: Modifier = Modifier,
-    title: String,
+    label: String,
     value: String,
     icon: ImageVector,
     iconColor: Color
 ) {
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        shape = RoundedCornerShape(10.dp),
+        color = Color(0xFFF8FAFC),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconColor,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = label,
+                    fontSize = 10.sp,
+                    color = Color(0xFF64748B),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = value,
-                fontSize = 18.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color(0xFF0F172A),
                 maxLines = 1,
-                softWrap = false
-            )
-            Text(
-                text = title,
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                softWrap = false
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
 @Composable
-private fun FilterChipItem(
+private fun DaylightFilterChip(
     key: String,
     label: String,
     isSelected: Boolean,
@@ -829,19 +707,16 @@ private fun FilterChipItem(
 ) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) GoldCoinCream else Color.White,
-        border = BorderStroke(
-            1.dp,
-            if (isSelected) GoldCoinBorder else MaterialTheme.colorScheme.outlineVariant
-        ),
+        color = if (isSelected) Color(0xFF0F172A) else Color.White,
+        border = BorderStroke(1.dp, if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0)),
         modifier = Modifier.clickable { onSelect() }
     ) {
         Text(
             text = label,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) GoldCoinAmber else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            color = if (isSelected) Color.White else Color(0xFF475569),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             maxLines = 1,
             softWrap = false
         )
@@ -849,79 +724,85 @@ private fun FilterChipItem(
 }
 
 @Composable
-private fun AgentVisitCard(
+private fun DaylightVisitStopCard(
+    stopNumber: Int,
     visit: AgentVisitEntity,
+    onUpdateStage: (String) -> Unit,
     onNavigateMaps: () -> Unit,
     onCallBorrower: () -> Unit,
     onWhatsAppBorrower: () -> Unit,
-    onCallLender: () -> Unit,
-    onWhatsAppLender: () -> Unit,
+    onChatBorrower: () -> Unit = {},
     onStartInspection: () -> Unit
 ) {
-    val cardBg = MaterialTheme.colorScheme.surface
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
-    val goldAccent = Color(0xFFFFB800)
-    val emeraldAccent = Color(0xFF10B981)
-
     val isCompleted = visit.status == "COMPLETED"
+    val stageStatus = visit.visitStageStatus
 
-    val typeBadgeColor = when (visit.visitType) {
-        "COLLATERAL_VERIFICATION" -> goldAccent
-        "BORROWER_VERIFICATION" -> emeraldAccent
-        else -> Color(0xFF38BDF8)
+    val typeColor = when (visit.visitType) {
+        "COLLATERAL_VERIFICATION" -> Color(0xFFB45309)
+        "BORROWER_VERIFICATION" -> Color(0xFF059669)
+        else -> Color(0xFF0284C7)
     }
 
-    val typeBadgeText = when (visit.visitType) {
-        "COLLATERAL_VERIFICATION" -> "COLLATERAL VALUATION"
-        "BORROWER_VERIFICATION" -> "BORROWER PHYSICAL KYC"
-        else -> "LENDER PHYSICAL KYC"
+    val typeLabel = when (visit.visitType) {
+        "COLLATERAL_VERIFICATION" -> "GOLD / ASSET APPRAISAL"
+        "BORROWER_VERIFICATION" -> "BORROWER RESIDENCE KYC"
+        else -> "LENDER IDENTITY AUDIT"
     }
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
+    Card(
         shape = RoundedCornerShape(14.dp),
-        color = cardBg,
-        border = androidx.compose.foundation.BorderStroke(
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(
             1.dp,
-            if (isCompleted) emeraldAccent.copy(alpha = 0.5f) else borderColor
-        )
+            if (isCompleted) Color(0xFF059669).copy(alpha = 0.4f) else Color(0xFFE2E8F0)
+        ),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row: Type Badge + Payout Tag
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Stop Header: Sequence badge + Type + Payout
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = typeBadgeColor.copy(alpha = 0.15f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, typeBadgeColor.copy(alpha = 0.4f))
-                ) {
-                    Text(
-                        text = typeBadgeText,
-                        color = typeBadgeColor,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        maxLines = 1,
-                        softWrap = false
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFF0F172A)
+                    ) {
+                        Text(
+                            text = "STOP $stopNumber",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = typeColor.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = typeLabel,
+                            color = typeColor,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
 
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = emeraldAccent.copy(alpha = 0.15f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, emeraldAccent.copy(alpha = 0.4f))
+                    color = Color(0xFF059669).copy(alpha = 0.12f)
                 ) {
                     Text(
-                        text = "Earn ₹${visit.payoutAmount.toInt()}",
-                        color = emeraldAccent,
+                        text = "₹${visit.payoutAmount.toInt()} Bounty",
+                        color = Color(0xFF059669),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        maxLines = 1,
-                        softWrap = false
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
             }
@@ -930,39 +811,41 @@ private fun AgentVisitCard(
 
             Text(
                 text = visit.title,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color(0xFF0F172A),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Time Slot & Date
+            // Time & Distance Tag
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Schedule,
-                    contentDescription = null,
-                    tint = Color(0xFF9CA3AF),
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
+                Icon(Icons.Default.Schedule, null, tint = Color(0xFF64748B), modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "${visit.scheduledDate} • ${visit.scheduledTimeSlot}",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false
+                    fontSize = 11.sp,
+                    color = Color(0xFF64748B)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Icon(Icons.Default.DirectionsCar, null, tint = Color(0xFF0284C7), modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${visit.distanceKm ?: 3.5} km away",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0284C7)
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Address Box with Maps button
+            // Daylight Navigation Address Box
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = Color(0xFFF1F5F9),
+                color = Color(0xFFF8FAFC),
                 border = BorderStroke(1.dp, Color(0xFFE2E8F0))
             ) {
                 Row(
@@ -971,196 +854,161 @@ private fun AgentVisitCard(
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Place,
-                        contentDescription = null,
-                        tint = Color(0xFFEF4444),
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Icon(Icons.Default.Place, null, tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = visit.targetAddress,
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = Color(0xFF1E293B),
                         modifier = Modifier.weight(1f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    IconButton(
+                    Button(
                         onClick = onNavigateMaps,
-                        modifier = Modifier.size(32.dp)
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Navigation,
-                            contentDescription = "Navigate Maps",
-                            tint = Color(0xFF38BDF8),
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Icon(Icons.Default.Navigation, null, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Maps", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Counterparty Contact Rows
-            CounterpartyRow(
-                roleLabel = "Borrower",
-                name = visit.borrowerName,
-                phone = visit.borrowerPhone,
-                onCall = onCallBorrower,
-                onWhatsApp = onWhatsAppBorrower
-            )
+            // Counterparty Contact Strip
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFF8FAFC),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Counterparty: ${visit.borrowerName}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = visit.borrowerPhone,
+                            fontSize = 11.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
 
-            Spacer(modifier = Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        IconButton(
+                            onClick = onCallBorrower,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .border(1.dp, Color(0xFFCBD5E1), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Phone, "Call", tint = Color(0xFF0284C7), modifier = Modifier.size(15.dp))
+                        }
 
-            CounterpartyRow(
-                roleLabel = "Lender",
-                name = visit.lenderName,
-                phone = visit.lenderPhone,
-                onCall = onCallLender,
-                onWhatsApp = onWhatsAppLender
-            )
+                        IconButton(
+                            onClick = onWhatsAppBorrower,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .border(1.dp, Color(0xFFCBD5E1), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Chat, "WhatsApp", tint = Color(0xFF059669), modifier = Modifier.size(15.dp))
+                        }
 
-            Spacer(modifier = Modifier.height(14.dp))
+                        IconButton(
+                            onClick = onChatBorrower,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                                .border(1.dp, Color(0xFFCBD5E1), CircleShape)
+                        ) {
+                            Icon(Icons.Default.QuestionAnswer, "In-App Chat", tint = Color(0xFF7C3AED), modifier = Modifier.size(15.dp))
+                        }
+                    }
+                }
+            }
 
-            // Inspection Action Button
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Stage Action Button
             if (isCompleted) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    color = emeraldAccent.copy(alpha = 0.15f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, emeraldAccent.copy(alpha = 0.4f))
+                    color = Color(0xFF059669).copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, Color(0xFF059669).copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 10.dp),
+                        modifier = Modifier.padding(vertical = 9.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = emeraldAccent,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF059669), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Inspection Completed & Verified",
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = emeraldAccent
+                            color = Color(0xFF059669)
                         )
                     }
                 }
             } else {
-                Button(
-                    onClick = onStartInspection,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = GoldCoinRich, contentColor = Navy900)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.AssignmentTurnedIn,
-                            contentDescription = null,
-                            tint = Navy900,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Start Physical Inspection",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Navy900,
-                            maxLines = 1,
-                            softWrap = false
-                        )
+                when (stageStatus) {
+                    "SCHEDULED", "DISPATCHED" -> {
+                        Button(
+                            onClick = { onUpdateStage("EN_ROUTE") },
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+                        ) {
+                            Icon(Icons.Default.DirectionsBike, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Start Route / Go En Route ➔", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CounterpartyRow(
-    roleLabel: String,
-    name: String,
-    phone: String,
-    onCall: () -> Unit,
-    onWhatsApp: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = Color(0xFFF1F5F9)
-            ) {
-                Text(
-                    text = roleLabel,
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "$name ($phone)",
-                fontSize = 12.sp,
-                color = Color(0xFFE5E7EB),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            // Call Button
-            Surface(
-                shape = CircleShape,
-                color = Color(0xFF1E293B),
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable { onCall() }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Phone,
-                        contentDescription = "Call",
-                        tint = Color(0xFF38BDF8),
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-            }
-
-            // WhatsApp Button
-            Surface(
-                shape = CircleShape,
-                color = Color(0xFF143324),
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable { onWhatsApp() }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Chat,
-                        contentDescription = "WhatsApp",
-                        tint = Color(0xFF10B981),
-                        modifier = Modifier.size(14.dp)
-                    )
+                    "EN_ROUTE" -> {
+                        Button(
+                            onClick = { onUpdateStage("ARRIVED") },
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEA580C))
+                        ) {
+                            Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Mark Arrived at Doorstep 📍", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    else -> {
+                        Button(
+                            onClick = onStartInspection,
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                        ) {
+                            Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Enter PIN & Complete Inspection 📋", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }

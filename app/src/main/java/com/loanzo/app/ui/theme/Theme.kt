@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
+val DarkColorScheme = darkColorScheme(
     primary = Gold500,
     onPrimary = Navy900,
     primaryContainer = Navy800,
@@ -41,7 +41,7 @@ private val DarkColorScheme = darkColorScheme(
     surfaceTint = Gold500
 )
 
-private val LightColorScheme = lightColorScheme(
+val LightColorScheme = lightColorScheme(
     primary = BrandRoyalBlue, // Vibrant Royal Cobalt Blue (from app logo background)
     onPrimary = Color.White,
     primaryContainer = BrandIceBlue, // Soft Ice Blue (#EFF6FF)

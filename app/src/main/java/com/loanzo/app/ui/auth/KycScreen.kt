@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -54,11 +55,13 @@ fun KycScreen(
     onCompleteStep: (step: Int, data: Map<String, String>) -> Unit,
     onUploadSelfie: (Bitmap) -> Unit,
     onUploadDocument: (String, android.net.Uri) -> Unit,
+    onResetKyc: () -> Unit = {},
     onSkip: () -> Unit = {},
     onFinish: () -> Unit
 ) {
     val context = LocalContext.current
     var selfieBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var showResetDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(error) {
         error?.let {
@@ -151,6 +154,44 @@ fun KycScreen(
             }
         }
 
+        val isReKycMode = user?.kycStatus == "VERIFIED" || user?.kycStatus == "REJECTED"
+        if (isReKycMode) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = if (user?.kycStatus == "REJECTED") Red400.copy(alpha = 0.12f) else Gold500.copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, if (user?.kycStatus == "REJECTED") Red400.copy(alpha = 0.4f) else Gold500.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            if (user?.kycStatus == "REJECTED") Icons.Default.Warning else Icons.Default.PublishedWithChanges,
+                            contentDescription = null,
+                            tint = if (user?.kycStatus == "REJECTED") Red400 else Gold500,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = if (user?.kycStatus == "REJECTED") "KYC Re-Submission Required" else "Re-KYC / Credentials Update Active",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (user?.kycStatus == "REJECTED") Red400 else Gold500
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = if (user?.kycStatus == "REJECTED") 
+                            "Your previous submission was flagged for updates. Please re-verify or re-upload your documents below."
+                        else 
+                            "You are in Re-KYC mode. You can update any of your verification records below. Changes will be synchronized across your account.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         // 1. DIGILOCKER SECTION (GOVT OF INDIA)
@@ -219,6 +260,25 @@ fun KycScreen(
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = onStartDigiLockerKyc,
+                        modifier = Modifier.fillMaxWidth().height(42.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald500),
+                        border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.5f)),
+                        enabled = !isDigiLockerLoading
+                    ) {
+                        if (isDigiLockerLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Emerald500, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Connecting...", fontSize = 13.sp)
+                        } else {
+                            Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Re-verify via DigiLocker / Update", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 } else {
@@ -378,6 +438,29 @@ fun KycScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                         Text("Selfie Verified & Active as Profile Photo ✓", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = Emerald400)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedButton(
+                            onClick = {
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                    try {
+                                        takePictureLauncher.launch(null)
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(context, "No camera app available.", android.widget.Toast.LENGTH_LONG).show()
+                                    }
+                                } else {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500),
+                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                            enabled = !isUploadingSelfie
+                        ) {
+                            Icon(Icons.Default.CameraAlt, null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Retake & Update Selfie", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
@@ -417,10 +500,41 @@ fun KycScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (isPanDone) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                        Icon(Icons.Default.CheckCircle, null, tint = Emerald400)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("PAN Card Uploaded", color = Emerald400, fontWeight = FontWeight.SemiBold)
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, null, tint = Emerald400)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("PAN Card Uploaded ✓", color = Emerald400, fontWeight = FontWeight.SemiBold)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedButton(
+                            onClick = { panLauncher.launch("image/*") },
+                            modifier = Modifier.fillMaxWidth().height(38.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Blue400),
+                            border = BorderStroke(1.dp, Blue400.copy(alpha = 0.4f)),
+                            enabled = !isUploadingPan
+                        ) {
+                            Icon(Icons.Default.UploadFile, null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(if (panImageUri != null) "New PAN Image Selected" else "Replace / Re-upload PAN", fontSize = 12.sp)
+                        }
+                        if (panImageUri != null) {
+                            Button(
+                                onClick = { onUploadDocument("PAN", panImageUri!!) },
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                enabled = !isUploadingPan
+                            ) {
+                                if (isUploadingPan) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Uploading...", fontSize = 12.sp)
+                                } else {
+                                    Text("Confirm & Upload New PAN", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
                 } else {
                     OutlinedButton(
@@ -455,10 +569,41 @@ fun KycScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (isAadhaarDone) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                        Icon(Icons.Default.CheckCircle, null, tint = Emerald500)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Aadhaar Card Uploaded", color = Emerald500, fontWeight = FontWeight.SemiBold)
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, null, tint = Emerald500)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Aadhaar Card Uploaded ✓", color = Emerald500, fontWeight = FontWeight.SemiBold)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedButton(
+                            onClick = { aadhaarLauncher.launch("image/*") },
+                            modifier = Modifier.fillMaxWidth().height(38.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Blue400),
+                            border = BorderStroke(1.dp, Blue400.copy(alpha = 0.4f)),
+                            enabled = !isUploadingAadhaar
+                        ) {
+                            Icon(Icons.Default.UploadFile, null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(if (aadhaarImageUri != null) "New Aadhaar Image Selected" else "Replace / Re-upload Aadhaar", fontSize = 12.sp)
+                        }
+                        if (aadhaarImageUri != null) {
+                            Button(
+                                onClick = { onUploadDocument("AADHAAR", aadhaarImageUri!!) },
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                enabled = !isUploadingAadhaar
+                            ) {
+                                if (isUploadingAadhaar) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Uploading...", fontSize = 12.sp)
+                                } else {
+                                    Text("Confirm & Upload New Aadhaar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
                 } else {
                     OutlinedButton(
@@ -501,7 +646,22 @@ fun KycScreen(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
             enabled = isDigiLockerDone && isSelfieDone && isPanDone && isAadhaarDone
         ) {
-            Text("Complete KYC & Go to Dashboard", fontWeight = FontWeight.Bold)
+            Text(if (isReKycMode) "Update & Save Re-KYC" else "Complete KYC & Go to Dashboard", fontWeight = FontWeight.Bold)
+        }
+
+        if (isReKycMode) {
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = { showResetDialog = true },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Red400.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400)
+            ) {
+                Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Reset All Documents & Start Fresh", fontWeight = FontWeight.SemiBold)
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -515,6 +675,31 @@ fun KycScreen(
         ) {
             Text("Skip for Now (Explore App)", fontWeight = FontWeight.SemiBold)
         }
+    }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            icon = { Icon(Icons.Default.Warning, null, tint = Red400) },
+            title = { Text("Reset KYC Records?") },
+            text = { Text("This will reset your Aadhaar, PAN, and Selfie verification so you can re-submit all documents cleanly.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showResetDialog = false
+                        onResetKyc()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Red400, contentColor = Color.White)
+                ) {
+                    Text("Confirm Reset")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

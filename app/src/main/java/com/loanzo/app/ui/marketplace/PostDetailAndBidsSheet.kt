@@ -20,9 +20,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import coil.compose.SubcomposeAsyncImage
 import com.loanzo.app.data.entity.MarketplaceBidEntity
 import com.loanzo.app.data.entity.MarketplacePostEntity
 import com.loanzo.app.ui.theme.*
+import com.loanzo.app.util.CartoonAvatarHelper
 import com.loanzo.app.util.toFormattedString
 import com.loanzo.app.util.toRelativeTime
 
@@ -116,14 +122,39 @@ fun BidCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val bidderAvatar = bid.bidderAvatarUrl.ifBlank {
+                    CartoonAvatarHelper.getCartoonAvatarUrl(bid.bidderName.ifBlank { bid.bidderId })
+                }
+                val bidderCartoonRes = CartoonAvatarHelper.getCartoonAvatarDrawableRes(bid.bidderName.ifBlank { bid.bidderId })
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    SubcomposeAsyncImage(
+                        model = bidderAvatar,
+                        contentDescription = bid.bidderName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Image(
+                                painter = painterResource(id = bidderCartoonRes),
+                                contentDescription = "2D Cartoon Avatar",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        },
+                        error = {
+                            Image(
+                                painter = painterResource(id = bidderCartoonRes),
+                                contentDescription = "2D Cartoon Avatar",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(10.dp))

@@ -1,9 +1,13 @@
 package com.loanzo.app.util
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -30,23 +34,124 @@ class TelegramManager @Inject constructor() {
         val ADMIN_CHAT_IDS = listOf(8234574147L)
 
         private const val TELEGRAM_API_URL = "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
+        private const val MAX_TELEGRAM_MESSAGE_LENGTH = 4000
+
+        // Shared static client to prevent multiple OkHttpClient thread-pool and socket leaks
+        val sharedClient: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(10, TimeUnit.SECONDS)
+                .writeTimeout(10, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .build()
+        }
+
+        // Shared singleton instance for manual invocation in Composables and ViewModels
+        val instance: TelegramManager by lazy { TelegramManager() }
+
+        /**
+         * Safely escapes raw user text for Telegram HTML parse mode.
+         * Converts &, <, and > into compliant HTML entities.
+         */
+        fun escapeHtml(text: String?): String {
+            if (text.isNullOrEmpty()) return ""
+            return text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+        }
+
+        /**
+         * Strips all HTML tags and decodes entities for resilient plain-text fallback.
+         */
+        fun stripHtml(html: String?): String {
+            if (html.isNullOrEmpty()) return ""
+            return html
+                .replace(Regex("<[^>]*>"), "")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .trim()
+        }
+
+        /**
+         * Validates and sanitizes a URL for Telegram inline keyboard buttons.
+         * Returns null if the URL is invalid, empty, or uses an unsupported local scheme (e.g. content:// or file://).
+         */
+        fun sanitizeButtonUrl(rawUrl: String?): String? {
+            if (rawUrl.isNullOrBlank()) return null
+            val trimmed = rawUrl.trim()
+            return when {
+                trimmed.startsWith("http://", ignoreCase = true) ||
+                trimmed.startsWith("https://", ignoreCase = true) ||
+                trimmed.startsWith("tg://", ignoreCase = true) -> trimmed
+                trimmed.startsWith("tel:", ignoreCase = true) -> {
+                    val digits = trimmed.removePrefix("tel:").filter { it.isDigit() }
+                    if (digits.isNotBlank()) "https://wa.me/$digits" else null
+                }
+                trimmed.startsWith("content://", ignoreCase = true) ||
+                trimmed.startsWith("file://", ignoreCase = true) -> null
+                trimmed.contains(".") && !trimmed.contains(" ") && !trimmed.contains("\n") -> "https://$trimmed"
+                else -> null
+            }
+        }
     }
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val client: OkHttpClient get() = sharedClient
 
     /**
      * Opens Telegram with a deep link to link the user's account with the bot.
+     * Prefers direct app scheme (`tg://resolve?domain=Loanzo_bot&start=user_$userId`),
+     * falling back smoothly to web browser (`https://t.me/Loanzo_bot?start=user_$userId`),
+     * and shows a friendly Toast if no suitable app or browser is available.
      */
     fun openBotForLinking(context: Context, userId: String) {
+        val cleanUserId = userId.trim()
+        val startParam = if (cleanUserId.isNotBlank()) "user_$cleanUserId" else "app_launch"
+        val nativeAppUri = Uri.parse("tg://resolve?domain=$BOT_USERNAME&start=$startParam")
+        val webUri = Uri.parse("$BOT_URL?start=$startParam")
+
         try {
-            val deepLink = "$BOT_URL?start=user_$userId"
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(deepLink))
-            context.startActivity(intent)
+            // Attempt 1: Direct native Telegram application resolution
+            val nativeIntent = Intent(Intent.ACTION_VIEW, nativeAppUri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(nativeIntent)
+        } catch (_: ActivityNotFoundException) {
+            // Attempt 2: Web Browser fallback
+            try {
+                val webIntent = Intent(Intent.ACTION_VIEW, webUri).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(webIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not open Telegram link: ${e.message}")
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(
+                        context,
+                        "Could not open Telegram. Please ensure Telegram or a browser is installed.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Could not open Telegram: ${e.message}")
+            // Attempt 3: Catch-all fallback
+            try {
+                val webIntent = Intent(Intent.ACTION_VIEW, webUri).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(webIntent)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed all attempts to open Telegram: ${e2.message}")
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(
+                        context,
+                        "Could not open Telegram. Please ensure Telegram or a browser is installed.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
         }
     }
 
@@ -75,17 +180,22 @@ class TelegramManager @Inject constructor() {
         documentType: String,
         documentUrl: String?
     ) {
+        val safeName = escapeHtml(userName.ifBlank { "User $userId" })
+        val safeUserId = escapeHtml(userId)
+        val safeDocType = escapeHtml(documentType)
+
         val html = """
             📋 <b>New KYC Document Uploaded</b>
             
-            <b>User:</b> $userName
-            <b>User ID:</b> <code>$userId</code>
-            <b>Document:</b> $documentType
+            <b>User:</b> $safeName
+            <b>User ID:</b> <code>$safeUserId</code>
+            <b>Document:</b> $safeDocType
             <b>Status:</b> Pending Verification ⏳
         """.trimIndent()
 
-        val buttonText = if (!documentUrl.isNullOrBlank()) "📄 View on Google Drive" else null
-        sendAdminAlert(html, buttonText, documentUrl)
+        val sanitizedUrl = sanitizeButtonUrl(documentUrl)
+        val buttonText = if (sanitizedUrl != null) "📄 View Document" else null
+        sendAdminAlert(html, buttonText, sanitizedUrl)
     }
 
     /**
@@ -97,14 +207,18 @@ class TelegramManager @Inject constructor() {
         amount: Double,
         purpose: String
     ) {
+        val safeName = escapeHtml(borrowerName)
+        val safeLoanId = escapeHtml(loanId)
+        val safePurpose = escapeHtml(purpose.ifBlank { "General Financial Support" })
         val formattedAmount = "₹%,.2f".format(amount)
+
         val html = """
             💰 <b>New Loan Request Submitted</b>
             
-            <b>Borrower:</b> $borrowerName
-            <b>Loan ID:</b> <code>$loanId</code>
+            <b>Borrower:</b> $safeName
+            <b>Loan ID:</b> <code>$safeLoanId</code>
             <b>Amount:</b> <b>$formattedAmount</b>
-            <b>Purpose:</b> $purpose
+            <b>Purpose:</b> $safePurpose
             <b>Status:</b> Awaiting Lender Approval ⏳
         """.trimIndent()
 
@@ -120,21 +234,32 @@ class TelegramManager @Inject constructor() {
         loanId: String,
         agreementUrl: String?
     ) {
+        val safeBorrower = escapeHtml(borrowerName)
+        val safeLender = escapeHtml(lenderName)
+        val safeLoanId = escapeHtml(loanId)
+
         val html = """
             ✍️ <b>Loan Agreement Signed & Finalized</b>
             
-            <b>Borrower:</b> $borrowerName
-            <b>Lender:</b> $lenderName
-            <b>Loan ID:</b> <code>$loanId</code>
+            <b>Borrower:</b> $safeBorrower
+            <b>Lender:</b> $safeLender
+            <b>Loan ID:</b> <code>$safeLoanId</code>
             <b>Status:</b> Fully Executed (eSigned) ✅
         """.trimIndent()
 
-        val buttonText = if (!agreementUrl.isNullOrBlank()) "📜 View Signed Agreement" else null
-        sendAdminAlert(html, buttonText, agreementUrl)
+        val sanitizedUrl = sanitizeButtonUrl(agreementUrl)
+        val buttonText = if (sanitizedUrl != null) "📜 View Signed Agreement" else null
+        sendAdminAlert(html, buttonText, sanitizedUrl)
     }
 
     /**
-     * Sends a generic message via Telegram Bot API with optional inline URL button.
+     * Sends a message via Telegram Bot API with self-healing fallback mechanisms:
+     * - Safely sanitizes and validates inline button URLs (guards against BUTTON_URL_INVALID)
+     * - Truncates payload to MAX_TELEGRAM_MESSAGE_LENGTH (guards against 400 message is too long)
+     * - Self-healing fallback: If Telegram throws a 400 parse error ("can't parse entities"),
+     *   it strips HTML tags and retries as clean plain text.
+     * - Self-healing fallback: If button URL is invalid, it retries without the button.
+     * - Self-healing fallback: Stripped plain text with no button as an ultimate resilience net.
      */
     suspend fun sendMessage(
         chatId: String,
@@ -142,11 +267,99 @@ class TelegramManager @Inject constructor() {
         buttonText: String? = null,
         buttonUrl: String? = null
     ): Boolean = withContext(Dispatchers.IO) {
+        if (chatId.isBlank() || messageHtml.isBlank()) return@withContext false
+
+        // 1. Truncate text if needed
+        val safeText = if (messageHtml.length > MAX_TELEGRAM_MESSAGE_LENGTH) {
+            messageHtml.take(MAX_TELEGRAM_MESSAGE_LENGTH) + "\n\n<i>... [Message Truncated]</i>"
+        } else {
+            messageHtml
+        }
+
+        // 2. Validate button
+        val sanitizedButtonUrl = sanitizeButtonUrl(buttonUrl)
+        val validButtonText = if (sanitizedButtonUrl != null && !buttonText.isNullOrBlank()) buttonText.trim() else null
+
+        // 3. Primary attempt: HTML format
+        val firstAttemptResult = executeSendMessage(
+            chatId = chatId,
+            text = safeText,
+            parseMode = "HTML",
+            buttonText = validButtonText,
+            buttonUrl = sanitizedButtonUrl
+        )
+
+        if (firstAttemptResult.isSuccess) {
+            return@withContext true
+        }
+
+        val errorDescription = firstAttemptResult.errorDescription.lowercase()
+
+        // 4. Self-Healing Fallback 1: HTML entity parsing error
+        if (errorDescription.contains("can't parse entities") ||
+            errorDescription.contains("tag") ||
+            errorDescription.contains("parse")
+        ) {
+            Log.w(TAG, "HTML entity parsing error detected from Telegram: ${firstAttemptResult.errorDescription}. Falling back to plain text.")
+            val plainText = stripHtml(safeText)
+            val plainAttemptResult = executeSendMessage(
+                chatId = chatId,
+                text = plainText,
+                parseMode = null,
+                buttonText = validButtonText,
+                buttonUrl = sanitizedButtonUrl
+            )
+            if (plainAttemptResult.isSuccess) {
+                return@withContext true
+            }
+        }
+
+        // 5. Self-Healing Fallback 2: Invalid button URL error
+        if (errorDescription.contains("button_url_invalid") ||
+            errorDescription.contains("unsupported url") ||
+            errorDescription.contains("url")
+        ) {
+            Log.w(TAG, "Button URL invalid error detected from Telegram: ${firstAttemptResult.errorDescription}. Retrying without button.")
+            val noButtonResult = executeSendMessage(
+                chatId = chatId,
+                text = safeText,
+                parseMode = "HTML",
+                buttonText = null,
+                buttonUrl = null
+            )
+            if (noButtonResult.isSuccess) {
+                return@withContext true
+            }
+        }
+
+        // 6. Self-Healing Fallback 3: Both stripped plain text and no button (Ultimate resilience)
+        val ultimateResult = executeSendMessage(
+            chatId = chatId,
+            text = stripHtml(safeText),
+            parseMode = null,
+            buttonText = null,
+            buttonUrl = null
+        )
+
+        return@withContext ultimateResult.isSuccess
+    }
+
+    private data class SendResult(val isSuccess: Boolean, val errorDescription: String = "")
+
+    private fun executeSendMessage(
+        chatId: String,
+        text: String,
+        parseMode: String?,
+        buttonText: String?,
+        buttonUrl: String?
+    ): SendResult {
         try {
             val json = JSONObject().apply {
                 put("chat_id", chatId)
-                put("text", messageHtml)
-                put("parse_mode", "HTML")
+                put("text", text)
+                if (!parseMode.isNullOrBlank()) {
+                    put("parse_mode", parseMode)
+                }
 
                 if (!buttonText.isNullOrBlank() && !buttonUrl.isNullOrBlank()) {
                     val inlineKeyboard = JSONArray().apply {
@@ -171,11 +384,23 @@ class TelegramManager @Inject constructor() {
                 .build()
 
             client.newCall(request).execute().use { response ->
-                return@withContext response.isSuccessful
+                val responseStr = response.body?.string() ?: ""
+                if (!response.isSuccessful) {
+                    Log.e(TAG, "Telegram API error (${response.code}): $responseStr")
+                    var desc = ""
+                    try {
+                        val obj = JSONObject(responseStr)
+                        desc = obj.optString("description", "")
+                    } catch (_: Exception) {}
+                    return SendResult(false, desc.ifBlank { responseStr })
+                } else {
+                    Log.d(TAG, "Telegram alert dispatched successfully to $chatId")
+                    return SendResult(true)
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send Telegram message to $chatId", e)
-            return@withContext false
+            Log.e(TAG, "Failed network call to Telegram for $chatId", e)
+            return SendResult(false, e.message ?: "Network error")
         }
     }
 }

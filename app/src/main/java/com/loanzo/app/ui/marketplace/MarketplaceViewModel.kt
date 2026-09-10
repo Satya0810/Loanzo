@@ -41,8 +41,106 @@ data class MarketplaceUiState(
 @HiltViewModel
 class MarketplaceViewModel @Inject constructor(
     private val marketplaceRepository: MarketplaceRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val loanRepository: com.loanzo.app.data.repository.LoanRepository,
+    private val agentDao: com.loanzo.app.data.dao.AgentDao
 ) : ViewModel() {
+
+    fun getBidsForPostFlow(postId: String): Flow<List<MarketplaceBidEntity>> =
+        marketplaceRepository.getBidsForPost(postId)
+
+    fun acceptBidAndCreateLoan(
+        post: MarketplacePostEntity,
+        bid: MarketplaceBidEntity,
+        onLoanCreated: (com.loanzo.app.data.entity.LoanEntity) -> Unit
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val currentUserId = _uiState.value.currentUserId.ifBlank {
+                userRepository.getCurrentUserIdSync() ?: "usr_demo_consumer"
+            }
+
+            // Determine lender and borrower based on post type:
+            val actualLenderId = if (post.postType == "OFFER_TO_LEND") post.authorId else bid.bidderId
+            val actualBorrowerId = if (post.postType == "OFFER_TO_LEND") bid.bidderId else post.authorId
+
+            // Ensure lender exists in User table
+            val lenderUser = userRepository.getUserById(actualLenderId) ?: com.loanzo.app.data.entity.UserEntity(
+                userId = actualLenderId,
+                name = if (post.postType == "OFFER_TO_LEND") post.authorName else bid.bidderName,
+                role = "LENDER",
+                kycStatus = "VERIFIED"
+            ).also { userRepository.createUser(it) }
+
+            // Ensure borrower exists in User table
+            val borrowerUser = userRepository.getUserById(actualBorrowerId) ?: com.loanzo.app.data.entity.UserEntity(
+                userId = actualBorrowerId,
+                name = if (post.postType == "OFFER_TO_LEND") bid.bidderName else post.authorName,
+                role = "BORROWER",
+                kycStatus = "VERIFIED"
+            ).also { userRepository.createUser(it) }
+
+            val hasCollateral = post.collateralOffered.isNotBlank()
+            val initialStatus = if (hasCollateral) "COLLATERAL_VALUATION" else "CONTRACT_SIGNING"
+
+            val newLoanId = "loan_" + UUID.randomUUID().toString().take(12)
+            val newLoan = com.loanzo.app.data.entity.LoanEntity(
+                loanId = newLoanId,
+                lenderId = actualLenderId,
+                borrowerId = actualBorrowerId,
+                sanctionedAmount = bid.proposedAmount,
+                disbursedAmount = 0.0,
+                outstandingAmount = bid.proposedAmount,
+                purpose = post.title.ifBlank { "P2P Marketplace Loan" },
+                loanType = post.purposeCategory,
+                interestRate = bid.proposedInterestRate,
+                interestModel = post.interestModel,
+                tenureMonths = bid.proposedTenureMonths,
+                status = initialStatus,
+                repaymentFrequency = bid.proposedRepaymentFrequency,
+                createdAt = System.currentTimeMillis(),
+                notes = "Accepted proposal #${bid.bidId.take(8)} from ${bid.bidderName}. ${bid.message}".trim()
+            )
+
+            loanRepository.createLoan(newLoan, currentUserId)
+
+            // If collateral offered, schedule valuer inspection
+            if (hasCollateral) {
+                try {
+                    val visit = com.loanzo.app.data.entity.AgentVisitEntity(
+                        visitId = "visit_" + UUID.randomUUID().toString().take(8),
+                        agentId = "UNASSIGNED",
+                        loanId = newLoanId,
+                        visitType = "COLLATERAL_VERIFICATION",
+                        title = "Collateral Valuation: ${post.collateralOffered}",
+                        borrowerName = borrowerUser.name,
+                        borrowerPhone = borrowerUser.phone,
+                        borrowerAddress = post.locationCity,
+                        lenderName = lenderUser.name,
+                        lenderPhone = lenderUser.phone,
+                        targetAddress = post.locationCity,
+                        collateralItemName = post.collateralOffered,
+                        collateralEstimatedValue = bid.proposedAmount * 1.5,
+                        status = "SCHEDULED",
+                        handshakePin = (1000..9999).random().toString()
+                    )
+                    agentDao.insertVisit(visit)
+                } catch (_: Exception) {}
+            }
+
+            // Update bid & post statuses
+            marketplaceRepository.acceptBid(bid.bidId, post.postId)
+
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    actionSuccessMessage = "Proposal accepted! Loan initiated in $initialStatus state."
+                )
+            }
+
+            onLoanCreated(newLoan)
+        }
+    }
 
     private val _uiState = MutableStateFlow(MarketplaceUiState())
     val uiState: StateFlow<MarketplaceUiState> = _uiState.asStateFlow()
@@ -51,6 +149,7 @@ class MarketplaceViewModel @Inject constructor(
         loadCurrentUser()
         observeFeed()
         refreshFeed()
+        marketplaceRepository.startRealtimeFeedListener(viewModelScope)
     }
 
     private fun loadCurrentUser() {
@@ -219,40 +318,67 @@ class MarketplaceViewModel @Inject constructor(
         coBorrowerRelationship: String = "",
         onSuccess: () -> Unit
     ) {
-        val user = _uiState.value
-        val newPost = MarketplacePostEntity(
-            postId = UUID.randomUUID().toString(),
-            authorId = user.currentUserId.ifBlank { "anonymous_user" },
-            authorName = user.currentUserName.ifBlank { if (postType == "OFFER_TO_LEND") "Verified Lender" else "Verified Borrower" },
-            authorAvatarUrl = "",
-            authorKycVerified = user.isKycVerified,
-            authorTrustScore = if (user.isKycVerified) 92 else 80,
-            postType = postType,
-            title = title,
-            description = description,
-            minAmount = minAmount,
-            maxAmount = maxAmount,
-            interestRate = interestRate,
-            tenureMonths = tenureMonths,
-            purposeCategory = purposeCategory,
-            locationCity = locationCity,
-            collateralOffered = collateralOffered,
-            vouchCount = 0,
-            bidsCount = 0,
-            status = "OPEN",
-            createdAt = System.currentTimeMillis(),
-            coBorrowerName = coBorrowerName,
-            coBorrowerRelationship = coBorrowerRelationship,
-            coBorrowerKycVerified = coBorrowerName.isNotBlank(),
-            coBorrowerTrustScore = if (coBorrowerName.isNotBlank()) 89 else 85
-        )
-
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+
+            // Ensure real user credentials are synchronously resolved
+            val currentUserId = _uiState.value.currentUserId.ifBlank {
+                userRepository.getCurrentUserIdSync() ?: ""
+            }
+            val localUser = if (currentUserId.isNotBlank()) userRepository.getUserById(currentUserId) else null
+            val effectiveAuthorId = currentUserId.ifBlank { "usr_demo_consumer" }
+            val effectiveAuthorName = localUser?.name ?: _uiState.value.currentUserName.ifBlank {
+                if (postType == "OFFER_TO_LEND") "Verified Lender" else "Verified Borrower"
+            }
+            val effectiveKyc = (localUser?.kycStatus == "VERIFIED") || _uiState.value.isKycVerified
+
+            val newPost = MarketplacePostEntity(
+                postId = "post_${UUID.randomUUID()}",
+                authorId = effectiveAuthorId,
+                authorName = effectiveAuthorName,
+                authorAvatarUrl = localUser?.profilePhotoUri?.takeIf { it.isNotBlank() }
+                    ?: com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl(effectiveAuthorName.ifBlank { effectiveAuthorId }),
+                authorKycVerified = effectiveKyc,
+                authorTrustScore = if (effectiveKyc) 95 else 85,
+                postType = postType,
+                title = title,
+                description = description,
+                minAmount = minAmount,
+                maxAmount = maxAmount,
+                interestRate = interestRate,
+                tenureMonths = tenureMonths,
+                purposeCategory = purposeCategory,
+                locationCity = locationCity.ifBlank { localUser?.address ?: "Bengaluru" },
+                collateralOffered = collateralOffered,
+                vouchCount = 0,
+                bidsCount = 0,
+                status = "OPEN",
+                createdAt = System.currentTimeMillis(),
+                coBorrowerName = coBorrowerName,
+                coBorrowerRelationship = coBorrowerRelationship,
+                coBorrowerKycVerified = coBorrowerName.isNotBlank(),
+                coBorrowerTrustScore = if (coBorrowerName.isNotBlank()) 89 else 85
+            )
+
             val result = marketplaceRepository.publishPost(newPost)
             _uiState.update { it.copy(isLoading = false) }
             if (result.isSuccess) {
-                _uiState.update { it.copy(actionSuccessMessage = "Post published successfully to the Community Wall!") }
+                // Eagerly insert into current UI state so user sees it right away
+                _uiState.update { current ->
+                    val updatedRaw = listOf(newPost) + current.rawPosts.filter { it.postId != newPost.postId }
+                    current.copy(
+                        rawPosts = updatedRaw,
+                        posts = applyFilters(
+                            updatedRaw,
+                            current.selectedTab,
+                            current.searchQuery,
+                            current.selectedCategoryTag,
+                            current.maxInterestRateFilter,
+                            current.currentUserId
+                        ),
+                        actionSuccessMessage = "Post published successfully to the Community Wall!"
+                    )
+                }
                 onSuccess()
             } else {
                 _uiState.update { it.copy(error = result.exceptionOrNull()?.message ?: "Failed to publish post") }
@@ -274,7 +400,7 @@ class MarketplaceViewModel @Inject constructor(
             postId = postId,
             bidderId = user.currentUserId.ifBlank { "anonymous_bidder" },
             bidderName = user.currentUserName.ifBlank { "Community Member" },
-            bidderAvatarUrl = "",
+            bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl(user.currentUserName.ifBlank { user.currentUserId }),
             bidderKycVerified = user.isKycVerified,
             bidderTrustScore = if (user.isKycVerified) 92 else 80,
             proposedAmount = proposedAmount,
@@ -301,17 +427,24 @@ class MarketplaceViewModel @Inject constructor(
         reason: String = "COMMERCIAL_PEER",
         comment: String = ""
     ) {
-        val uid = _uiState.value.currentUserId
-        val name = _uiState.value.currentUserName
-        if (uid.isBlank()) {
-            _uiState.update { it.copy(error = "Please sign in to vouch for posts.") }
-            return
-        }
         viewModelScope.launch {
+            val uid = _uiState.value.currentUserId.ifBlank {
+                userRepository.getCurrentUserIdSync()
+                    ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                    ?: ""
+            }
+            if (uid.isBlank()) {
+                _uiState.update { it.copy(error = "Please sign in to vouch for posts.") }
+                return@launch
+            }
+            val user = userRepository.getUserById(uid)
+            val name = _uiState.value.currentUserName.ifBlank {
+                user?.name ?: user?.username ?: "Verified Member"
+            }
             val result = marketplaceRepository.vouchForPost(
                 postId = postId,
                 voucherUserId = uid,
-                voucherName = name.ifBlank { "Verified Member" },
+                voucherName = name,
                 reason = reason,
                 comment = comment
             )
@@ -464,6 +597,8 @@ class MarketplaceViewModel @Inject constructor(
                 post.title.lowercase().contains(q) ||
                 post.description.lowercase().contains(q) ||
                 post.authorName.lowercase().contains(q) ||
+                post.coBorrowerName.lowercase().contains(q) ||
+                post.authorId.lowercase().contains(q) ||
                 post.locationCity.lowercase().contains(q) ||
                 post.purposeCategory.lowercase().contains(q)
             }
@@ -484,5 +619,10 @@ class MarketplaceViewModel @Inject constructor(
         if (!category.equals("ALL", ignoreCase = true)) count++
         if (maxRate < 36.0) count++
         return count
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        marketplaceRepository.stopRealtimeFeedListener()
     }
 }

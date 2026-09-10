@@ -3,6 +3,7 @@ package com.loanzo.app.ui.auth
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.loanzo.app.ui.vault.DocumentVaultViewModel
 import com.loanzo.app.data.entity.VaultDocumentEntity
+import com.loanzo.app.util.t
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -109,6 +110,10 @@ fun ProfileScreen(
     var isVaultUnlocked by remember { mutableStateOf(false) }
     var showPermissionsSheet by remember { mutableStateOf(false) }
     var showVaultPasswordDialog by remember { mutableStateOf(false) }
+    val adminRepository = com.loanzo.app.util.LocalAdminRepository.current
+    var showAdminRequestDialog by remember { mutableStateOf(false) }
+    var adminJustification by remember { mutableStateOf("") }
+    var isSubmittingAdminRequest by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
@@ -144,11 +149,13 @@ fun ProfileScreen(
     val isOwner = remember(user.phone, user.username, user.role) {
         com.loanzo.app.util.VerificationManager.isAppOwner(user)
     }
+    val isFieldAgent = remember(user.phone, user.username, user.role, user.agentStatus) {
+        com.loanzo.app.util.VerificationManager.isFieldAgent(user)
+    }
 
     // Role Switcher Simulator is STRICTLY EXCLUSIVE to username satyam0810
-    val canSwitchRoles = remember(user.username, user.phone) {
-        val u = user.username.trim().lowercase()
-        u == "satyam0810" || u == "satyam_081" || u == "satyam" || user.phone == "+917061559039" || user.phone == "7061559039"
+    val canSwitchRoles = remember(user.username, user.phone, user.userId, user.email) {
+        com.loanzo.app.util.VerificationManager.isEligibleAppOwner(user)
     }
 
     val profilePhotoPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -315,19 +322,19 @@ fun ProfileScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     ProfileMetricChip(
-                                        label = "Trust Score",
+                                        label = "Trust Score".t(),
                                         value = "820 Prime",
                                         color = Gold500,
                                         modifier = Modifier.weight(1f)
                                     )
                                     ProfileMetricChip(
-                                        label = "DigiLocker",
+                                        label = "DigiLocker".t(),
                                         value = if (user.aadhaarVerified || user.kycStatus == "VERIFIED") "Verified ✓" else "Pending",
                                         color = if (user.aadhaarVerified || user.kycStatus == "VERIFIED") Emerald400 else Orange400,
                                         modifier = Modifier.weight(1f)
                                     )
                                     ProfileMetricChip(
-                                        label = "Vault",
+                                        label = "Vault".t(),
                                         value = if (isVaultUnlocked) "Unlocked 🔓" else "Locked 🔒",
                                         color = if (isVaultUnlocked) Emerald400 else Blue400,
                                         modifier = Modifier.weight(1f)
@@ -357,7 +364,7 @@ fun ProfileScreen(
                                             Text("👑", fontSize = 16.sp)
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
-                                                text = "In-App Role Switcher",
+                                                text = "In-App Role Switcher".t(),
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 14.sp,
                                                 color = MaterialTheme.colorScheme.primary,
@@ -372,7 +379,7 @@ fun ProfileScreen(
                                             border = BorderStroke(0.5.dp, Gold500.copy(alpha = 0.5f))
                                         ) {
                                             Text(
-                                                text = "@${user.username.ifBlank { "satyam0810" }}",
+                                                text = user.username.ifBlank { "App Owner" }.let { if (it.startsWith("@") || it == "App Owner") it else "@$it" },
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Gold500,
@@ -406,7 +413,7 @@ fun ProfileScreen(
                                                 .clickable {
                                                     if (!isNormalSelected) {
                                                         scope.launch {
-                                                            userRepository.updateUser(user.copy(role = "USER"))
+                                                            userRepository.updateUser(user.copy(role = "USER", isOnDuty = false))
                                                             Toast.makeText(context, "Switched to Member role", Toast.LENGTH_SHORT).show()
                                                         }
                                                     }
@@ -422,7 +429,7 @@ fun ProfileScreen(
                                                 Text("👤", fontSize = 16.sp)
                                                 Spacer(modifier = Modifier.height(2.dp))
                                                 Text(
-                                                    text = "Member",
+                                                    text = "Member".t(),
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = if (isNormalSelected) Color.White else MaterialTheme.colorScheme.onSurface,
@@ -455,7 +462,7 @@ fun ProfileScreen(
                                                 Text("🕵️", fontSize = 16.sp)
                                                 Spacer(modifier = Modifier.height(2.dp))
                                                 Text(
-                                                    text = "Agent",
+                                                    text = "Field Agent".t(),
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = if (isAgentSelected) Color.White else MaterialTheme.colorScheme.onSurface,
@@ -487,7 +494,7 @@ fun ProfileScreen(
                                                 Text("🛡️", fontSize = 16.sp)
                                                 Spacer(modifier = Modifier.height(2.dp))
                                                 Text(
-                                                    text = "Admin",
+                                                    text = "Master Admin".t(),
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = if (isAdminSelected) Color.White else MaterialTheme.colorScheme.onSurface,
@@ -528,6 +535,7 @@ fun ProfileScreen(
                                 }
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column(modifier = Modifier.weight(1f)) {
+                                    val isAgentApproved = isFieldAgent || user.agentStatus == "APPROVED"
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = "Field Agent Program",
@@ -536,14 +544,14 @@ fun ProfileScreen(
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        val agentBadge = when (user.agentStatus) {
-                                            "APPROVED" -> "CERTIFIED ✓"
-                                            "PENDING" -> "IN REVIEW"
+                                        val agentBadge = when {
+                                            isAgentApproved -> "CERTIFIED ✓"
+                                            user.agentStatus == "PENDING" -> "IN REVIEW"
                                             else -> "EARN ₹1500"
                                         }
-                                        val badgeTint = when (user.agentStatus) {
-                                            "APPROVED" -> Emerald400
-                                            "PENDING" -> Gold500
+                                        val badgeTint = when {
+                                            isAgentApproved -> Emerald400
+                                            user.agentStatus == "PENDING" -> Gold500
                                             else -> Color(0xFF38BDF8)
                                         }
                                         Surface(
@@ -561,9 +569,9 @@ fun ProfileScreen(
                                     }
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = when (user.agentStatus) {
-                                            "APPROVED" -> "Certified Officer • Open Agent Console"
-                                            "PENDING" -> "Under background check • Check status"
+                                        text = when {
+                                            isAgentApproved -> "Certified Officer • Open Agent Console"
+                                            user.agentStatus == "PENDING" -> "Under background check • Check status"
                                             else -> "Empanel as verification officer & earn per visit"
                                         },
                                         fontSize = 12.sp,
@@ -585,6 +593,31 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column {
+                                ProfileActionRow(
+                                    icon = Icons.Default.VerifiedUser,
+                                    iconTint = if (user.kycStatus == "VERIFIED") Emerald400 else if (user.kycStatus == "REJECTED") Red400 else Gold500,
+                                    title = "Identity KYC & Re-Verification",
+                                    subtitle = when (user.kycStatus) {
+                                        "VERIFIED" -> "DigiLocker, Aadhaar & PAN verified • Tap to Re-KYC / Update"
+                                        "REJECTED" -> "⚠️ Re-submission requested by Admin • Tap to update"
+                                        "PENDING", "IN_PROGRESS" -> "Verification under review • Tap to check"
+                                        else -> "Not verified • Tap to complete Government KYC"
+                                    },
+                                    statusBadge = when (user.kycStatus) {
+                                        "VERIFIED" -> "VERIFIED ✓"
+                                        "REJECTED" -> "RE-KYC REQ"
+                                        "PENDING", "IN_PROGRESS" -> "PENDING"
+                                        else -> "NOT VERIFIED"
+                                    },
+                                    badgeColor = when (user.kycStatus) {
+                                        "VERIFIED" -> Emerald400
+                                        "REJECTED" -> Red400
+                                        "PENDING", "IN_PROGRESS" -> Gold500
+                                        else -> Gray400
+                                    },
+                                    onClick = onNavigateToKyc
+                                )
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
                                 ProfileActionRow(
                                     icon = Icons.Default.Badge,
                                     iconTint = MaterialTheme.colorScheme.primary,
@@ -658,7 +691,7 @@ fun ProfileScreen(
                                     iconTint = Emerald400,
                                     title = "Telegram Assistant & Alerts",
                                     subtitle = "@Loanzo_bot • Instant EMI reminders & updates",
-                                    onClick = { com.loanzo.app.util.TelegramManager().openBotForLinking(context, user.userId) }
+                                    onClick = { com.loanzo.app.util.TelegramManager.instance.openBotForLinking(context, user.userId) }
                                 )
                             }
                         }
@@ -686,8 +719,8 @@ fun ProfileScreen(
                             }
                         }
 
-                        // ================= GROUP 5: APP OWNER ADMIN (Conditional) =================
-                        if (isOwner) {
+                        // ================= GROUP 5: APP OWNER ADMIN (Strictly Exclusive to @satyam0810) =================
+                        if (isOwner || canSwitchRoles) {
                             Spacer(modifier = Modifier.height(18.dp))
                             ProfileSectionHeader(title = "SYSTEM ADMINISTRATION")
                             Card(
@@ -700,10 +733,30 @@ fun ProfileScreen(
                                     icon = Icons.Default.AdminPanelSettings,
                                     iconTint = MaterialTheme.colorScheme.primary,
                                     title = "App Owner Control Center",
-                                    subtitle = "Master KYC, user verification, system ledger",
+                                    subtitle = "Master KYC, user verification, system ledger & supervisory controls",
                                     statusBadge = "MASTER",
                                     badgeColor = MaterialTheme.colorScheme.primary,
                                     onClick = onNavigateToAdminHub
+                                )
+                            }
+                        } else {
+                            // Non-admin users get option to request platform staff clearance
+                            Spacer(modifier = Modifier.height(18.dp))
+                            ProfileSectionHeader(title = "PLATFORM CLEARANCE")
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.4f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                ProfileActionRow(
+                                    icon = Icons.Default.AdminPanelSettings,
+                                    iconTint = Gold500,
+                                    title = "Request Platform Staff / Admin Access",
+                                    subtitle = "Apply for supervisory clearance to manage KYC, loans & agents",
+                                    statusBadge = "APPLY",
+                                    badgeColor = Gold500,
+                                    onClick = { showAdminRequestDialog = true }
                                 )
                             }
                         }
@@ -1407,6 +1460,50 @@ fun ProfileScreen(
                                 value = if (user.selfieVerified) "Enrolled & Active ✓" else "Setup Available"
                             )
                         }
+
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Text("Government KYC & Identity", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            ProfileRow(
+                                icon = Icons.Default.VerifiedUser,
+                                label = "KYC Status",
+                                value = when (user.kycStatus) {
+                                    "VERIFIED" -> "Fully Verified ✓"
+                                    "REJECTED" -> "Action Required / Rejected ⚠️"
+                                    "PENDING", "IN_PROGRESS" -> "Verification Pending ⏳"
+                                    else -> "Not Verified"
+                                }
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
+                            ProfileRow(
+                                icon = Icons.Default.CreditCard,
+                                label = "PAN Status",
+                                value = if (user.panVerified) "Verified ITD ✓" else if (user.panNumber.isNotBlank()) "Recorded" else "Not Linked"
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
+                            ProfileRow(
+                                icon = Icons.Default.Fingerprint,
+                                label = "Aadhaar Status",
+                                value = if (user.aadhaarVerified) "Verified UIDAI ✓" else if (user.aadhaarNumber.isNotBlank()) "Recorded" else "Not Linked"
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = onNavigateToKyc,
+                                modifier = Modifier.fillMaxWidth().height(44.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (user.kycStatus == "REJECTED") Red400 else MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(Icons.Default.PublishedWithChanges, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (user.kycStatus == "VERIFIED") "Update / Re-KYC Credentials" else if (user.kycStatus == "REJECTED") "Fix & Re-submit KYC Now" else "Complete Identity KYC",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1623,7 +1720,7 @@ fun ProfileScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
-                                onClick = { com.loanzo.app.util.TelegramManager().openBotForLinking(context, user.userId) },
+                                onClick = { com.loanzo.app.util.TelegramManager.instance.openBotForLinking(context, user.userId) },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
@@ -1957,6 +2054,78 @@ fun ProfileScreen(
         )
     }
 
+    // Admin Clearance Request Dialog
+    if (showAdminRequestDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSubmittingAdminRequest) showAdminRequestDialog = false },
+            icon = {
+                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Gold500, modifier = Modifier.size(32.dp))
+            },
+            title = {
+                Text("Request Platform Staff Access", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Platform Admin clearance grants access to collateral vault oversight, agent dispatching, KYC attestations, and ombudsman mediation.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = adminJustification,
+                        onValueChange = { adminJustification = it },
+                        placeholder = { Text("Enter your reason / department / employee ID...") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 5,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (adminJustification.isNotBlank()) {
+                            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                isSubmittingAdminRequest = true
+                                adminRepository.submitAdminRequest(
+                                    userId = user.userId,
+                                    userName = user.name,
+                                    userPhone = user.phone,
+                                    userEmail = user.email,
+                                    currentRole = user.role,
+                                    justification = adminJustification.trim()
+                                )
+                                isSubmittingAdminRequest = false
+                                showAdminRequestDialog = false
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    Toast.makeText(context, "Admin access request submitted to platform owner!", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    },
+                    enabled = adminJustification.isNotBlank() && !isSubmittingAdminRequest,
+                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                ) {
+                    if (isSubmittingAdminRequest) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Navy900, strokeWidth = 2.dp)
+                    } else {
+                        Text("Submit Request", fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showAdminRequestDialog = false },
+                    enabled = !isSubmittingAdminRequest
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     // 4. Language Selection Sheet
     if (showLanguageSheet) {
         com.loanzo.app.ui.components.LanguageSelectionBottomSheet(
@@ -1964,6 +2133,8 @@ fun ProfileScreen(
             onLanguageSelected = { newLang ->
                 onSelectLanguage(newLang)
                 showLanguageSheet = false
+                val langName = com.loanzo.app.ui.components.getLanguageNameByCode(newLang).substringBefore(" (")
+                Toast.makeText(context, "$langName language selected. Internal translation active.", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showLanguageSheet = false }
         )

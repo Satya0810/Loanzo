@@ -1,0 +1,46 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#FDE68A"
+        android:pathData="M48,48m-46,0a46,46 0,1 1,92 0a46,46 0,1 1,-92 0" />
+    <!-- Shoulders / Teal Hoodie -->
+    <path
+        android:fillColor="#0D9488"
+        android:pathData="M22,90 C24,72 34,66 48,66 C62,66 72,72 74,90 Z" />
+    <!-- Hoodie V-line -->
+    <path
+        android:fillColor="#115E59"
+        android:pathData="M42,66 L48,76 L54,66 Z" />
+    <!-- Neck -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M43,54 L53,54 L53,66 L43,66 Z" />
+    <!-- Face -->
+    <path
+        android:fillColor="#FED7AA"
+        android:pathData="M34,36 C34,25 62,25 62,36 C62,52 34,52 34,36 Z" />
+    <!-- Curly Hair Clouds -->
+    <path
+        android:fillColor="#18181B"
+        android:pathData="M30,30 A5,5 0,0 1,35,22 A6,6 0,0 1,44,18 A7,7 0,0 1,54,18 A6,6 0,0 1,63,22 A5,5 0,0 1,67,30 C64,26 58,24 48,25 C38,24 33,26 30,30 Z" />
+    <!-- Round Eyeglasses -->
+    <path
+        android:strokeColor="#0F172A"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000"
+        android:pathData="M37,34 A5,5 0,1 1,37,44 A5,5 0,1 1,37,34 M53,34 A5,5 0,1 1,53,44 A5,5 0,1 1,53,34 M47,39 L53,39" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M42,39 A1.5,1.5 0,1 1,42,40.5 A1.5,1.5 0,1 1,42,39 M58,39 A1.5,1.5 0,1 1,58,40.5 A1.5,1.5 0,1 1,58,39" />
+    <!-- Smile -->
+    <path
+        android:strokeColor="#C2410C"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M44,46 Q48,50 52,46" />
+</vector>

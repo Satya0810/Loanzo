@@ -53,8 +53,9 @@ fun DocumentInspectionDialog(
                 .fillMaxWidth(0.95f)
                 .fillMaxHeight(0.92f)
                 .clip(RoundedCornerShape(20.dp)),
-            color = Color(0xFF0F1E36),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E3250))
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            shadowElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier
@@ -72,11 +73,11 @@ fun DocumentInspectionDialog(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = if (docCategory == "AGENT_EMPANELMENT") Gold500.copy(alpha = 0.2f) else Emerald500.copy(alpha = 0.2f)
+                                color = if (docCategory == "AGENT_EMPANELMENT") Gold500.copy(alpha = 0.15f) else Emerald500.copy(alpha = 0.15f)
                             ) {
                                 Text(
                                     text = if (docCategory == "AGENT_EMPANELMENT") "AGENT EMPANELMENT" else "USER KYC AUDIT",
-                                    color = if (docCategory == "AGENT_EMPANELMENT") Gold500 else Emerald500,
+                                    color = if (docCategory == "AGENT_EMPANELMENT") Color(0xFFB45309) else Color(0xFF047857),
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -85,14 +86,14 @@ fun DocumentInspectionDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Bank-Grade Inspector",
-                                color = Color(0xFFCBD5E1),
+                                color = Color(0xFF64748B),
                                 fontSize = 11.sp
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = docTitle,
-                            color = Color.White,
+                            color = Color(0xFF0F172A),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -103,9 +104,9 @@ fun DocumentInspectionDialog(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF162544))
+                            .background(Color(0xFFF1F5F9))
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF475569), modifier = Modifier.size(20.dp))
                     }
                 }
 
@@ -117,8 +118,8 @@ fun DocumentInspectionDialog(
                         .fillMaxWidth()
                         .height(240.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF0B0F19))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
+                        .background(Color(0xFFF8FAFC))
+                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     val validUri = photoUri?.ifBlank { null }
@@ -137,19 +138,19 @@ fun DocumentInspectionDialog(
                             Icon(
                                 imageVector = Icons.Default.Description,
                                 contentDescription = null,
-                                tint = Gray500,
+                                tint = Color(0xFF2563EB),
                                 modifier = Modifier.size(54.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "Digital Document Attestation on File",
-                                color = Gray400,
+                                color = Color(0xFF1E293B),
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = "Doc ID: $documentNumber",
-                                color = Gold500,
+                                color = Color(0xFFB45309),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -170,7 +171,7 @@ fun DocumentInspectionDialog(
                         ) {
                             Icon(Icons.Default.Security, null, tint = Emerald400, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Tamper-Proof Audit Lock", color = MaterialTheme.colorScheme.onSurface, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("Tamper-Proof Audit Lock", color = Color(0xFF34D399), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -180,8 +181,8 @@ fun DocumentInspectionDialog(
                 // Metadata Details Card
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF162544)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1E3250)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -192,29 +193,29 @@ fun DocumentInspectionDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Applicant Name", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                            Text(subjectName, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("Applicant Name", color = Color(0xFF64748B), fontSize = 12.sp)
+                            Text(subjectName, color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Contact Number", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                            Text(subjectPhone, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Contact Number", color = Color(0xFF64748B), fontSize = 12.sp)
+                            Text(subjectPhone, color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Document / Certificate #", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                            Text(documentNumber, color = Gold500, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("Document / Certificate #", color = Color(0xFF64748B), fontSize = 12.sp)
+                            Text(documentNumber, color = Color(0xFFB45309), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Issuing Authority", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                            Text(issuingAuthority, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Text("Issuing Authority", color = Color(0xFF64748B), fontSize = 12.sp)
+                            Text(issuingAuthority, color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -224,7 +225,7 @@ fun DocumentInspectionDialog(
                 // Verification Checklist
                 Text(
                     text = "Mandatory Audit Verification Checklist",
-                    color = Color.White,
+                    color = Color(0xFF0F172A),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -241,15 +242,15 @@ fun DocumentInspectionDialog(
                         value = rejectionReason,
                         onValueChange = { rejectionReason = it },
                         label = { Text("Reason for Rejection / Deficiency Notice", color = Color(0xFFEF4444), fontSize = 12.sp) },
-                        placeholder = { Text("e.g. PCC station seal missing, please re-upload clear copy", color = Gray500, fontSize = 11.sp) },
+                        placeholder = { Text("e.g. Station seal missing, please re-upload clear copy", color = Color(0xFF94A3B8), fontSize = 11.sp) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFEF4444),
                             unfocusedBorderColor = Color(0xFFEF4444).copy(alpha = 0.5f),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF162544),
-                            unfocusedContainerColor = Color(0xFF162544)
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedContainerColor = Color(0xFFFFF1F2),
+                            unfocusedContainerColor = Color(0xFFFFF1F2)
                         )
                     )
                 }
@@ -267,11 +268,9 @@ fun DocumentInspectionDialog(
                             onClick = { showRejectInput = true },
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444))
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444))
                         ) {
-                            Icon(Icons.Default.Cancel, null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
                             Text("Reject", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
@@ -283,9 +282,10 @@ fun DocumentInspectionDialog(
                             },
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f),
+                            enabled = rejectionReason.isNotBlank(),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444), contentColor = Color.White)
                         ) {
-                            Text("Confirm Rejection", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Confirm Reject", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -330,7 +330,7 @@ private fun ChecklistRow(
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = title,
-            color = if (checked) Color.White else Color(0xFF94A3B8),
+            color = if (checked) Color(0xFF0F172A) else Color(0xFF64748B),
             fontSize = 11.sp,
             fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
         )

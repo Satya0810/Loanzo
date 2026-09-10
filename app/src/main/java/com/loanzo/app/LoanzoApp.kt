@@ -7,6 +7,7 @@ import dagger.hilt.android.HiltAndroidApp
 class LoanzoApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        com.loanzo.app.util.NotificationChannelHelper.setupNotificationChannels(this)
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             android.util.Log.e("LoanzoCrash", "FATAL UNCAUGHT EXCEPTION on thread ${thread.name}", throwable)

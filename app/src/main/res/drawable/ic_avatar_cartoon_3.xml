@@ -1,0 +1,48 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#A7F3D0"
+        android:pathData="M48,48m-46,0a46,46 0,1 1,92 0a46,46 0,1 1,-92 0" />
+    <!-- Shoulders / Polo Shirt -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M22,90 C24,72 34,66 48,66 C62,66 72,72 74,90 Z" />
+    <!-- Collar White -->
+    <path
+        android:fillColor="#FEF3C7"
+        android:pathData="M40,66 L48,76 L56,66 Z" />
+    <!-- Neck -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M43,54 L53,54 L53,66 L43,66 Z" />
+    <!-- Face -->
+    <path
+        android:fillColor="#FED7AA"
+        android:pathData="M34,36 C34,25 62,25 62,36 C62,52 34,52 34,36 Z" />
+    <!-- Beard / Goatee -->
+    <path
+        android:fillColor="#334155"
+        android:pathData="M40,48 C42,54 54,54 56,48 C53,53 43,53 40,48 Z" />
+    <!-- Ears -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M31,37 A3,4 0,1 1,31,43 A3,4 0,1 1,31,37 M65,37 A3,4 0,1 1,65,43 A3,4 0,1 1,65,37" />
+    <!-- Hair Side Part -->
+    <path
+        android:fillColor="#334155"
+        android:pathData="M32,32 C33,18 45,15 49,15 C59,15 64,20 64,30 C60,24 50,23 38,28 C34,29 32,32 32,32 Z" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M41,37 A2,2 0,1 1,41,39 A2,2 0,1 1,41,37 M55,37 A2,2 0,1 1,55,39 A2,2 0,1 1,55,37" />
+    <!-- Smile -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M44,46 Q48,49 52,46" />
+</vector>

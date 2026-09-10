@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,7 +32,8 @@ fun AgentPendingApprovalScreen(
     application: AgentApplicationEntity?,
     onEnterAgentDashboard: () -> Unit,
     onReapply: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onContinueAsMember: (() -> Unit)? = null
 ) {
     val darkBg = MaterialTheme.colorScheme.background
     val cardBg = Color.White
@@ -52,6 +54,17 @@ fun AgentPendingApprovalScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    if (onContinueAsMember != null) {
+                        IconButton(onClick = onContinueAsMember) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to Member Dashboard",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                },
                 title = {
                     Text(
                         text = "Empanelment Status",
@@ -307,6 +320,34 @@ fun AgentPendingApprovalScreen(
                         )
                     }
                 }
+
+                if (onContinueAsMember != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = onContinueAsMember,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Dashboard,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Continue to Member Dashboard",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -396,7 +437,7 @@ private fun TimelineStep(
                 text = title,
                 fontSize = 14.sp,
                 fontWeight = if (isActive || isCompleted) FontWeight.Bold else FontWeight.Normal,
-                color = if (isActive || isCompleted) Color.White else Color(0xFF6B7280)
+                color = if (isActive || isCompleted) MaterialTheme.colorScheme.onSurface else Color(0xFF6B7280)
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(

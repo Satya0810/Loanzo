@@ -1,0 +1,48 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#C7D2FE"
+        android:pathData="M48,48m-46,0a46,46 0,1 1,92 0a46,46 0,1 1,-92 0" />
+    <!-- Hair Top Bun -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M48,16 A7,7 0,1 1,48,16.1 Z" />
+    <!-- Shoulders / Purple Blazer -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M22,90 C24,72 34,66 48,66 C62,66 72,72 74,90 Z" />
+    <!-- Inner Top Gold -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M43,66 L48,75 L53,66 Z" />
+    <!-- Neck -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M43,54 L53,54 L53,66 L43,66 Z" />
+    <!-- Face -->
+    <path
+        android:fillColor="#FED7AA"
+        android:pathData="M34,36 C34,25 62,25 62,36 C62,52 34,52 34,36 Z" />
+    <!-- Ears -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M31,38 A3,3.5 0,1 1,31,43 A3,3.5 0,1 1,31,38 M65,38 A3,3.5 0,1 1,65,43 A3,3.5 0,1 1,65,38" />
+    <!-- Hair Front -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M32,32 C33,18 45,17 48,17 C57,17 63,18 64,32 C58,26 48,25 32,32 Z" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M41,37 A2,2 0,1 1,41,39 A2,2 0,1 1,41,37 M55,37 A2,2 0,1 1,55,39 A2,2 0,1 1,55,37" />
+    <!-- Smile -->
+    <path
+        android:strokeColor="#BE123C"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M44,46 Q48,50 52,46" />
+</vector>

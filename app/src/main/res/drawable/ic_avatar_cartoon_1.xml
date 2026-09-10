@@ -1,0 +1,50 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#BAE6FD"
+        android:pathData="M48,48m-46,0a46,46 0,1 1,92 0a46,46 0,1 1,-92 0" />
+    <!-- Shoulders / Shirt -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M22,90 C24,72 34,66 48,66 C62,66 72,72 74,90 Z" />
+    <!-- Shirt Collar Inner -->
+    <path
+        android:fillColor="#1D4ED8"
+        android:pathData="M42,66 L48,74 L54,66 Z" />
+    <!-- Neck -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M43,54 L53,54 L53,66 L43,66 Z" />
+    <!-- Face -->
+    <path
+        android:fillColor="#FED7AA"
+        android:pathData="M34,36 C34,25 62,25 62,36 C62,52 34,52 34,36 Z" />
+    <!-- Ears -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M31,37 A3,4 0,1 1,31,43 A3,4 0,1 1,31,37 M65,37 A3,4 0,1 1,65,43 A3,4 0,1 1,65,37" />
+    <!-- Hair -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M33,32 C32,20 42,16 48,16 C58,16 64,20 63,32 C60,26 54,24 48,25 C42,24 36,26 33,32 Z" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M41,37 A2,2 0,1 1,41,39 A2,2 0,1 1,41,37 M55,37 A2,2 0,1 1,55,39 A2,2 0,1 1,55,37" />
+    <!-- Smile -->
+    <path
+        android:strokeColor="#C2410C"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M44,45 Q48,49 52,45" />
+    <!-- Eyebrows -->
+    <path
+        android:strokeColor="#1E293B"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M39,32 Q42,30 44,32 M52,32 Q54,30 57,32" />
+</vector>

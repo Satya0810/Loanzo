@@ -27,11 +27,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import com.loanzo.app.data.entity.MarketplaceBidEntity
 import com.loanzo.app.data.entity.MarketplacePostEntity
 import com.loanzo.app.data.entity.MarketplaceVouchEntity
 import com.loanzo.app.ui.components.*
 import com.loanzo.app.ui.theme.*
+import com.loanzo.app.util.getCartoonAvatarRes
+import com.loanzo.app.util.getEffectiveAvatarUrl
 import com.loanzo.app.util.toFormattedString
 import com.loanzo.app.util.toRelativeTime
 import kotlinx.coroutines.launch
@@ -53,9 +59,14 @@ fun MarketplaceFeedScreen(
     onVouchPost: (postId: String, reason: String, note: String) -> Unit,
     onSubmitBid: (postId: String, amount: Double, rate: Double, tenure: Int, message: String) -> Unit,
     onNavigateToCreatePost: (String) -> Unit, // "OFFER_TO_LEND" or "SEEKING_LOAN"
+    onNavigateToUserProfile: (String) -> Unit = {},
+    onNavigateToChat: (channelId: String, loanId: String?, targetUserId: String?) -> Unit = { _, _, _ -> },
+    onNavigateToLoanDetail: (String) -> Unit = {},
+    onAcceptBid: (MarketplacePostEntity, MarketplaceBidEntity) -> Unit = { _, _ -> },
     onNavigateBack: () -> Unit
 ) {
     var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
+    var activePostForBidsSheet by remember { mutableStateOf<MarketplacePostEntity?>(null) }
     var postToVouch by remember { mutableStateOf<MarketplacePostEntity?>(null) }
     var activeProfileToView by remember { mutableStateOf<UserProfileViewData?>(null) }
     var activePostForVouchers by remember { mutableStateOf<MarketplacePostEntity?>(null) }
@@ -298,21 +309,7 @@ fun MarketplaceFeedScreen(
                                 isSelf = isSelf,
                                 vouchers = postVouches,
                                 onAuthorClick = {
-                                    scope.launch {
-                                        activeProfileToView = viewModel?.getAuthorProfile(post) ?: UserProfileViewData(
-                                            userId = post.authorId,
-                                            name = post.authorName,
-                                            roleTitle = if (post.postType == "OFFER_TO_LEND") "CAPITAL PROVIDER (LENDER)" else "PRIMARY BORROWER (LOAN SEEKER)",
-                                            avatarUrl = post.authorAvatarUrl,
-                                            locationCity = post.locationCity.ifBlank { "Bengaluru" },
-                                            trustScore = post.authorTrustScore,
-                                            verificationLevel = if (post.authorKycVerified) "Tier 3: Institutional Gold" else "Tier 2: National ID Verified",
-                                            verificationTier = if (post.authorKycVerified) 3 else 2,
-                                            aadhaarVerified = post.authorKycVerified,
-                                            panVerified = post.authorKycVerified,
-                                            vouchesReceivedCount = post.vouchCount
-                                        )
-                                    }
+                                    onNavigateToUserProfile(post.authorId)
                                 },
                                 onCoBorrowerClick = {
                                     activeProfileToView = viewModel?.getCoBorrowerProfile(post) ?: UserProfileViewData(
@@ -357,7 +354,14 @@ fun MarketplaceFeedScreen(
                                         postToVouch = post
                                     }
                                 },
-                                onPrimaryAction = { selectedPostForBid = post }
+                                onViewBidsClick = { activePostForBidsSheet = post },
+                                onPrimaryAction = {
+                                    if (isSelf) {
+                                        activePostForBidsSheet = post
+                                    } else {
+                                        selectedPostForBid = post
+                                    }
+                                }
                             )
                         }
                     }
@@ -389,6 +393,21 @@ fun MarketplaceFeedScreen(
             )
         }
 
+        // Community Proposals & Bids Bottom Sheet (Accept Bids -> Create Loan Workflow)
+        activePostForBidsSheet?.let { post ->
+            val bids by (viewModel?.getBidsForPostFlow(post.postId) ?: kotlinx.coroutines.flow.flowOf(emptyList()))
+                .collectAsStateWithLifecycle(initialValue = emptyList())
+            PostDetailAndBidsSheet(
+                post = post,
+                bids = bids,
+                onAcceptBid = { bid ->
+                    activePostForBidsSheet = null
+                    onAcceptBid(post, bid)
+                },
+                onDismiss = { activePostForBidsSheet = null }
+            )
+        }
+
         // User Profile Inspection Bottom Sheet (Opened by clicking author, co-borrower, or voucher circular avatar!)
         activeProfileToView?.let { profile ->
             UserProfileDetailBottomSheet(
@@ -396,9 +415,9 @@ fun MarketplaceFeedScreen(
                 onDismiss = { activeProfileToView = null },
                 onConnectClick = {
                     activeProfileToView = null
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Direct messaging initiated with ${profile.name}")
-                    }
+                    val myId = state.currentUserId
+                    val channel = com.loanzo.app.ui.loan.ChatViewModel.getDirectChannelId(myId, profile.userId)
+                    onNavigateToChat(channel, null, profile.userId)
                 }
             )
         }
@@ -465,6 +484,7 @@ fun SocialPostCard(
     onVoucherClick: (MarketplaceVouchEntity) -> Unit = {},
     onViewAllVouchersClick: () -> Unit = {},
     onVouch: () -> Unit,
+    onViewBidsClick: () -> Unit = {},
     onPrimaryAction: () -> Unit
 ) {
     val isLenderOffer = post.postType == "OFFER_TO_LEND"
@@ -475,60 +495,57 @@ fun SocialPostCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header: Author Circular Avatar + Info (Clickable!)
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header: Author Circular Avatar + Info (Clickable to User Profile!)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onAuthorClick() }
             ) {
-                val authorPhoto = post.authorAvatarUrl.ifBlank { null }
+                val effectiveAvatar = post.getEffectiveAvatarUrl()
+                val cartoonRes = post.getCartoonAvatarRes()
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
-                        .clickable { onAuthorClick() },
+                        .border(1.5.dp, accentColor.copy(alpha = 0.5f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (authorPhoto != null) {
-                        AsyncImage(
-                            model = authorPhoto,
-                            contentDescription = post.authorName,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .border(1.5.dp, accentColor.copy(alpha = 0.5f), CircleShape),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .background(accentColor.copy(alpha = 0.15f))
-                                .border(1.5.dp, accentColor.copy(alpha = 0.4f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isLenderOffer) Icons.Default.VolunteerActivism else Icons.Default.AccountBalanceWallet,
-                                contentDescription = null,
-                                tint = accentColor,
-                                modifier = Modifier.size(22.dp)
+                    SubcomposeAsyncImage(
+                        model = effectiveAvatar,
+                        contentDescription = post.authorName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        loading = {
+                            Image(
+                                painter = painterResource(id = cartoonRes),
+                                contentDescription = "2D Cartoon Avatar",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        },
+                        error = {
+                            Image(
+                                painter = painterResource(id = cartoonRes),
+                                contentDescription = "2D Cartoon Avatar",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
                             )
                         }
-                    }
+                    )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onAuthorClick() }
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
                             text = post.authorName,
                             style = MaterialTheme.typography.titleSmall,
@@ -536,35 +553,60 @@ fun SocialPostCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         if (post.authorKycVerified) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "KYC Verified",
-                                tint = Emerald400,
-                                modifier = Modifier.size(15.dp)
-                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Emerald400.copy(alpha = 0.15f),
+                                border = BorderStroke(0.5.dp, Emerald400.copy(alpha = 0.4f))
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Verified",
+                                        tint = Emerald400,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = "Verified",
+                                        color = Emerald400,
+                                        fontSize = 9.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        Text(
+                            text = "@${post.authorName.lowercase().replace(" ", "_")}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text("•", color = Gray500, fontSize = 9.sp)
+                        Text(
+                            "⭐ ${post.authorTrustScore}/100",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Gold500,
+                            fontWeight = FontWeight.SemiBold
+                        )
                         if (post.locationCity.isNotBlank()) {
+                            Text("•", color = Gray500, fontSize = 9.sp)
                             Text(
                                 "📍 ${post.locationCity}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text("•", color = Gray500, fontSize = 10.sp)
                         }
-                        Text(
-                            "⭐ ${post.authorTrustScore}/100 Trust",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Gold400,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text("•", color = Gray500, fontSize = 10.sp)
+                        Text("•", color = Gray500, fontSize = 9.sp)
                         Text(
                             post.createdAt.toRelativeTime(),
                             style = MaterialTheme.typography.labelSmall,
@@ -575,28 +617,26 @@ fun SocialPostCard(
 
                 // Post Type Pill
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(6.dp),
                     color = accentColor.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = if (isLenderOffer) "LENDER OFFER" else "SEEKING LOAN",
                         color = accentColor,
-                        fontSize = 10.sp,
+                        fontSize = 9.5.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         softWrap = false,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                     )
                 }
             }
 
-            // ─────────────────────────────────────────────────────────────────
             // Co-Borrower Row (if present on seeking loan post)
-            // ─────────────────────────────────────────────────────────────────
             if (post.coBorrowerName.isNotBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = Color(0xFFFAF5FF),
                     border = BorderStroke(1.dp, Color(0xFFE9D5FF)),
                     modifier = Modifier
@@ -604,28 +644,26 @@ fun SocialPostCard(
                         .clickable { onCoBorrowerClick() }
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Co-Borrower Circular Avatar (Clickable!)
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(28.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFFF3E8FF))
-                                .border(1.2.dp, Color(0xFF9333EA), CircleShape)
-                                .clickable { onCoBorrowerClick() },
+                                .border(1.dp, Color(0xFF9333EA), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = post.coBorrowerName.take(2).uppercase(),
                                 color = Color(0xFF7E22CE),
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -641,28 +679,28 @@ fun SocialPostCard(
                                         Icons.Default.CheckCircle,
                                         contentDescription = "Verified",
                                         tint = Emerald600,
-                                        modifier = Modifier.size(13.dp)
+                                        modifier = Modifier.size(12.dp)
                                     )
                                 }
                             }
                             Text(
                                 text = "${post.coBorrowerRelationship.ifBlank { "Co-Signer" }} • Tier 2 ID Verified • ⭐ ${post.coBorrowerTrustScore}/100",
-                                fontSize = 10.5.sp,
+                                fontSize = 10.sp,
                                 color = Color(0xFF7E22CE)
                             )
                         }
 
                         Text(
-                            text = "View Profile ➔",
+                            text = "View ➔",
                             color = Color(0xFF9333EA),
-                            fontSize = 10.5.sp,
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Post Title
             Text(
@@ -672,7 +710,7 @@ fun SocialPostCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Pitch Description (expandable)
             Text(
@@ -681,7 +719,7 @@ fun SocialPostCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = if (isExpanded) 10 else 2,
                 overflow = TextOverflow.Ellipsis,
-                lineHeight = 18.sp,
+                lineHeight = 17.sp,
                 modifier = Modifier.clickable { isExpanded = !isExpanded }
             )
 
@@ -689,7 +727,7 @@ fun SocialPostCard(
                 Text(
                     text = if (isExpanded) "Show less" else "Read more...",
                     color = MaterialTheme.colorScheme.primary,
-                    fontSize = 11.sp,
+                    fontSize = 10.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier
                         .clickable { isExpanded = !isExpanded }
@@ -697,64 +735,93 @@ fun SocialPostCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Financial Capsule Card
+            // Financial Capsule Card - Streamlined & Balanced
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1.3f)) {
+                    Column(modifier = Modifier.weight(1.2f)) {
                         Text(
-                            if (isLenderOffer) "CAPITAL POOL" else "AMOUNT NEEDED",
-                            fontSize = 9.sp,
+                            text = if (isLenderOffer) "CAPITAL POOL" else "AMOUNT NEEDED",
+                            fontSize = 8.5.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
-                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            if (isLenderOffer) "₹${post.minAmount.toFormattedString()} - ₹${post.maxAmount.toFormattedString()}"
+                            text = if (isLenderOffer) "₹${post.minAmount.toFormattedString()} - ₹${post.maxAmount.toFormattedString()}"
                             else "₹${post.maxAmount.toFormattedString()}",
-                            fontSize = 13.5.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
-                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    Column(modifier = Modifier.weight(0.9f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("INTEREST", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    )
+
+                    Column(
+                        modifier = Modifier.weight(0.9f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
-                            "${post.interestRate}% p.a.",
-                            fontSize = 13.5.sp,
+                            text = "INTEREST",
+                            fontSize = 8.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "${post.interestRate}% p.a.",
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = accentColor,
                             maxLines = 1,
-                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                        Text("TENURE", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    )
+
+                    Column(
+                        modifier = Modifier.weight(0.9f),
+                        horizontalAlignment = Alignment.End
+                    ) {
                         Text(
-                            "${post.tenureMonths} Mo",
-                            fontSize = 13.5.sp,
+                            text = "TENURE",
+                            fontSize = 8.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "${post.tenureMonths} Mo",
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
-                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -762,19 +829,27 @@ fun SocialPostCard(
             }
 
             if (post.collateralOffered.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Security, contentDescription = null, tint = Blue400, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Blue400.copy(alpha = 0.08f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.Security, contentDescription = null, tint = Blue400, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        "Security / Proof: ${post.collateralOffered}",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Security / Proof: ${post.collateralOffered}",
+                        fontSize = 10.5.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Footer: Social Counters & Endorsers + Primary CTA
             Row(
@@ -790,19 +865,19 @@ fun SocialPostCard(
                     // Vouch Button
                     Surface(
                         onClick = onVouch,
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isVouched) Red400.copy(alpha = 0.22f) else Red400.copy(alpha = 0.10f),
-                        border = if (isVouched) BorderStroke(1.dp, Red400.copy(alpha = 0.6f)) else null
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isVouched) Red400.copy(alpha = 0.20f) else Red400.copy(alpha = 0.08f),
+                        border = if (isVouched) BorderStroke(1.dp, Red400.copy(alpha = 0.5f)) else null
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
                         ) {
                             Icon(
                                 imageVector = if (isVouched) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = "Vouch",
                                 tint = Red400,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
@@ -819,14 +894,14 @@ fun SocialPostCard(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(6.dp))
                                 .clickable { onViewAllVouchersClick() }
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
                         ) {
                             vouchers.take(3).forEach { v ->
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
+                                        .size(22.dp)
                                         .clip(CircleShape)
                                         .background(EmeraldLight)
                                         .border(1.dp, Emerald600, CircleShape)
@@ -836,16 +911,16 @@ fun SocialPostCard(
                                     Text(
                                         text = v.voucherName.take(1).uppercase(),
                                         color = Emerald600,
-                                        fontSize = 10.sp,
+                                        fontSize = 9.sp,
                                         fontWeight = FontWeight.ExtraBold
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(3.dp))
+                                Spacer(modifier = Modifier.width(2.dp))
                             }
                             if (vouchers.size > 3 || post.vouchCount > vouchers.size) {
                                 Text(
                                     text = "+${maxOf(vouchers.size - 3, post.vouchCount - 3)}",
-                                    fontSize = 10.sp,
+                                    fontSize = 9.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextSlateMedium
                                 )
@@ -857,24 +932,28 @@ fun SocialPostCard(
                 // Inquiries / Bids counter & Primary Action CTA
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Blue400.copy(alpha = 0.12f)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                    if (post.bidsCount > 0) {
+                        Surface(
+                            onClick = onViewBidsClick,
+                            shape = RoundedCornerShape(8.dp),
+                            color = Blue400.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, Blue400.copy(alpha = 0.35f))
                         ) {
-                            Icon(Icons.Default.Bolt, contentDescription = "Bids", tint = Blue400, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text(
-                                "${post.bidsCount} Offers",
-                                color = Blue400,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
+                            ) {
+                                Icon(Icons.Default.Bolt, contentDescription = "Bids", tint = Blue400, modifier = Modifier.size(13.dp))
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(
+                                    "${post.bidsCount} Offers",
+                                    color = Blue400,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
 
@@ -882,12 +961,18 @@ fun SocialPostCard(
                     Button(
                         onClick = onPrimaryAction,
                         colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Navy900),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 11.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = if (isLenderOffer) "Apply Now ➔" else "Fund / Bid ➔",
-                            fontSize = 12.sp,
+                            text = if (isSelf) {
+                                if (post.bidsCount > 0) "Review Bids (${post.bidsCount}) ➔" else "My Post"
+                            } else if (isLenderOffer) {
+                                "Apply Now ➔"
+                            } else {
+                                "Fund / Bid ➔"
+                            },
+                            fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }

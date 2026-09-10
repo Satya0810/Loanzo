@@ -1047,7 +1047,7 @@ fun GuidedTourOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.78f))
+                .background(Color(0xFF0F172A).copy(alpha = 0.55f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -1064,9 +1064,9 @@ fun GuidedTourOverlay(
                         indication = null,
                         onClick = {}
                     ),
-                color = Color(0xFF111827),
-                border = BorderStroke(1.5.dp, BrandAmberGold.copy(alpha = 0.5f)),
-                shadowElevation = 24.dp
+                color = CanvasPorcelain,
+                border = BorderStroke(1.5.dp, BrandIceBorder),
+                shadowElevation = 20.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -1082,48 +1082,53 @@ fun GuidedTourOverlay(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = BrandAmberGold.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.3f))
+                            color = BrandIceBlue,
+                            border = BorderStroke(1.dp, BrandIceBorder)
                         ) {
                             Text(
                                 text = tour.title.uppercase(),
-                                color = BrandAmberGold,
+                                color = BrandRoyalBlue,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 1.sp,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                             )
                         }
 
-                        IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Gray400, modifier = Modifier.size(16.dp))
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSlateMuted, modifier = Modifier.size(18.dp))
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                    // 3D Illustration
+                    // Friendly Cartoon Illustration Container
                     Box(
                         modifier = Modifier
-                            .size(180.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .border(1.dp, BrandAmberGold.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                            .size(190.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(Color.White)
+                            .border(1.5.dp, BrandIceBorder, RoundedCornerShape(28.dp))
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Image(
                             painter = painterResource(step.imageRes),
                             contentDescription = step.title,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(20.dp)),
                             contentScale = ContentScale.Crop
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     Text(
                         text = step.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = TextNavyDark,
                         textAlign = TextAlign.Center,
                         fontSize = 18.sp
                     )
@@ -1133,10 +1138,10 @@ fun GuidedTourOverlay(
                     Text(
                         text = step.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Gray300,
+                        color = TextSlateMedium,
                         textAlign = TextAlign.Center,
                         fontSize = 13.sp,
-                        lineHeight = 18.sp
+                        lineHeight = 19.sp
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -1151,24 +1156,25 @@ fun GuidedTourOverlay(
                             OutlinedButton(
                                 onClick = { onBack(currentStep - 1) },
                                 shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, Gray600),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gray300)
+                                border = BorderStroke(1.dp, BrandIceBorder),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandRoyalBlue)
                             ) {
-                                Text("Back", fontSize = 12.sp)
+                                Text("Back", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             }
                         } else {
                             TextButton(onClick = onDismiss) {
-                                Text("Exit Tour", color = Gray400, fontSize = 12.sp)
+                                Text("Exit Tour", color = TextSlateMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                             }
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             repeat(totalSteps) { idx ->
                                 Box(
                                     modifier = Modifier
-                                        .size(7.dp)
+                                        .height(6.dp)
+                                        .width(if (idx == currentStep) 20.dp else 6.dp)
                                         .clip(CircleShape)
-                                        .background(if (idx == currentStep) BrandAmberGold else Color.White.copy(alpha = 0.2f))
+                                        .background(if (idx == currentStep) BrandRoyalBlue else Color(0xFFCBD5E1))
                                 )
                             }
                         }
@@ -1176,7 +1182,7 @@ fun GuidedTourOverlay(
                         Button(
                             onClick = { if (isLast) onFinish() else onNext(currentStep + 1) },
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color(0xFF0F172A))
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                         ) {
                             Text(if (isLast) "Finish ✓" else "Next ➔", fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
                         }

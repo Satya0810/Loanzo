@@ -29,3 +29,33 @@ val LocalBankingSessionManager = compositionLocalOf<BankingSessionManager> {
 val LocalSplashWarmupCoordinator = compositionLocalOf<SplashWarmupCoordinator> {
     error("No SplashWarmupCoordinator provided")
 }
+
+val LocalSupportTicketRepository = compositionLocalOf<com.loanzo.app.data.repository.SupportTicketRepository> {
+    error("No SupportTicketRepository provided")
+}
+
+val LocalNotificationRepository = compositionLocalOf<com.loanzo.app.data.repository.NotificationRepository> {
+    error("No NotificationRepository provided")
+}
+
+val LocalTranslationHelper = compositionLocalOf<TranslationHelper?> {
+    null
+}
+
+val LocalAppLanguage = compositionLocalOf {
+    "en"
+}
+
+/**
+ * Convenient Composable string translation extension.
+ * When language is non-English, dynamically translates text via the internal on-device engine
+ * or returns instantaneous domain glossary translation.
+ */
+@androidx.compose.runtime.Composable
+fun String.t(): String {
+    val language = LocalAppLanguage.current
+    if (language.equals("en", ignoreCase = true) || this.isBlank()) return this
+    val helper = LocalTranslationHelper.current ?: return this
+    return helper.rememberTranslated(this, language)
+}
+

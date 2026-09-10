@@ -22,19 +22,35 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import com.loanzo.app.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun RoleSelectionScreen(
     userName: String,
+    userId: String = "",
+    userPhone: String = "",
+    userEmail: String = "",
+    userRole: String = "MEMBER",
     onSelectNormalMember: () -> Unit,
     onSelectAgent: () -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val adminRepository = com.loanzo.app.util.LocalAdminRepository.current
+    var showAdminRequestDialog by remember { mutableStateOf(false) }
+    var adminJustification by remember { mutableStateOf("") }
+    var isSubmittingRequest by remember { mutableStateOf(false) }
+
     var selectedRole by remember { mutableStateOf<String?>("USER") } // "USER" or "AGENT"
 
     val goldAccent = GoldCoinBright
@@ -210,7 +226,110 @@ fun RoleSelectionScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showAdminRequestDialog = true }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = Gold500,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Are you platform staff? Request Admin Access",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Gold500
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Admin Request Dialog
+        if (showAdminRequestDialog) {
+            AlertDialog(
+                onDismissRequest = { if (!isSubmittingRequest) showAdminRequestDialog = false },
+                icon = {
+                    Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Gold500, modifier = Modifier.size(32.dp))
+                },
+                title = {
+                    Text("Request Platform Staff Access", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = "Platform Admin clearance grants access to collateral vault oversight, agent dispatching, KYC attestations, and ombudsman mediation.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = adminJustification,
+                            onValueChange = { adminJustification = it },
+                            placeholder = { Text("Enter your reason / department / employee ID...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            maxLines = 5,
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (adminJustification.isNotBlank()) {
+                                scope.launch(Dispatchers.IO) {
+                                    isSubmittingRequest = true
+                                    adminRepository.submitAdminRequest(
+                                        userId = userId.ifBlank { "USR-PENDING" },
+                                        userName = userName.ifBlank { "User" },
+                                        userPhone = userPhone,
+                                        userEmail = userEmail,
+                                        currentRole = userRole,
+                                        justification = adminJustification.trim()
+                                    )
+                                    isSubmittingRequest = false
+                                    showAdminRequestDialog = false
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "Admin clearance request submitted to platform owner!", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }
+                        },
+                        enabled = adminJustification.isNotBlank() && !isSubmittingRequest,
+                        colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                    ) {
+                        if (isSubmittingRequest) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Navy900, strokeWidth = 2.dp)
+                        } else {
+                            Text("Submit Request", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showAdminRequestDialog = false },
+                        enabled = !isSubmittingRequest
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

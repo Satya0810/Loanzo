@@ -231,11 +231,11 @@ fun AntiHarassmentSosDialog(
                         coroutineScope.launch {
                             val alertHtml = """
                                 <b>🚨 STATUTORY HARASSMENT & COERCION SOS ALERT</b>
-                                <b>Loan ID:</b> ${loan.loanId}
-                                <b>Borrower:</b> ${borrower.name} (${borrower.phone})
-                                <b>Lender:</b> ${lender.name} (${lender.phone})
-                                <b>Violation Type:</b> $selectedViolation
-                                <b>Details:</b> ${incidentNotes.ifBlank { "Immediate emergency triggered by borrower." }}
+                                <b>Loan ID:</b> <code>${TelegramManager.escapeHtml(loan.loanId)}</code>
+                                <b>Borrower:</b> ${TelegramManager.escapeHtml(borrower.name)} (${TelegramManager.escapeHtml(borrower.phone)})
+                                <b>Lender:</b> ${TelegramManager.escapeHtml(lender.name)} (${TelegramManager.escapeHtml(lender.phone)})
+                                <b>Violation Type:</b> ${TelegramManager.escapeHtml(selectedViolation)}
+                                <b>Details:</b> ${TelegramManager.escapeHtml(incidentNotes.ifBlank { "Immediate emergency triggered by borrower." })}
                                 <b>Timestamp:</b> ${dateFormat.format(Date())}
                                 
                                 <i>STATUTORY CITATION:</i>
@@ -243,7 +243,8 @@ fun AntiHarassmentSosDialog(
                                 Late fees are administratively frozen pending inquiry.
                             """.trimIndent()
 
-                            telegramManager?.sendAdminAlert(alertHtml)
+                            val manager = telegramManager ?: TelegramManager.instance
+                            manager.sendAdminAlert(alertHtml)
                             isSending = false
                             isDispatched = true
                         }

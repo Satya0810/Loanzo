@@ -48,6 +48,7 @@ fun NotificationScreen(
     onClearAll: () -> Unit,
     onRefresh: () -> Unit,
     onNavigateToLoan: (String) -> Unit,
+    onNavigateToActionRoute: (String) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     var isDateMenuExpanded by remember { mutableStateOf(false) }
@@ -413,7 +414,11 @@ fun NotificationScreen(
                                 notification = urgentHeroNotification,
                                 onAction = {
                                     onMarkAsRead(urgentHeroNotification.notificationId)
-                                    urgentHeroNotification.relatedLoanId?.let { onNavigateToLoan(it) }
+                                    if (!urgentHeroNotification.actionRoute.isNullOrBlank()) {
+                                        onNavigateToActionRoute(urgentHeroNotification.actionRoute)
+                                    } else {
+                                        urgentHeroNotification.relatedLoanId?.let { onNavigateToLoan(it) }
+                                    }
                                 }
                             )
                             Spacer(modifier = Modifier.height(10.dp))
@@ -454,7 +459,11 @@ fun NotificationScreen(
                                 onDelete = { onDelete(notification.notificationId) },
                                 onAction = {
                                     onMarkAsRead(notification.notificationId)
-                                    notification.relatedLoanId?.let { onNavigateToLoan(it) }
+                                    if (!notification.actionRoute.isNullOrBlank()) {
+                                        onNavigateToActionRoute(notification.actionRoute)
+                                    } else {
+                                        notification.relatedLoanId?.let { onNavigateToLoan(it) }
+                                    }
                                 },
                                 onTagClick = { tag ->
                                     if (tag.startsWith("#LN-")) {
@@ -706,7 +715,37 @@ fun NotificationCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (notification.relatedLoanId != null) {
+                    if (!notification.actionRoute.isNullOrBlank()) {
+                        Surface(
+                            shape = CircleShape,
+                            color = iconTint.copy(alpha = 0.15f),
+                            modifier = Modifier.clickable { onAction() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = when (notification.type) {
+                                        "AGENT_APPLICATION" -> "Review in Admin Hub"
+                                        "ADMIN_REQUEST" -> "Manage Access"
+                                        "COMPLAINT" -> "Inspect Grievance"
+                                        else -> "Open Action ➔"
+                                    },
+                                    color = iconTint,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.5.sp
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = iconTint,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                        }
+                    } else if (notification.relatedLoanId != null) {
                         Surface(
                             shape = CircleShape,
                             color = iconTint.copy(alpha = 0.15f),
@@ -768,6 +807,10 @@ private fun getNotificationStyle(type: String): NotificationStyle = when (type) 
     "OVERDUE" -> NotificationStyle(Icons.Default.Warning, Red400, Red400.copy(alpha = 0.15f))
     "DISBURSEMENT", "REPAYMENT" -> NotificationStyle(Icons.Default.CheckCircle, Emerald400, Emerald400.copy(alpha = 0.15f))
     "AGREEMENT" -> NotificationStyle(Icons.Default.Description, Blue400, Blue400.copy(alpha = 0.15f))
+    "AGENT_APPLICATION", "AGENT_VERIFICATION" -> NotificationStyle(Icons.Default.Badge, Emerald500, Emerald500.copy(alpha = 0.15f))
+    "ADMIN_REQUEST", "ADMIN_ANNOUNCEMENT" -> NotificationStyle(Icons.Default.AdminPanelSettings, Color(0xFF6366F1), Color(0xFF6366F1).copy(alpha = 0.15f))
+    "COMPLAINT" -> NotificationStyle(Icons.Default.Gavel, Red400, Red400.copy(alpha = 0.15f))
+    "KYC_STATUS" -> NotificationStyle(Icons.Default.VerifiedUser, Blue400, Blue400.copy(alpha = 0.15f))
     "SYSTEM" -> NotificationStyle(Icons.Default.Info, Gray400, Gray400.copy(alpha = 0.15f))
     else -> NotificationStyle(Icons.Default.Notifications, Gold500, Gold500.copy(alpha = 0.15f))
 }

@@ -61,7 +61,6 @@ fun ChatScreen(
 
     // Hindi translation target
     val targetLanguage = "hi"
-    var translatingMessageId by remember { mutableStateOf<String?>(null) }
 
     // Connect real-time Firestore listener
     LaunchedEffect(channelId, loanId, targetUserId) {
@@ -72,14 +71,6 @@ fun ChatScreen(
     LaunchedEffect(chatState.messages.size) {
         if (chatState.messages.isNotEmpty()) {
             listState.animateScrollToItem(chatState.messages.size - 1)
-        }
-    }
-
-    // Handle translation responses
-    LaunchedEffect(translationState.translatedText) {
-        if (translationState.translatedText.isNotBlank() && !translationState.isLoading && translatingMessageId != null) {
-            chatViewModel.setTranslatedText(translatingMessageId!!, translationState.translatedText)
-            translatingMessageId = null
         }
     }
 
@@ -174,7 +165,7 @@ fun ChatScreen(
                         }
                     }
                     if (isSupport) {
-                        IconButton(onClick = { TelegramManager().openBotForLinking(context, chatState.currentUserId) }) {
+                        IconButton(onClick = { TelegramManager.instance.openBotForLinking(context, chatState.currentUserId) }) {
                             Icon(Icons.Default.Send, contentDescription = "Open in Telegram", tint = Gold500)
                         }
                     }
@@ -372,11 +363,7 @@ fun ChatScreen(
                         RichChatBubble(
                             message = msg,
                             onTranslate = {
-                                translatingMessageId = msg.messageId
-                                chatViewModel.setTranslating(msg.messageId)
-                                coroutineScope.launch {
-                                    translationViewModel.translate(msg.text, targetLanguage)
-                                }
+                                chatViewModel.translateMessage(msg.messageId, msg.text, targetLanguage)
                             }
                         )
                     }

@@ -49,40 +49,44 @@ class NotificationViewModel @Inject constructor(
 
     private fun loadNotifications() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            userRepository.getCurrentUserId().collectLatest { userId ->
+                if (userId.isNullOrBlank()) {
+                    _uiState.update { it.copy(isLoading = false, notifications = emptyList(), rawNotifications = emptyList()) }
+                    return@collectLatest
+                }
 
-            val userId = userRepository.getCurrentUserIdSync()
-            if (userId.isNullOrBlank()) {
-                _uiState.update { it.copy(isLoading = false, notifications = emptyList(), rawNotifications = emptyList()) }
-                return@launch
-            }
+                _uiState.update { it.copy(isLoading = true) }
 
-            // Scan for new deadline notifications
-            notificationRepository.scanAndGenerateDeadlineNotifications(userId)
+                // Scan for new deadline notifications
+                notificationRepository.scanAndGenerateDeadlineNotifications(userId)
 
-            // Observe notifications
-            notificationRepository.getNotifications(userId).collect { notifs ->
-                _uiState.update { state ->
-                    val filtered = applyFilter(
-                        notifs,
-                        state.selectedFilter,
-                        state.selectedCategoryTag,
-                        state.selectedDateFilter,
-                        state.searchQuery
-                    )
-                    state.copy(
-                        rawNotifications = notifs,
-                        notifications = filtered,
-                        isLoading = false
-                    )
+                // Observe notifications reactively
+                notificationRepository.getNotifications(userId).collect { notifs ->
+                    _uiState.update { state ->
+                        val filtered = applyFilter(
+                            notifs,
+                            state.selectedFilter,
+                            state.selectedCategoryTag,
+                            state.selectedDateFilter,
+                            state.searchQuery
+                        )
+                        state.copy(
+                            rawNotifications = notifs,
+                            notifications = filtered,
+                            isLoading = false
+                        )
+                    }
                 }
             }
         }
 
         viewModelScope.launch {
-            val userId = userRepository.getCurrentUserIdSync() ?: return@launch
-            notificationRepository.getUnreadCount(userId).collect { count ->
-                _uiState.update { it.copy(unreadCount = count) }
+            userRepository.getCurrentUserId().collectLatest { userId ->
+                if (!userId.isNullOrBlank()) {
+                    notificationRepository.getUnreadCount(userId).collect { count ->
+                        _uiState.update { it.copy(unreadCount = count) }
+                    }
+                }
             }
         }
     }
@@ -219,10 +223,10 @@ class NotificationViewModel @Inject constructor(
             // 2. Category Tag Filter
             val matchesCategory = if (categoryTag.isNullOrBlank()) true else {
                 when (categoryTag.uppercase()) {
-                    "ACTIONS" -> item.type in listOf("OVERDUE", "DISBURSEMENT_PENDING", "AGREEMENT_READY", "ACTION_REQUIRED")
-                    "PAYMENTS" -> item.type in listOf("REPAYMENT_RECEIVED", "REPAYMENT_SUCCESS", "DISBURSED", "PAYMENT")
+                    "ACTIONS" -> item.type in listOf("OVERDUE", "DISBURSEMENT_PENDING", "AGREEMENT_READY", "ACTION_REQUIRED", "AGENT_APPLICATION", "ADMIN_REQUEST", "COMPLAINT", "AGREEMENT")
+                    "PAYMENTS" -> item.type in listOf("REPAYMENT", "REPAYMENT_RECEIVED", "REPAYMENT_SUCCESS", "DISBURSED", "PAYMENT", "BID_OFFER")
                     "DEADLINES" -> item.type in listOf("DEADLINE", "DUE_SOON", "OVERDUE")
-                    "AGREEMENTS" -> item.type in listOf("AGREEMENT_READY", "AGREEMENT_SIGNED", "KYC_VERIFIED", "LEGAL")
+                    "AGREEMENTS" -> item.type in listOf("AGREEMENT", "AGREEMENT_READY", "AGREEMENT_SIGNED", "KYC_VERIFIED", "KYC_STATUS", "LEGAL")
                     else -> item.type.contains(categoryTag, ignoreCase = true) || item.title.contains(categoryTag, ignoreCase = true)
                 }
             }

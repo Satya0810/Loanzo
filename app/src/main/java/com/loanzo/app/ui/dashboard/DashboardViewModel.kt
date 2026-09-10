@@ -35,6 +35,15 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val uid = userRepository.getCurrentUserIdSync()
+            if (!uid.isNullOrBlank()) {
+                val cachedUser = userRepository.getUserById(uid)
+                if (cachedUser != null) {
+                    _uiState.update { it.copy(user = cachedUser) }
+                }
+            }
+        }
         loadDashboard()
     }
 

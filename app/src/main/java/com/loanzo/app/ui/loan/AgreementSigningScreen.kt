@@ -57,30 +57,45 @@ fun AgreementSigningScreen(
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val telegramManager = remember { TelegramManager() }
+    val telegramManager = remember { TelegramManager.instance }
+    val userRepository = com.loanzo.app.util.LocalUserRepository.current
 
-    val lenderUser = remember(loan) {
-        UserEntity(
-            userId = loan.lenderId,
-            name = "Verified Lender",
-            email = "lender@loanzo.app",
-            phone = "+91 98765 43210",
-            role = "LENDER",
-            kycStatus = "VERIFIED",
-            address = "Lender Registered Address"
+    var lenderUser by remember {
+        mutableStateOf(
+            UserEntity(
+                userId = loan.lenderId,
+                name = "Verified Lender",
+                email = "lender@loanzo.app",
+                phone = "+91 98765 43210",
+                role = "LENDER",
+                kycStatus = "VERIFIED",
+                address = "Lender Registered Address"
+            )
         )
     }
 
-    val borrowerUser = remember(loan) {
-        UserEntity(
-            userId = loan.borrowerId,
-            name = "Verified Borrower",
-            email = "borrower@loanzo.app",
-            phone = "+91 91234 56789",
-            role = "BORROWER",
-            kycStatus = "VERIFIED",
-            address = "Borrower Registered Address"
+    var borrowerUser by remember {
+        mutableStateOf(
+            UserEntity(
+                userId = loan.borrowerId,
+                name = "Verified Borrower",
+                email = "borrower@loanzo.app",
+                phone = "+91 91234 56789",
+                role = "BORROWER",
+                kycStatus = "VERIFIED",
+                address = "Borrower Registered Address"
+            )
         )
+    }
+
+    val currentUserId by userRepository.getCurrentUserId().collectAsState(initial = null)
+    val isLenderSigning = currentUserId == loan.lenderId
+
+    LaunchedEffect(loan.lenderId, loan.borrowerId) {
+        val realLender = userRepository.getUserById(loan.lenderId)
+        if (realLender != null) lenderUser = realLender
+        val realBorrower = userRepository.getUserById(loan.borrowerId)
+        if (realBorrower != null) borrowerUser = realBorrower
     }
 
     val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
@@ -154,6 +169,42 @@ fun AgreementSigningScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
+                            // Bilateral Execution Status Strip
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFF8FAFC),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.VerifiedUser, null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Bilateral Contract Signatures", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF0F172A))
+                                    }
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Borrower: ${borrowerUser.name}", fontSize = 12.sp, color = Color(0xFF334155))
+                                        Text(
+                                            if (loan.borrowerSignedAt != null) "✓ Signed" else if (!isLenderSigning) "✍️ Signing Now" else "Pending",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (loan.borrowerSignedAt != null) Emerald500 else if (!isLenderSigning) BrandRoyalBlue else Orange400
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text("Lender: ${lenderUser.name}", fontSize = 12.sp, color = Color(0xFF334155))
+                                        Text(
+                                            if (loan.lenderSignedAt != null) "✓ Signed" else if (isLenderSigning) "✍️ Signing Now" else "Pending",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (loan.lenderSignedAt != null) Emerald500 else if (isLenderSigning) BrandRoyalBlue else Orange400
+                                        )
+                                    }
+                                }
+                            }
+
                             // Statutory Promissory Note Banner
                             Surface(
                                 color = Color(0xFFEFF6FF),

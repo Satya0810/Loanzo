@@ -59,9 +59,11 @@ fun CreateLoanScreen(
                    penaltyRate: Double, penaltyModel: String, penaltyGraceDays: Int) -> Unit,
     onBack: () -> Unit,
     loanCreated: Boolean = false,
-    registeredUsers: List<com.loanzo.app.data.entity.UserEntity> = emptyList()
+    registeredUsers: List<com.loanzo.app.data.entity.UserEntity> = emptyList(),
+    onNavigateToCreatePost: ((String) -> Unit)? = null
 ) {
     var counterpartyUserId by remember { mutableStateOf("") }
+    var coBorrowerUserId by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("50000") }
     var purpose by remember { mutableStateOf("") }
     var selectedLoanType by remember { mutableStateOf("PERSONAL") }
@@ -81,6 +83,10 @@ fun CreateLoanScreen(
 
     val quickAmounts = listOf(10000.0, 25000.0, 50000.0, 100000.0, 250000.0, 500000.0)
     val quickTenures = listOf(3, 6, 12, 24, 36)
+
+    val allCandidateUsers = remember(registeredUsers) {
+        (registeredUsers + com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS).distinctBy { it.userId }
+    }
 
     // Real-time calculations
     val principalNum = amount.toDoubleOrNull() ?: 0.0
@@ -317,68 +323,49 @@ fun CreateLoanScreen(
                 Text(if (isGrantMode) "Borrower Information & Purpose" else "Lender Information & Purpose", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = counterpartyUserId,
-                    onValueChange = { counterpartyUserId = it.trim() },
-                    label = { Text(if (isGrantMode) "Borrower User ID" else "Lender User ID") },
-                    placeholder = { Text(if (isGrantMode) "Enter Borrower's User ID, Phone, or @username" else "Enter Lender's User ID, Phone, or @username") },
-                    leadingIcon = { Icon(if (isGrantMode) Icons.Default.Person else Icons.Default.Badge, null, tint = Gold500) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
+                UserPickerDropdown(
+                    selectedUserId = counterpartyUserId,
+                    onUserSelected = { user ->
+                        counterpartyUserId = if (user.userId.isNotBlank()) user.userId else ""
+                    },
+                    label = if (isGrantMode) "Select Borrower (Scroll Down or Search)" else "Select Lender (Scroll Down or Search)",
+                    placeholder = if (isGrantMode) "Search name, @username, or scroll down..." else "Search name, @username, or scroll down...",
+                    preferredRole = if (isGrantMode) "BORROWER" else "LENDER",
+                    candidateUsers = registeredUsers
                 )
 
-                // 1. Comprehensive Candidate Transactors with Role & Username Mapping
-                val allCandidateUsers = remember(registeredUsers) {
-                    val defaultSeedList = listOf(
-                        UserEntity(
-                            userId = "usr_satyam_owner",
-                            name = "Satyam Kumar",
-                            email = "satyam@loanzo.app",
-                            phone = "+91 70615 59039",
-                            username = "satyam0810",
-                            role = "ADMIN",
-                            kycStatus = "VERIFIED"
-                        ),
-                        UserEntity(
-                            userId = "usr_agent_field_01",
-                            name = "Vikas Sharma",
-                            email = "vikas.agent@loanzo.app",
-                            phone = "+91 98100 12345",
-                            username = "agent_demo",
-                            role = "AGENT",
-                            kycStatus = "VERIFIED"
-                        ),
-                        UserEntity(
-                            userId = "usr_demo_consumer",
-                            name = "Arjun Mehta",
-                            email = "arjun.mehta@demo.loanzo.app",
-                            phone = "+91 98200 54321",
-                            username = "user_demo",
-                            role = "USER",
-                            kycStatus = "VERIFIED"
-                        ),
-                        UserEntity(
-                            userId = "usr_rahul_borrower",
-                            name = "Rahul Sharma",
-                            email = "rahul.sharma@demo.loanzo.app",
-                            phone = "+91 98765 43210",
-                            username = "rahul_sharma",
-                            role = "BORROWER",
-                            kycStatus = "VERIFIED"
-                        ),
-                        UserEntity(
-                            userId = "usr_priya_lender",
-                            name = "Priya Patel",
-                            email = "priya.patel@demo.loanzo.app",
-                            phone = "+91 91234 56789",
-                            username = "priya_invest",
-                            role = "LENDER",
-                            kycStatus = "VERIFIED"
-                        )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                var showManualEntry by remember { mutableStateOf(false) }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showManualEntry = !showManualEntry },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (showManualEntry) "▲ Hide manual ID input" else "✎ Or enter custom ID / phone manually",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
-                    (registeredUsers + defaultSeedList).distinctBy { it.userId }
                 }
+
+                if (showManualEntry) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = counterpartyUserId,
+                        onValueChange = { counterpartyUserId = it.trim() },
+                        label = { Text(if (isGrantMode) "Direct Borrower ID" else "Direct Lender ID") },
+                        placeholder = { Text("e.g. demo_borrower_rahul or phone") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
+
+
 
                 var transactorRoleFilter by remember { mutableStateOf("ALL") }
                 val transactorRoles = listOf("ALL", "ADMIN", "AGENT", "MEMBER", "BORROWER", "LENDER")
@@ -544,6 +531,67 @@ fun CreateLoanScreen(
                                     color = Emerald400.copy(alpha = 0.15f)
                                 ) {
                                     Text("✓ KYC Verified", color = Emerald400, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 1B. CO-BORROWER / GUARANTOR PICKER
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Co-Borrower / Guarantor (Optional)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (coBorrowerUserId.isNotBlank()) {
+                        Text(
+                            text = "Remove ✕",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Red400,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { coBorrowerUserId = "" }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+
+                UserPickerDropdown(
+                    selectedUserId = coBorrowerUserId,
+                    onUserSelected = { user ->
+                        coBorrowerUserId = user.userId
+                    },
+                    label = "Select Co-Borrower or Guarantor",
+                    placeholder = "Pick registered member (e.g. @dr_rohan_patil, @nirmala_devi)...",
+                    preferredRole = "BORROWER",
+                    candidateUsers = allCandidateUsers
+                )
+
+                if (coBorrowerUserId.isNotBlank()) {
+                    val coBorrower = allCandidateUsers.find { it.userId == coBorrowerUserId }
+                    if (coBorrower != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFF3E8FF),
+                            border = BorderStroke(1.dp, Color(0xFFD8B4FE)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.VerifiedUser, null, tint = Color(0xFF7E22CE), modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Attached Co-Signer: ${coBorrower.name}", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF581C87))
+                                    Text("@${coBorrower.username} • Phone: ${coBorrower.phone}", fontSize = 11.sp, color = Color(0xFF7E22CE))
                                 }
                             }
                         }
@@ -833,25 +881,87 @@ fun CreateLoanScreen(
                 )
             }
 
+            // 6B. COMMUNITY WALL ALTERNATIVE
+            if (onNavigateToCreatePost != null) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Gold500.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Gold500.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Gold500.copy(alpha = 0.15f),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Default.Campaign, contentDescription = null, tint = Gold500, modifier = Modifier.padding(8.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Don't have a direct counterparty?",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "Publish this loan directly to the Community Wall so peer backers can propose terms.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { onNavigateToCreatePost(if (isGrantMode) "OFFER_TO_LEND" else "SEEKING_LOAN") },
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text("Wall ➔", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(4.dp))
 
             // 7. SUBMIT BUTTON
+            val context = androidx.compose.ui.platform.LocalContext.current
             Button(
                 onClick = {
                     if (!isKycCompleted) {
                         onNavigateToKyc()
                         return@Button
                     }
+                    if (principalNum <= 0.0) {
+                        android.widget.Toast.makeText(context, "Please enter an amount greater than ₹0", android.widget.Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    val effectiveCounterparty = counterpartyUserId.trim().ifBlank {
+                        registeredUsers.firstOrNull()?.userId ?: "counterparty_user"
+                    }
+                    val effectivePurpose = purpose.trim().ifBlank { "Personal Loan" }
+
+                    val coBorrower = allCandidateUsers.find { it.userId == coBorrowerUserId }
+                    val effectiveNotes = if (coBorrower != null) {
+                        val tag = "Co-Borrower/Guarantor: ${coBorrower.name} (@${coBorrower.username}, ${coBorrower.phone})"
+                        if (notes.isNotBlank()) "$tag | $notes" else tag
+                    } else notes
+
                     onCreateLoan(
-                        counterpartyUserId,
+                        effectiveCounterparty,
                         principalNum,
-                        purpose,
+                        effectivePurpose,
                         selectedLoanType,
                         rateNum,
                         selectedInterestModel,
                         tenureNum,
                         selectedFrequency,
-                        notes,
+                        effectiveNotes,
                         penaltyRate.toDoubleOrNull() ?: 2.0,
                         selectedPenaltyModel,
                         penaltyGraceDays.toIntOrNull() ?: 3
@@ -865,7 +975,7 @@ fun CreateLoanScreen(
                     containerColor = if (!isKycCompleted) Red400 else (if (isGrantMode) Gold500 else Emerald400),
                     contentColor = if (!isKycCompleted) Color.White else Navy900
                 ),
-                enabled = !isKycCompleted || (principalNum > 0 && purpose.isNotBlank() && counterpartyUserId.isNotBlank())
+                enabled = true
             ) {
                 Icon(if (!isKycCompleted) Icons.Default.Lock else (if (isGrantMode) Icons.Default.Upload else Icons.Default.Send), null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
@@ -911,10 +1021,15 @@ fun LoanDetailScreen(
     onAcceptProposal: () -> Unit = {},
     onDeclineProposal: () -> Unit = {},
     onDisburseLoan: (amount: Double, utr: String) -> Unit = { _, _ -> },
+    onApproveDisbursement: (String) -> Unit = {},
+    onRejectDisbursement: (String) -> Unit = {},
     onDownloadNocCertificate: () -> Unit = {},
-    onExportAgreementPdf: () -> Unit = {}
+    onExportAgreementPdf: () -> Unit = {},
+    onPublishToWall: () -> Unit = {},
+    onRequestFieldVerification: () -> Unit = {}
 ) {
     val loan = state.selectedLoan
+    val context = androidx.compose.ui.platform.LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showAllSchedule by remember { mutableStateOf(false) }
@@ -936,6 +1051,40 @@ fun LoanDetailScreen(
                     }
                 },
                 actions = {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    IconButton(onClick = {
+                        loan?.let { l ->
+                            val emi = calculateEMI(l.sanctionedAmount, l.interestRate, l.tenureMonths)
+                            val shareText = buildString {
+                                appendLine("🤝 Loanzo Direct Loan Summary")
+                                appendLine("• Loan ID: #${l.loanId.take(8).uppercase()}")
+                                appendLine("• Principal: ${l.sanctionedAmount.toInrString()}")
+                                appendLine("• Outstanding: ${l.outstandingAmount.toInrString()}")
+                                appendLine("• Interest Rate: ${l.interestRate}% p.a. (${l.interestModel})")
+                                appendLine("• Status: ${l.status.replace('_', ' ')}")
+                                appendLine("• Purpose: ${l.purpose}")
+                                appendLine("• Tenure: ${l.tenureMonths} Months")
+                                appendLine("• Repayment: ${l.repaymentFrequency} (EMI: ${emi.toInrString()})")
+                                appendLine("\n🛡️ Track, repay & view legally binding contracts securely on Loanzo.")
+                            }
+                            val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Loanzo Loan Details - #${l.loanId.take(8).uppercase()}")
+                                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                type = "text/plain"
+                            }
+                            val chooser = android.content.Intent.createChooser(sendIntent, "Share Loan Summary")
+                            if (context !is android.app.Activity) {
+                                chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            try {
+                                context.startActivity(chooser)
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "Unable to launch share dialog", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }) {
+                        Icon(Icons.Default.Share, "Share Loan Details", tint = Gold500)
+                    }
                     IconButton(onClick = { showQrDialog = true }) {
                         Icon(Icons.Default.QrCodeScanner, "UPI QR Code", tint = Emerald400)
                     }
@@ -964,8 +1113,8 @@ fun LoanDetailScreen(
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 0A. PROPOSAL REVIEW GATE
-            if (loan.status == "DRAFT" || loan.status == "PROPOSED") {
+            // 0A. PROPOSAL REVIEW GATE (DRAFT / BID_ACCEPTED)
+            if (loan.status == "DRAFT" || loan.status == "PROPOSED" || loan.status == "BID_ACCEPTED") {
                 item {
                     Card(
                         shape = RoundedCornerShape(18.dp),
@@ -978,7 +1127,7 @@ fun LoanDetailScreen(
                                 Icon(Icons.Default.HourglassTop, contentDescription = null, tint = Gold500, modifier = Modifier.size(22.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "Pending Mutual Acceptance",
+                                    if (loan.status == "BID_ACCEPTED") "Bid Accepted — Finalizing Terms" else "Pending Mutual Acceptance",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -986,7 +1135,7 @@ fun LoanDetailScreen(
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                "Review the proposed loan terms. Once accepted, both parties proceed to sign the binding legal agreement.",
+                                "Review the proposed loan terms. Once confirmed, you will proceed to the next lifecycle stage.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1020,21 +1169,21 @@ fun LoanDetailScreen(
                 }
             }
 
-            // 0B. DISBURSAL ACTION GATE
-            if (loan.isAgreementSigned && loan.disbursedAmount < loan.sanctionedAmount && isLender) {
+            // 0A-2. COLLATERAL VALUATION GATE
+            if (loan.status == "COLLATERAL_VALUATION") {
                 item {
                     Card(
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = Emerald400.copy(alpha = 0.08f)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.35f)),
+                        colors = CardDefaults.cardColors(containerColor = Gold500.copy(alpha = 0.10f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Gold500.copy(alpha = 0.45f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald400, modifier = Modifier.size(22.dp))
+                                Icon(Icons.Default.Shield, contentDescription = null, tint = Gold500, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "Agreement Signed — Ready to Disburse",
+                                    "Stage 4: Collateral Valuation in Progress",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -1042,28 +1191,260 @@ fun LoanDetailScreen(
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                "Both parties have completed biometric & digital eSignatures. Transfer ${loan.sanctionedAmount.toInrString()} to borrower via UPI to activate loan.",
+                                "A certified Loanzo field inspection officer has been dispatched to appraise and apply the tamper-proof security seal before legal agreement execution.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
-                                onClick = { showDisburseDialog = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth().height(48.dp)
+                                onClick = onRequestFieldVerification,
+                                colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Disburse ${loan.sanctionedAmount.toInrString()} via UPI ➔", fontWeight = FontWeight.Bold)
+                                Text("View Valuer Progress / Handshake PIN ➔", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
             }
 
-            // 0C. SETTLED & NOC CERTIFICATE
-            if (loan.status == "CLOSED" || (loan.disbursedAmount > 0 && loan.outstandingAmount <= 0.0)) {
+            // 0A-3. CONTRACT SIGNING GATE
+            if (loan.status == "CONTRACT_SIGNING" || (!loan.isAgreementSigned && loan.status !in listOf("CLOSED", "COMPLETED", "DRAFT", "PROPOSED", "BID_ACCEPTED", "COLLATERAL_VALUATION"))) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Blue400.copy(alpha = 0.10f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Blue400.copy(alpha = 0.45f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Draw, contentDescription = null, tint = Blue400, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Stage 5: DigiLocker & Biometric e-Sign Required",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "Both parties must execute the digital e-signature and biometric selfie verification to generate the legally binding contract.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = { onSignAgreement(loan.loanId) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Blue400, contentColor = Color.White),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth().height(46.dp)
+                            ) {
+                                Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Sign Digital Agreement Now ➔", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 0B. TRANCHE DISBURSAL GATE
+            if (loan.status == "TRANCHE_DISBURSEMENT" || (loan.isAgreementSigned && loan.disbursedAmount < loan.sanctionedAmount && isLender)) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Emerald400.copy(alpha = 0.10f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.45f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald400, modifier = Modifier.size(22.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Stage 6: Agreement Executed — Ready for Tranche Disbursal",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                if (isLender) "Digital e-Sign completed. Transfer ${loan.sanctionedAmount.toInrString()} via UPI to disburse tranche and initialize active servicing."
+                                else "Digital e-Sign completed. Awaiting capital provider (${loan.lenderId.take(8)}) to transfer ${loan.sanctionedAmount.toInrString()} via UPI.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            if (isLender) {
+                                Button(
+                                    onClick = { showDisburseDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                                ) {
+                                    Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Disburse ${loan.sanctionedAmount.toInrString()} via UPI ➔", fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Emerald400.copy(alpha = 0.12f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.HourglassBottom, null, tint = Emerald500, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Awaiting Lender UPI Disbursal to your registered bank / VPA",
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 0B-2. DELINQUENT WARNING GATE
+            if (loan.status == "DELINQUENT") {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Red500.copy(alpha = 0.12f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Red500.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = Red400, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "⚠️ Status: DELINQUENT (Grace Period Expired)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Red400
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "An installment has passed the due date and ${loan.penaltyGraceDays}-day grace period. Late fee penalties are accruing at ${loan.penaltyRate}%/mo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = onMakeRepayment,
+                                colors = ButtonDefaults.buttonColors(containerColor = Red500, contentColor = Color.White),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth().height(46.dp)
+                            ) {
+                                Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Clear Overdue EMI Now ➔", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 0B-3. LEGAL DISPUTE GATE
+            if (loan.status == "LEGAL_DISPUTE") {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Red500.copy(alpha = 0.20f)),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, Red500),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Gavel, contentDescription = null, tint = Red400, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "⚖️ Formal Legal Dispute & Arbitration",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "Account escalated to dispute tribunal under Section 138 NI Act & P2P Contract Act. Attend official Google Meet mediation to establish binding settlement.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Gray300
+                            )
+                            val activeMeeting = state.mediationMeetings.firstOrNull()
+                            if (activeMeeting != null) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color.Black.copy(alpha = 0.35f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Blue400.copy(alpha = 0.4f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Event, null, tint = Blue400, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(activeMeeting.title, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text("Hearing: ${activeMeeting.scheduledTimeSlotStr} • Agenda: ${activeMeeting.agenda}", fontSize = 11.sp, color = Gray300)
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        Button(
+                                            onClick = {
+                                                try {
+                                                    val link = activeMeeting.meetingLinkOrLocation
+                                                    val url = if (link.startsWith("http")) link else "https://$link"
+                                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                                    context.startActivity(intent)
+                                                } catch (_: Exception) {
+                                                    android.widget.Toast.makeText(context, "Unable to launch meeting link", android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Blue500, contentColor = Color.White),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.fillMaxWidth().height(42.dp)
+                                        ) {
+                                            Icon(Icons.Default.VideoCall, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Join Virtual Tribunal (Google Meet) ➔", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = onMakeRepayment,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Arbitrated Settlement", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 0C. SETTLED & NOC CERTIFICATE (COMPLETED / CLOSED)
+            if (loan.status == "COMPLETED" || loan.status == "CLOSED" || (loan.disbursedAmount > 0 && loan.outstandingAmount <= 0.0)) {
                 item {
                     Card(
                         shape = RoundedCornerShape(18.dp),
@@ -1078,7 +1459,7 @@ fun LoanDetailScreen(
                                 Icon(Icons.Default.Verified, contentDescription = null, tint = Gold500, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "🎉 Loan Fully Repaid & Cleared",
+                                    "🎉 Loan Fully Settled & Cleared (COMPLETED)",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -1086,7 +1467,7 @@ fun LoanDetailScreen(
                             }
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                "Zero outstanding balance remaining. Your official No Objection Certificate (NOC) is ready for download.",
+                                "Zero outstanding balance remaining. Your official Tamper-Proof Digital NOC Certificate is ready for download.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Gray300
                             )
@@ -1099,10 +1480,20 @@ fun LoanDetailScreen(
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Download Official NOC Certificate (PDF) 📜", fontWeight = FontWeight.Bold)
+                                Text("Download Tamper-Proof Digital NOC (PDF) 📜", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
+                }
+            }
+
+            // 0D. DOORSTEP FIELD VERIFICATION TRACKER (LIVE OFFICER STATUS & HANDSHAKE PIN)
+            item {
+                val activeVisit = state.activeFieldVisit
+                if (activeVisit != null) {
+                    FieldInspectionTrackerCard(visit = activeVisit)
+                } else if (loan.status != "CLOSED" && loan.status != "REJECTED") {
+                    FieldInspectionRequestCard(onRequest = onRequestFieldVerification)
                 }
             }
 
@@ -1498,6 +1889,34 @@ fun LoanDetailScreen(
                                     "MISMATCH" -> Orange400; "BLOCKED" -> Red400; else -> Gray400
                                 })
                             }
+                            if (isLender && disb.approvalStatus == "PENDING") {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = { onApproveDisbursement(disb.disbursementId) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Approve Tranche", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { onRejectDisbursement(disb.disbursementId) },
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Reject", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1874,7 +2293,7 @@ fun LoanDetailScreen(
                         modifier = Modifier.weight(1f).height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
-                        enabled = loan.status == "ACTIVE"
+                        enabled = loan.status in listOf("ACTIVE", "ACTIVE_SERVICING", "RESTRUCTURED", "DELINQUENT")
                     ) {
                         Icon(Icons.Default.Send, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
@@ -1884,7 +2303,7 @@ fun LoanDetailScreen(
                         onClick = onMakeRepayment,
                         modifier = Modifier.weight(1f).height(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = loan.status == "ACTIVE"
+                        enabled = loan.status in listOf("ACTIVE", "ACTIVE_SERVICING", "RESTRUCTURED", "DELINQUENT")
                     ) {
                         Icon(Icons.Default.Payment, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
@@ -1927,7 +2346,7 @@ fun LoanDetailScreen(
                     ) {
                         Icon(Icons.Default.Chat, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Chat with Lender", maxLines = 1, softWrap = false)
+                        Text(if (isLender) "Chat with Borrower" else "Chat with Lender", maxLines = 1, softWrap = false)
                     }
                 }
                 if (isLender) {
@@ -2204,5 +2623,386 @@ private fun LoanTermRow(label: String, value: String) {
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+fun FieldInspectionTrackerCard(
+    visit: AgentVisitEntity
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isCompleted = visit.status == "COMPLETED"
+    val stageStatus = visit.visitStageStatus
+
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(
+            1.dp,
+            if (isCompleted) Emerald500.copy(alpha = 0.5f) else Gold500.copy(alpha = 0.4f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isCompleted) Emerald500.copy(alpha = 0.15f) else Gold500.copy(alpha = 0.15f),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isCompleted) Icons.Default.Verified else Icons.Default.Shield,
+                                contentDescription = null,
+                                tint = if (isCompleted) Emerald500 else Gold500,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Doorstep Field Verification",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (isCompleted) "Verified & Cryptographically Attested" else "Physical Ground Inspection Active",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isCompleted) Emerald500 else Color(0xFFB45309)
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = when (stageStatus) {
+                        "COMPLETED" -> Emerald500.copy(alpha = 0.15f)
+                        "ARRIVED" -> Color(0xFF38BDF8).copy(alpha = 0.15f)
+                        "EN_ROUTE" -> Color(0xFFF97316).copy(alpha = 0.15f)
+                        else -> Gold500.copy(alpha = 0.15f)
+                    }
+                ) {
+                    Text(
+                        text = when (stageStatus) {
+                            "COMPLETED" -> "✅ Completed"
+                            "ARRIVED" -> "📍 At Doorstep"
+                            "EN_ROUTE" -> "🛵 En Route (${visit.distanceKm ?: 3.5} km)"
+                            else -> "📋 Dispatched"
+                        },
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = when (stageStatus) {
+                            "COMPLETED" -> Emerald500
+                            "ARRIVED" -> Color(0xFF0284C7)
+                            "EN_ROUTE" -> Color(0xFFEA580C)
+                            else -> Color(0xFFB45309)
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Officer Info Card
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Badge,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = visit.assignedAgentName?.ifBlank { "Loanzo Field Officer" } ?: "Loanzo Field Officer",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(Icons.Default.Verified, null, tint = Emerald500, modifier = Modifier.size(14.dp))
+                            }
+                            Text(
+                                text = "PCC Cleared • Two-Wheeler Transit • Slot: ${visit.scheduledTimeSlot}",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // Contact action buttons
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        IconButton(
+                            onClick = {
+                                val phone = visit.agentPhone.ifBlank { "+919876543210" }
+                                try {
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:$phone"))
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        ) {
+                            Icon(Icons.Default.Phone, contentDescription = "Call", tint = Emerald500, modifier = Modifier.size(16.dp))
+                        }
+
+                        IconButton(
+                            onClick = {
+                                val phone = visit.agentPhone.ifBlank { "919876543210" }.replace("+", "").replace(" ", "")
+                                try {
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://api.whatsapp.com/send?phone=$phone&text=Hello%20Officer,%20regarding%20the%20scheduled%20field%20inspection."))
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        ) {
+                            Icon(Icons.Default.Chat, contentDescription = "Chat", tint = Color(0xFF25D366), modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Trip Stage Stepper
+            TripStageStepper(currentStage = stageStatus)
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Handshake PIN or Completed Certificate
+            if (!isCompleted) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Gold500.copy(alpha = 0.1f),
+                    border = BorderStroke(1.dp, Gold500.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.VpnKey, null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "DOORSTEP HANDSHAKE SECURITY PIN",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFFB45309)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val pinDisplay = if (visit.handshakePin.isNotBlank()) {
+                            visit.handshakePin.map { "$it " }.joinToString("").trim()
+                        } else {
+                            "4 8 2 1"
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = pinDisplay,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF0F172A),
+                                letterSpacing = 4.sp,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "🔒 Share this 4-digit PIN ONLY in person with your field officer when they arrive. They will enter it into their device to verify physical presence.",
+                            fontSize = 11.sp,
+                            color = Color(0xFF64748B),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            lineHeight = 15.sp
+                        )
+                    }
+                }
+            } else {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Emerald500.copy(alpha = 0.1f),
+                    border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Verified, null, tint = Emerald500, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Physical Hallmark & Valuation Certificate",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        val finalValue = visit.appraisedValue ?: visit.collateralEstimatedValue ?: 0.0
+                        if (finalValue > 0.0) {
+                            Text(
+                                text = "Appraised Market Value: ₹${finalValue.toInt()} (Purity Certified)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Emerald500
+                            )
+                        }
+                        Text(
+                            text = "Remarks: ${visit.agentRemarks.ifBlank { "Physical ID and collateral attested at registered premises." }}",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TripStageStepper(currentStage: String) {
+    val stages = listOf(
+        "Dispatched" to (currentStage in listOf("DISPATCHED", "EN_ROUTE", "ARRIVED", "IN_PROGRESS", "COMPLETED")),
+        "En Route" to (currentStage in listOf("EN_ROUTE", "ARRIVED", "IN_PROGRESS", "COMPLETED")),
+        "Arrived" to (currentStage in listOf("ARRIVED", "IN_PROGRESS", "COMPLETED")),
+        "Attested" to (currentStage in listOf("COMPLETED"))
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        stages.forEachIndexed { index, pair ->
+            val (label, isPassed) = pair
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(if (isPassed) Emerald500 else Color(0xFFE2E8F0)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isPassed) {
+                        Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                    } else {
+                        Text("${index + 1}", fontSize = 10.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = label,
+                    fontSize = 10.sp,
+                    fontWeight = if (isPassed) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isPassed) MaterialTheme.colorScheme.onSurface else Color(0xFF94A3B8),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (index < stages.size - 1) {
+                val nextPassed = stages[index + 1].second
+                Box(
+                    modifier = Modifier
+                        .weight(0.7f)
+                        .height(2.dp)
+                        .padding(bottom = 14.dp)
+                        .background(if (nextPassed) Emerald500 else Color(0xFFE2E8F0))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FieldInspectionRequestCard(
+    onRequest: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, Gold500.copy(alpha = 0.35f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    shape = CircleShape,
+                    color = Gold500.copy(alpha = 0.15f),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = Gold500, modifier = Modifier.padding(8.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Doorstep Field Verification",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Request certified field officer for physical KYC attestation and collateral purity check.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onRequest,
+                colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().height(46.dp)
+            ) {
+                Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Request Doorstep Verification Officer ➔", fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }

@@ -32,8 +32,13 @@ import com.loanzo.app.ui.theme.DarkNavy
 import com.loanzo.app.ui.theme.Emerald500
 import com.loanzo.app.ui.theme.Gold400
 import com.loanzo.app.ui.theme.Gold500
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import com.loanzo.app.util.getDisplayProfilePhoto
 import com.loanzo.app.util.getInitials
+import com.loanzo.app.util.getEffectiveAvatarUrl
+import com.loanzo.app.util.getCartoonAvatarRes
+import com.loanzo.app.util.CartoonAvatarHelper
 
 /**
  * Universal Loanzo Profile Picture / Avatar Composable.
@@ -45,7 +50,8 @@ import com.loanzo.app.util.getInitials
  */
 @Composable
 fun LoanzoAvatar(
-    user: UserEntity?,
+    user: UserEntity? = null,
+    avatarModel: Any? = null,
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
     showVerifiedBadge: Boolean = false,
@@ -56,8 +62,8 @@ fun LoanzoAvatar(
     onEditClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val avatarModel = user.getDisplayProfilePhoto(context)
-    val initials = user.getInitials()
+    val effectivePhoto = avatarModel ?: user.getEffectiveAvatarUrl()
+    val cartoonRes = user?.getCartoonAvatarRes() ?: CartoonAvatarHelper.getCartoonAvatarDrawableRes(avatarModel?.toString() ?: "guest")
     val isKycVerified = user?.kycStatus == "VERIFIED"
 
     val baseModifier = modifier
@@ -76,25 +82,21 @@ fun LoanzoAvatar(
                 .border(borderWidth, borderColor, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            if (avatarModel != null) {
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(avatarModel)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = user?.name ?: "Profile Avatar",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    loading = {
-                        MonogramInitialsAvatar(initials = initials, size = size)
-                    },
-                    error = {
-                        MonogramInitialsAvatar(initials = initials, size = size)
-                    }
-                )
-            } else {
-                MonogramInitialsAvatar(initials = initials, size = size)
-            }
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(effectivePhoto)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = user?.name ?: "2D Cartoon Avatar",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                loading = {
+                    CartoonAvatarFallback(cartoonRes = cartoonRes)
+                },
+                error = {
+                    CartoonAvatarFallback(cartoonRes = cartoonRes)
+                }
+            )
         }
 
         // Optional Verified Badge
@@ -138,6 +140,22 @@ fun LoanzoAvatar(
             }
         }
     }
+}
+
+/**
+ * 2D Cartoon Person Avatar vector fallback (offline-first, zero-latency).
+ */
+@Composable
+fun CartoonAvatarFallback(
+    cartoonRes: Int,
+    modifier: Modifier = Modifier
+) {
+    Image(
+        painter = painterResource(id = cartoonRes),
+        contentDescription = "2D Cartoon Person Avatar",
+        modifier = modifier.fillMaxSize(),
+        contentScale = ContentScale.Crop
+    )
 }
 
 /**

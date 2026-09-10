@@ -1,0 +1,50 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#E9D5FF"
+        android:pathData="M48,48m-46,0a46,46 0,1 1,92 0a46,46 0,1 1,-92 0" />
+    <!-- Hair Back / Ponytail -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M28,36 C24,48 26,62 34,70 C36,58 36,44 32,36 Z" />
+    <!-- Shoulders / Blouse -->
+    <path
+        android:fillColor="#059669"
+        android:pathData="M24,90 C26,72 35,66 48,66 C61,66 70,72 72,90 Z" />
+    <!-- Neck -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M43,54 L53,54 L53,66 L43,66 Z" />
+    <!-- Face -->
+    <path
+        android:fillColor="#FED7AA"
+        android:pathData="M35,36 C35,26 61,26 61,36 C61,51 35,51 35,36 Z" />
+    <!-- Ears -->
+    <path
+        android:fillColor="#FDBA74"
+        android:pathData="M32,38 A3,3.5 0,1 1,32,43 A3,3.5 0,1 1,32,38 M64,38 A3,3.5 0,1 1,64,43 A3,3.5 0,1 1,64,38" />
+    <!-- Hair Front / Bangs -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M33,32 C34,20 44,17 48,17 C56,17 62,20 63,32 C58,26 44,24 33,32 Z" />
+    <!-- Eyeglasses Frames -->
+    <path
+        android:strokeColor="#7C3AED"
+        android:strokeWidth="1.8"
+        android:fillColor="#00000000"
+        android:pathData="M37,34 A5,5 0,1 1,37,44 A5,5 0,1 1,37,34 M53,34 A5,5 0,1 1,53,44 A5,5 0,1 1,53,34 M47,39 L53,39" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#1F2937"
+        android:pathData="M41,38 A1.5,1.5 0,1 1,41,40 A1.5,1.5 0,1 1,41,38 M57,38 A1.5,1.5 0,1 1,57,40 A1.5,1.5 0,1 1,57,38" />
+    <!-- Smile -->
+    <path
+        android:strokeColor="#E11D48"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:pathData="M44,46 Q48,49 52,46" />
+</vector>

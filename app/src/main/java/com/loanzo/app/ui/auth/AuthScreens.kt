@@ -42,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,8 @@ import kotlin.random.Random
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
+    currentLanguageCode: String = "en",
+    onSelectLanguage: (String) -> Unit = {},
     onLogin: (userId: String, pass: String, role: String) -> Unit,
     onBiometricLogin: (typedUserId: String, role: String) -> Unit,
     onGoogleLogin: (typedUserId: String) -> Unit = {},
@@ -68,12 +71,13 @@ fun LoginScreen(
     onVerifyUserId: (userId: String, role: String) -> Unit = { _, _ -> },
     onResetUserIdVerification: () -> Unit = {}
 ) {
-    var userId by remember { mutableStateOf("") }
+    var userId by rememberSaveable { mutableStateOf("") }
     var userRole by rememberSaveable { mutableStateOf("Member") }
     var roleDropdownExpanded by remember { mutableStateOf(false) }
-    var password by remember { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     var loginStep by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(1) }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var showLanguageSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(isUserIdVerified) {
         if (isUserIdVerified) {
@@ -132,13 +136,13 @@ fun LoginScreen(
             ) {
                 Column(modifier = Modifier.padding(22.dp)) {
                     Text(
-                        text = "Welcome Back",
+                        text = stringResource(R.string.welcome_back),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Sign in to your account",
+                        text = stringResource(R.string.sign_in_to_your_account),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -183,7 +187,7 @@ fun LoginScreen(
                     if (loginStep == 1) {
                         // User Role Selection & Entry (Directly above Username)
                         Text(
-                            text = "Select User Role",
+                            text = stringResource(R.string.select_user_role),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -245,7 +249,7 @@ fun LoginScreen(
                                     userRole = it
                                     onClearError()
                                 },
-                                label = { Text("User Role") },
+                                label = { Text(stringResource(R.string.user_role)) },
                                 placeholder = { Text("e.g. Member, Field Agent, Master Admin") },
                                 leadingIcon = {
                                     Icon(
@@ -313,7 +317,7 @@ fun LoginScreen(
                         OutlinedTextField(
                             value = userId,
                             onValueChange = { userId = it; onClearError() },
-                            label = { Text("Username") },
+                            label = { Text(stringResource(R.string.username)) },
                             leadingIcon = { Icon(Icons.Default.Person, null) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
@@ -348,9 +352,9 @@ fun LoginScreen(
                             if (isLoading) {
                                 CircularProgressIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                             } else {
-                                Text("Next", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(stringResource(R.string.next), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Icon(Icons.Default.ArrowForward, contentDescription = "Next", modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.ArrowForward, contentDescription = stringResource(R.string.next), modifier = Modifier.size(18.dp))
                             }
                         }
 
@@ -360,18 +364,32 @@ fun LoginScreen(
                                 onClick = { onBiometricLogin(userId.trim(), userRole.trim()) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(50.dp),
+                                    .heightIn(min = 50.dp),
                                 shape = RoundedCornerShape(14.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 enabled = !isLoading
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(Icons.Default.Face, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Fingerprint,
+                                        contentDescription = "Biometric Login",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Sign in with Fingerprint / Face", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                    Text(
+                                        text = stringResource(R.string.biometric_sign_in),
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.5.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                             }
                         }
@@ -410,7 +428,7 @@ fun LoginScreen(
                         OutlinedTextField(
                             value = password,
                             onValueChange = { password = it; onClearError() },
-                            label = { Text("Password") },
+                            label = { Text(stringResource(R.string.password)) },
                             leadingIcon = { Icon(Icons.Default.Lock, null) },
                             trailingIcon = {
                                 val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
@@ -438,7 +456,7 @@ fun LoginScreen(
                         // Forgot Password link
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                             TextButton(onClick = onNavigateToForgotPassword) {
-                                Text("Forgot Password?", color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(R.string.forgot_password), color = MaterialTheme.colorScheme.primary)
                             }
                         }
 
@@ -459,7 +477,7 @@ fun LoginScreen(
                             if (isLoading) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                             } else {
-                                Text("Sign In", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(stringResource(R.string.sign_in), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
                         }
 
@@ -470,18 +488,32 @@ fun LoginScreen(
                                 onClick = { onBiometricLogin(userId.trim(), userRole.trim()) },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(50.dp),
+                                    .heightIn(min = 50.dp),
                                 shape = RoundedCornerShape(14.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 enabled = !isLoading
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Fingerprint, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(Icons.Default.Face, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Fingerprint,
+                                        contentDescription = "Biometric Login",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Sign in with Fingerprint / Face", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                    Text(
+                                        text = stringResource(R.string.biometric_sign_in),
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.5.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                             }
                         }
@@ -505,7 +537,7 @@ fun LoginScreen(
                                 modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text("Continue with Google", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                            Text(stringResource(R.string.continue_with_google), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         }
                     }
                 }
@@ -530,6 +562,87 @@ fun LoginScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Secondary Language Option at the Bottom
+            Surface(
+                onClick = { showLanguageSheet = true },
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = null,
+                        tint = Gold500,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.app_language) + ": " + getLanguageNameByCode(currentLanguageCode),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // Floating Top-Right Language Selector Pill
+        Surface(
+            onClick = { showLanguageSheet = true },
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+            shadowElevation = 3.dp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 12.dp, end = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Language,
+                    contentDescription = stringResource(R.string.change_language),
+                    tint = Gold500,
+                    modifier = Modifier.size(17.dp)
+                )
+                Text(
+                    text = getLanguageNameByCode(currentLanguageCode).substringBefore(" ("),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        // Language Selection Sheet
+        if (showLanguageSheet) {
+            LanguageSelectionBottomSheet(
+                currentLanguageCode = currentLanguageCode,
+                onLanguageSelected = { newLang ->
+                    onSelectLanguage(newLang)
+                    showLanguageSheet = false
+                },
+                onDismiss = { showLanguageSheet = false }
+            )
         }
     }
 }
