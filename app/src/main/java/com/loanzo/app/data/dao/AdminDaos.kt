@@ -15,6 +15,9 @@ interface ComplaintDao {
     @Query("SELECT * FROM complaints WHERE status = :status ORDER BY createdAt DESC")
     fun getComplaintsByStatus(status: String): Flow<List<ComplaintEntity>>
 
+    @Query("SELECT * FROM complaints WHERE status = 'OPEN' OR status = 'INVESTIGATING' ORDER BY createdAt DESC")
+    suspend fun getOpenComplaintsSync(): List<ComplaintEntity>
+
     @Query("SELECT * FROM complaints WHERE complaintId = :complaintId")
     suspend fun getComplaintById(complaintId: String): ComplaintEntity?
 
@@ -41,6 +44,9 @@ interface MediationMeetingDao {
 
     @Query("SELECT * FROM mediation_meetings WHERE status = 'SCHEDULED' ORDER BY scheduledDateTime ASC")
     fun getUpcomingMeetings(): Flow<List<MediationMeetingEntity>>
+
+    @Query("SELECT * FROM mediation_meetings WHERE loanId = :loanId ORDER BY scheduledDateTime DESC")
+    fun getMeetingsForLoan(loanId: String): Flow<List<MediationMeetingEntity>>
 
     @Query("SELECT * FROM mediation_meetings WHERE meetingId = :meetingId")
     suspend fun getMeetingById(meetingId: String): MediationMeetingEntity?

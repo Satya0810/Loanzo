@@ -542,21 +542,25 @@ function getAdminChatIds() {
 // Telegram API Communication Helpers
 async function sendTelegramMessage(chatId, text, replyMarkup = null) {
     try {
+        const safeText = (text || '').length > 4000 ? (text || '').substring(0, 4000) + '\n\n... [Truncated]' : (text || '');
         const payload = {
             chat_id: chatId,
-            text: text,
+            text: safeText,
             parse_mode: 'HTML'
         };
         if (replyMarkup) payload.reply_markup = replyMarkup;
         const res = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, payload, { timeout: 8000 });
         return res.data?.result || true;
     } catch (err) {
+        const errDesc = (err.response?.data?.description || err.message || '').toLowerCase();
         console.error(`[Telegram send error for ${chatId}]:`, err.response?.data || err.message);
-        if (err.response?.data?.description && err.response.data.description.toLowerCase().includes("can't parse entities")) {
+
+        // Fallback 1: Entity parse error -> retry with plain text
+        if (errDesc.includes("can't parse entities") || errDesc.includes("tag") || errDesc.includes("parse")) {
             try {
                 const plainPayload = {
                     chat_id: chatId,
-                    text: text.replace(/<[^>]*>/g, '')
+                    text: (text || '').replace(/<[^>]*>/g, '').substring(0, 4000)
                 };
                 if (replyMarkup) plainPayload.reply_markup = replyMarkup;
                 const retryRes = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, plainPayload, { timeout: 8000 });
@@ -565,6 +569,32 @@ async function sendTelegramMessage(chatId, text, replyMarkup = null) {
                 console.error(`[Telegram plain fallback error for ${chatId}]:`, fallbackErr.response?.data || fallbackErr.message);
             }
         }
+
+        // Fallback 2: Invalid button URL -> retry without reply_markup
+        if (errDesc.includes("button_url_invalid") || errDesc.includes("url")) {
+            try {
+                const noMarkupPayload = {
+                    chat_id: chatId,
+                    text: (text || '').length > 4000 ? (text || '').substring(0, 4000) : (text || ''),
+                    parse_mode: 'HTML'
+                };
+                const retryRes = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, noMarkupPayload, { timeout: 8000 });
+                return retryRes.data?.result || true;
+            } catch (fallbackErr) {
+                console.error(`[Telegram no-markup fallback error for ${chatId}]:`, fallbackErr.response?.data || fallbackErr.message);
+            }
+        }
+
+        // Fallback 3: Plain text without markup
+        try {
+            const ultimatePayload = {
+                chat_id: chatId,
+                text: (text || '').replace(/<[^>]*>/g, '').substring(0, 4000)
+            };
+            const retryRes = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, ultimatePayload, { timeout: 8000 });
+            return retryRes.data?.result || true;
+        } catch (_finalErr) {}
+
         return false;
     }
 }
@@ -1257,35 +1287,108 @@ app.post('/api/telegram/webhook', async (req, res) => {
         } else if (cmd === '/myloans') {
             await sendTelegramMessage(
                 chatId,
-                `📊 <b>Your Loanzo Portfolio</b>\n\n` +
-                `Active Loans: 1\n` +
-                `Total Outstanding: ₹25,000\n` +
-                `Next EMI Due: <b>₹2,500 on 10th of this month</b>\n` +
-                `Status: In Good Standing ✅\n\n` +
-                `Open the Loanzo app to view your amortization schedule or make an instant repayment.`
+                `📊 <b>Your Loanzo Portfolio & Live Facilities</b>\n\n` +
+                `🟢 <b>1. Loan Lent: Retail Stock Expansion</b>\n` +
+                `• Facility: <b>₹50,000</b> (12% p.a., 6 Mo)\n` +
+                `• Borrower: <b>Rahul Sharma</b> (Sharma Retail)\n` +
+                `• Outstanding: <b>₹41,666</b> (5 of 6 EMIs remaining)\n` +
+                `• Monthly EMI: <b>₹8,834</b> | Next Due: <b>05 Oct 2026</b>\n` +
+                `• Collateral: <b>48.5g Gold (Locker DEL-042)</b> 🔐\n` +
+                `• Agreement: eSigned via Aadhaar OTP ✅\n\n` +
+                `🟡 <b>2. Loan Borrowed: Higher Education</b>\n` +
+                `• Facility: <b>₹25,000</b> (10.5% p.a., 12 Mo)\n` +
+                `• Lender: <b>Priya Patel</b> (FinTech Angel)\n` +
+                `• Outstanding: <b>₹22,650</b> (10 of 12 EMIs remaining)\n` +
+                `• Monthly EMI: <b>₹2,350</b> | Next Due: <b>10 Oct 2026</b>\n` +
+                `• Guarantor: <b>Nirmala Devi (Mother)</b> (Consent Verified)\n\n` +
+                `⚪ <b>3. Settled Loan: Medical Emergency</b>\n` +
+                `• Facility: <b>₹15,000</b> | Status: <b>CLOSED (NOC Issued 📜)</b>\n` +
+                `• Repaid Ahead of Schedule | Collateral Released 🔓\n\n` +
+                `🏆 <b>Credit Health Standing:</b> <code>AAA Prime (Experian 785)</code>\n` +
+                `<i>Manage facilities or download certified PDFs via Loanzo Document Vault.</i>`
+            );
+            return res.sendStatus(200);
+
+        } else if (cmd === '/demoloans') {
+            await sendTelegramMessage(
+                chatId,
+                `📋 <b>Loanzo Central Escrow Registry — All 6 Demo Facilities</b>\n\n` +
+                `1️⃣ <code>demo_loan_lent_1</code>\n` +
+                `   • Principal: <b>₹50,000</b> @ 12.0% (6 Months)\n` +
+                `   • Parties: You (Lender) ➔ Rahul Sharma (Borrower)\n` +
+                `   • Collateral: 48.5g Gold Bangles/Necklace in Central Vault\n` +
+                `   • Status: <b>ACTIVE</b> (Disbursed via IMPS) ✅\n\n` +
+                `2️⃣ <code>demo_loan_borrowed_1</code>\n` +
+                `   • Principal: <b>₹25,000</b> @ 10.5% (12 Months)\n` +
+                `   • Parties: Priya Patel (Lender) ➔ You (Borrower)\n` +
+                `   • Guarantor: Nirmala Devi | Status: <b>ACTIVE</b> ✅\n\n` +
+                `3️⃣ <code>demo_loan_closed_1</code>\n` +
+                `   • Principal: <b>₹15,000</b> @ 11.0% (4 Months)\n` +
+                `   • Parties: You ➔ Rahul Sharma (Medical Emergency)\n` +
+                `   • Status: <b>CLOSED</b> (NOC Issued, Collateral Released 🔓)\n\n` +
+                `4️⃣ <code>demo_loan_platform_1</code>\n` +
+                `   • Principal: <b>₹1,50,000</b> @ 11.5% (12 Months)\n` +
+                `   • Parties: Vikram Malhotra ➔ Amit Verma (CNC Machinery)\n` +
+                `   • Inspected by: Agent Vikas Sharma | Status: <b>ACTIVE</b> ✅\n\n` +
+                `5️⃣ <code>demo_loan_platform_2</code>\n` +
+                `   • Principal: <b>₹80,000</b> @ 12.0% (8 Months)\n` +
+                `   • Parties: Rajesh Gupta ➔ Sneha Roy (Studio Production)\n` +
+                `   • Serial-tagged Hardware Collateral | Status: <b>ACTIVE</b> ✅\n\n` +
+                `6️⃣ <code>demo_loan_platform_3</code>\n` +
+                `   • Principal: <b>₹2,00,000</b> @ 10.0% (24 Months)\n` +
+                `   • Parties: Rajesh Gupta ➔ Rahul Sharma (Warehouse Lease)\n` +
+                `   • Property Deed Encumbered | Status: <b>ACTIVE</b> ✅`
+            );
+            return res.sendStatus(200);
+
+        } else if (cmd === '/agent') {
+            await sendTelegramMessage(
+                chatId,
+                `🕵️‍♂️ <b>Assigned Field Verification Agent Profile</b>\n\n` +
+                `• <b>Agent Name:</b> Vikas Sharma\n` +
+                `• <b>Agent ID:</b> <code>demo_agent_vikas</code>\n` +
+                `• <b>Badge / Reg No:</b> <code>AGT-DEL-0841</code>\n` +
+                `• <b>Official Phone:</b> +91 98101 23456\n` +
+                `• <b>Inspections Completed:</b> 3 (100% On-time Verification)\n` +
+                `• <b>Assigned Territory:</b> Delhi NCR / North Zone\n` +
+                `• <b>Recent Assignment:</b> Sharma Retail Shop Physical Stock & Gold Purity Appraisal ✅\n` +
+                `• <b>Current Duty Status:</b> Active on Duty 🟢`
             );
             return res.sendStatus(200);
 
         } else if (cmd === '/repay') {
             await sendTelegramMessage(
                 chatId,
-                `💳 <b>Loan Repayment Assistance</b>\n\n` +
-                `To repay your active loan EMI:\n` +
-                `1. Open the <b>Loanzo App</b>\n` +
-                `2. Navigate to <b>Loans</b> &gt; Select your loan\n` +
-                `3. Tap <b>"Pay Now"</b> or use UPI (GPay, PhonePe, Paytm)\n\n` +
-                `✨ Repayments logged in the app are verified in real-time with instant digital receipt issuance.`
+                `💳 <b>Loanzo Instant Repayment Gateway</b>\n\n` +
+                `<b>Escrow VPA (UPI ID):</b>\n` +
+                `<code>loanzo.escrow@icici</code>\n\n` +
+                `<b>Direct IMPS / NEFT Escrow Fiduciary:</b>\n` +
+                `• Account Name: <b>Loanzo Smart Escrow Fiduciary A/C</b>\n` +
+                `• Account No: <code>926010048291034</code>\n` +
+                `• IFSC: <code>ICIC0000926</code>\n` +
+                `• Branch: Cyber City Financial Hub\n\n` +
+                `<b>Active Facility Payment Schedule:</b>\n` +
+                `• <b>EMI #2 (Business 50K):</b> ₹8,751 due 05 Oct 2026\n` +
+                `• <b>EMI #3 (Education 25K):</b> ₹2,350 due 10 Oct 2026\n\n` +
+                `💡 <i>Payments via UPI auto-reconcile in real-time with instant digital receipt generated in your Vault.</i>`
             );
             return res.sendStatus(200);
 
         } else if (cmd === '/statement') {
             await sendTelegramMessage(
                 chatId,
-                `📑 <b>Repayment Statement</b>\n\n` +
-                `• Last Payment: ₹2,500 on 10th Aug (Paid on time ✅)\n` +
-                `• Current Due: ₹2,500 (Due 10th Sep)\n` +
-                `• Accrued Penalties: ₹0 (No late fees)\n\n` +
-                `Download complete signed PDF statements in the Loanzo app under Loan Details.`
+                `📑 <b>Loanzo Comprehensive Account Statement</b>\n\n` +
+                `<b>Recent Ledger Transactions:</b>\n` +
+                `• <b>05 Sep 2026:</b> EMI #1 Paid (₹8,834.00)\n` +
+                `  Loan: #LZ-BIZ-50K | Ref: <code>UPI/329481928491</code> ✅\n` +
+                `• <b>10 Aug 2026:</b> EMI #2 Paid (₹2,350.00)\n` +
+                `  Loan: #LZ-EDU-25K | Ref: <code>NEFT/2026/08/991204</code> ✅\n` +
+                `• <b>10 May 2026:</b> Prepayment Full Settlement (₹11,663.00)\n` +
+                `  Loan: #LZ-MED-15K | Ref: <code>IMPS/2026/05/110293</code> ✅\n\n` +
+                `<b>Upcoming Scheduled Debits:</b>\n` +
+                `• <b>05 Oct 2026:</b> ₹8,751.00 (Business Stock Loan EMI #2)\n` +
+                `• <b>10 Oct 2026:</b> ₹2,350.00 (Education Loan EMI #3)\n\n` +
+                `📜 <i>Download tamper-evident signed PDF statements in the Loanzo App under Profile &gt; Document Vault.</i>`
             );
             return res.sendStatus(200);
 
@@ -1337,7 +1440,7 @@ app.post('/api/telegram/webhook', async (req, res) => {
                     `🛡️ <b>Loanzo Admin Command Dashboard</b>\n\n` +
                     `Welcome Admin! Available administrative tools:\n` +
                     `• /pending - Review interactive verification queue\n` +
-                    `• /stats - Live platform statistics\n` +
+                    `• /stats - Live platform statistics\n• /demoloans - Full 6 demo facilities breakdown\n• /agent - Assigned field agent profile\n` +
                     `• /broadcast &lt;msg&gt; - Send announcement\n` +
                     `• /ban &lt;user_id&gt; - Suspend user\n` +
                     `• /unban &lt;user_id&gt; - Restore user\n` +
@@ -1354,7 +1457,7 @@ app.post('/api/telegram/webhook', async (req, res) => {
                 `• /about - Official platform information\n` +
                 `• /profile - Your role & verification status\n` +
                 `• /verify_me - Submit verification application\n` +
-                `• /myloans - View active loans\n` +
+                `• /myloans - View active loans\n• /demoloans - All 6 demo facilities\n• /agent - Assigned field agent\n• /statement - Transaction statement\n` +
                 `• /repay - Repayment assistance\n` +
                 `• /help - Support and FAQs`;
 
@@ -1388,7 +1491,7 @@ app.post('/api/telegram/notify', async (req, res) => {
                 ]
             ]
         };
-    } else if (url) {
+    } else if (url && (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('tg://'))) {
         replyMarkup = {
             inline_keyboard: [[{ text: '📄 View in Loanzo', url: url }]]
         };

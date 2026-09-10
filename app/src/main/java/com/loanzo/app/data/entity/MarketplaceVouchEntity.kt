@@ -14,11 +14,11 @@ import androidx.room.PrimaryKey
 )
 data class MarketplaceVouchEntity(
     @PrimaryKey
-    val vouchId: String,
-    val postId: String,
-    val voucherUserId: String,
-    val voucherName: String,
-    val vouchReason: String, // "BUSINESS_PEER", "PAST_REPAYMENT", "COMMUNITY_REFERENCE"
+    val vouchId: String = "",
+    val postId: String = "",
+    val voucherUserId: String = "",
+    val voucherName: String = "",
+    val vouchReason: String = "COMMERCIAL_PEER", // "BUSINESS_PEER", "PAST_REPAYMENT", "COMMUNITY_REFERENCE"
     val comment: String = "",
     val createdAt: Long = System.currentTimeMillis(),
 

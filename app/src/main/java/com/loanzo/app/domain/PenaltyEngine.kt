@@ -118,6 +118,56 @@ class PenaltyEngine @Inject constructor() {
     }
 
     /**
+     * Evaluates the active lifecycle state of a loan based on repayment schedule,
+     * outstanding balance, and overdue/grace period progression.
+     *
+     * State Machine:
+     * - If outstanding <= 0: COMPLETED
+     * - If any overdue exceeds grace period:
+     *     - If days overdue >= 15 days or penalty >= 1000: LEGAL_DISPUTE
+     *     - Else: DELINQUENT
+     * - If isRestructured: RESTRUCTURED
+     * - Else: ACTIVE_SERVICING
+     */
+    fun evaluateServicingState(
+        loan: LoanEntity,
+        repayments: List<RepaymentEntity>
+    ): String {
+        if (loan.status == "CLOSED" || loan.status == "COMPLETED" || loan.outstandingAmount <= 0.0 || (repayments.isNotEmpty() && repayments.all { it.status == "PAID" })) {
+            return "COMPLETED"
+        }
+
+        // Only evaluate loans that have already begun servicing
+        val eligibleStatuses = setOf("ACTIVE", "ACTIVE_SERVICING", "RESTRUCTURED", "DELINQUENT", "LEGAL_DISPUTE", "DEFAULTED")
+        if (loan.status !in eligibleStatuses) {
+            return loan.status
+        }
+
+        val penalized = applyPenalties(repayments, loan)
+        val overdueItems = penalized.filter { it.status == "OVERDUE" }
+
+        val delinquentItems = overdueItems.filter { rep ->
+            val daysOverdue = calculateDaysOverdue(rep.dueDate)
+            daysOverdue > loan.penaltyGraceDays
+        }
+
+        if (delinquentItems.isNotEmpty()) {
+            val maxOverdueDays = delinquentItems.maxOfOrNull { calculateDaysOverdue(it.dueDate) } ?: 0
+            val totalPenalty = delinquentItems.sumOf { it.penalty }
+            if (maxOverdueDays >= 15 || totalPenalty >= 1000.0) {
+                return "LEGAL_DISPUTE"
+            }
+            return "DELINQUENT"
+        }
+
+        if (loan.isRestructured) {
+            return "RESTRUCTURED"
+        }
+
+        return "ACTIVE_SERVICING"
+    }
+
+    /**
      * Returns a breakdown of penalty details for display in the UI.
      */
     fun getPenaltyBreakdown(

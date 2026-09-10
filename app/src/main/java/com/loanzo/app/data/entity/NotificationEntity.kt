@@ -6,11 +6,11 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "notifications")
 data class NotificationEntity(
     @PrimaryKey
-    val notificationId: String,
-    val userId: String,
-    val title: String,
-    val message: String,
-    val type: String, // DEADLINE, OVERDUE, DISBURSEMENT, AGREEMENT, REPAYMENT, SYSTEM
+    val notificationId: String = "",
+    val userId: String = "",
+    val title: String = "",
+    val message: String = "",
+    val type: String = "SYSTEM", // DEADLINE, OVERDUE, DISBURSEMENT, AGREEMENT, REPAYMENT, SYSTEM
     val relatedLoanId: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val isRead: Boolean = false,

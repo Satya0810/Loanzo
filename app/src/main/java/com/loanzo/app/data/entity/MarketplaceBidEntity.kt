@@ -14,16 +14,16 @@ import androidx.room.PrimaryKey
 )
 data class MarketplaceBidEntity(
     @PrimaryKey
-    val bidId: String,
-    val postId: String,
-    val bidderId: String,
-    val bidderName: String,
+    val bidId: String = "",
+    val postId: String = "",
+    val bidderId: String = "",
+    val bidderName: String = "",
     val bidderAvatarUrl: String = "",
     val bidderKycVerified: Boolean = false,
     val bidderTrustScore: Int = 85,
-    val proposedAmount: Double,
-    val proposedInterestRate: Double,
-    val proposedTenureMonths: Int,
+    val proposedAmount: Double = 0.0,
+    val proposedInterestRate: Double = 0.0,
+    val proposedTenureMonths: Int = 6,
     val proposedRepaymentFrequency: String = "MONTHLY",
     val message: String = "",
     val status: String = "PENDING", // PENDING, ACCEPTED, REJECTED, CONVERTED_TO_LOAN

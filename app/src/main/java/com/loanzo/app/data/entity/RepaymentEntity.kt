@@ -19,16 +19,16 @@ import androidx.room.PrimaryKey
 )
 data class RepaymentEntity(
     @PrimaryKey
-    val repaymentId: String,
-    val loanId: String,
-    val amount: Double,
-    val transactionRef: String,
-    val status: String, // SCHEDULED, PAID, OVERDUE, PARTIAL
-    val dueDate: Long,
+    val repaymentId: String = "",
+    val loanId: String = "",
+    val amount: Double = 0.0,
+    val transactionRef: String = "",
+    val status: String = "SCHEDULED", // SCHEDULED, PAID, OVERDUE, PARTIAL
+    val dueDate: Long = System.currentTimeMillis(),
     val paidDate: Long? = null,
-    val outstandingSnapshot: Double,
-    val principalComponent: Double,
-    val interestComponent: Double,
+    val outstandingSnapshot: Double = 0.0,
+    val principalComponent: Double = 0.0,
+    val interestComponent: Double = 0.0,
     val penalty: Double = 0.0,
     val penaltyWaived: Boolean = false,
     val timestamp: Long = System.currentTimeMillis(),

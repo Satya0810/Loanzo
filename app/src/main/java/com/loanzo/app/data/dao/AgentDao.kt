@@ -30,6 +30,9 @@ interface AgentDao {
     @Query("SELECT * FROM agent_applications WHERE status = 'PENDING' ORDER BY submittedAt ASC")
     fun getPendingApplications(): Flow<List<AgentApplicationEntity>>
 
+    @Query("SELECT * FROM agent_applications WHERE status = 'PENDING' ORDER BY submittedAt ASC")
+    suspend fun getPendingApplicationsSync(): List<AgentApplicationEntity>
+
     // --- Visits ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVisit(visit: AgentVisitEntity)
@@ -46,6 +49,9 @@ interface AgentDao {
     @Query("SELECT * FROM agent_visits WHERE agentId = :agentId ORDER BY scheduledDate ASC, scheduledTimeSlot ASC")
     fun getVisitsForAgent(agentId: String): Flow<List<AgentVisitEntity>>
 
+    @Query("SELECT * FROM agent_visits WHERE agentId = 'UNASSIGNED' OR agentId = '' OR agentId IS NULL ORDER BY createdAt DESC")
+    fun getUnassignedVisits(): Flow<List<AgentVisitEntity>>
+
     @Query("SELECT * FROM agent_visits WHERE visitId = :visitId LIMIT 1")
     suspend fun getVisitById(visitId: String): AgentVisitEntity?
 
@@ -61,6 +67,30 @@ interface AgentDao {
     @Delete
     suspend fun deleteVisit(visit: AgentVisitEntity)
 
-    @Query("DELETE FROM agent_visits WHERE visitId LIKE 'visit_demo_%'")
+    @Query("SELECT * FROM agent_visits WHERE crossVerificationPairId = :pairId ORDER BY verificationStage ASC")
+    fun getVisitsByPairId(pairId: String): Flow<List<AgentVisitEntity>>
+
+    @Query("SELECT * FROM agent_visits WHERE crossVerificationPairId = :pairId ORDER BY verificationStage ASC")
+    suspend fun getVisitsByPairIdSync(pairId: String): List<AgentVisitEntity>
+
+    @Query("SELECT * FROM agent_visits WHERE isCrossVerification = 1 ORDER BY createdAt DESC")
+    fun getAllCrossVerificationVisits(): Flow<List<AgentVisitEntity>>
+
+    @Query("SELECT * FROM agent_visits WHERE loanId = :loanId ORDER BY createdAt DESC")
+    fun getVisitsByLoanId(loanId: String): Flow<List<AgentVisitEntity>>
+
+    @Query("SELECT * FROM agent_visits WHERE loanId = :loanId AND status != 'CANCELLED' ORDER BY createdAt DESC LIMIT 1")
+    fun observeActiveVisitForLoan(loanId: String): Flow<AgentVisitEntity?>
+
+    @Query("SELECT * FROM agent_visits WHERE loanId = :loanId AND status != 'CANCELLED' ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getActiveVisitForLoanSync(loanId: String): AgentVisitEntity?
+
+    @Query("SELECT * FROM agent_visits WHERE borrowerPhone = :phone OR lenderPhone = :phone ORDER BY createdAt DESC")
+    fun getVisitsForUserPhone(phone: String): Flow<List<AgentVisitEntity>>
+
+    @Query("DELETE FROM agent_applications WHERE applicationId LIKE 'app_agent_demo_%'")
+    suspend fun deleteDemoApplications()
+
+    @Query("DELETE FROM agent_visits WHERE visitId LIKE 'visit_demo_%' OR visitId LIKE 'cross_pair_%' OR crossVerificationPairId LIKE 'cross_pair_demo_%'")
     suspend fun deleteDemoVisits()
 }

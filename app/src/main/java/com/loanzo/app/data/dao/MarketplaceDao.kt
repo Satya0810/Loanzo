@@ -59,6 +59,9 @@ interface MarketplaceDao {
     @Query("UPDATE marketplace_posts SET bidsCount = bidsCount + 1 WHERE postId = :postId")
     suspend fun incrementBidsCount(postId: String)
 
+    @Query("SELECT COUNT(*) FROM marketplace_posts")
+    suspend fun getPostCount(): Int
+
     @Query("DELETE FROM marketplace_posts WHERE postId = :postId")
     suspend fun deletePost(postId: String)
 

@@ -30,10 +30,10 @@ interface LoanDao {
     @Query("SELECT * FROM loans WHERE status = :status ORDER BY createdAt DESC")
     fun getLoansByStatus(status: String): Flow<List<LoanEntity>>
 
-    @Query("SELECT SUM(disbursedAmount) FROM loans WHERE borrowerId = :userId AND status = 'ACTIVE'")
+    @Query("SELECT SUM(disbursedAmount) FROM loans WHERE borrowerId = :userId AND (status = 'ACTIVE' OR status = 'ACTIVE_SERVICING' OR status = 'RESTRUCTURED' OR status = 'DELINQUENT' OR status = 'LEGAL_DISPUTE')")
     fun getTotalDisbursedForBorrower(userId: String): Flow<Double?>
 
-    @Query("SELECT SUM(outstandingAmount) FROM loans WHERE borrowerId = :userId AND status = 'ACTIVE'")
+    @Query("SELECT SUM(outstandingAmount) FROM loans WHERE borrowerId = :userId AND (status = 'ACTIVE' OR status = 'ACTIVE_SERVICING' OR status = 'RESTRUCTURED' OR status = 'DELINQUENT' OR status = 'LEGAL_DISPUTE')")
     fun getTotalOutstandingForBorrower(userId: String): Flow<Double?>
 
     @Delete

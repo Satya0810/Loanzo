@@ -15,20 +15,20 @@ import androidx.room.PrimaryKey
 )
 data class MarketplacePostEntity(
     @PrimaryKey
-    val postId: String,
-    val authorId: String,
-    val authorName: String,
+    val postId: String = "",
+    val authorId: String = "",
+    val authorName: String = "",
     val authorAvatarUrl: String = "",
     val authorKycVerified: Boolean = false,
     val authorTrustScore: Int = 85,
-    val postType: String, // "OFFER_TO_LEND" or "SEEKING_LOAN"
-    val title: String,
-    val description: String,
-    val minAmount: Double,
-    val maxAmount: Double,
-    val interestRate: Double,
+    val postType: String = "OFFER_TO_LEND", // "OFFER_TO_LEND" or "SEEKING_LOAN"
+    val title: String = "",
+    val description: String = "",
+    val minAmount: Double = 0.0,
+    val maxAmount: Double = 0.0,
+    val interestRate: Double = 0.0,
     val interestModel: String = "SIMPLE",
-    val tenureMonths: Int,
+    val tenureMonths: Int = 6,
     val repaymentFrequency: String = "MONTHLY",
     val purposeCategory: String = "PERSONAL", // PERSONAL, BUSINESS, EDUCATION, MEDICAL, AGRICULTURE, EMERGENCY
     val locationCity: String = "",

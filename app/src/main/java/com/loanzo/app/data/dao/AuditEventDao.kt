@@ -20,4 +20,10 @@ interface AuditEventDao {
 
     @Query("DELETE FROM audit_events WHERE timestamp < :beforeTimestamp")
     suspend fun deleteOldEvents(beforeTimestamp: Long)
+
+    @Query("DELETE FROM audit_events WHERE eventId = :eventId")
+    suspend fun deleteEvent(eventId: String)
+
+    @Query("DELETE FROM audit_events WHERE eventId LIKE 'audit_demo_%'")
+    suspend fun deleteDemoEvents()
 }

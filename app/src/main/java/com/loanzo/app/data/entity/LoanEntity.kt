@@ -28,19 +28,19 @@ import androidx.room.PrimaryKey
 )
 data class LoanEntity(
     @PrimaryKey
-    val loanId: String,
-    val lenderId: String,
-    val borrowerId: String,
-    val sanctionedAmount: Double,
+    val loanId: String = "",
+    val lenderId: String = "",
+    val borrowerId: String = "",
+    val sanctionedAmount: Double = 0.0,
     val disbursedAmount: Double = 0.0,
     val outstandingAmount: Double = 0.0,
-    val purpose: String,
-    val loanType: String, // PERSONAL, BUSINESS, EDUCATION, MEDICAL, AGRICULTURE, OTHER
-    val interestRate: Double,
-    val interestModel: String, // SIMPLE, COMPOUND, FLAT, NONE
-    val tenureMonths: Int,
-    val status: String, // DRAFT, ACTIVE, CLOSED, DEFAULTED
-    val repaymentFrequency: String, // MONTHLY, WEEKLY, BI_WEEKLY, CUSTOM
+    val purpose: String = "Personal Loan",
+    val loanType: String = "PERSONAL", // PERSONAL, BUSINESS, EDUCATION, MEDICAL, AGRICULTURE, OTHER
+    val interestRate: Double = 12.0,
+    val interestModel: String = "SIMPLE", // SIMPLE, COMPOUND, FLAT, NONE
+    val tenureMonths: Int = 12,
+    val status: String = "CONTRACT_SIGNING", // DRAFT, MARKETPLACE, BID_ACCEPTED, COLLATERAL_VALUATION, CONTRACT_SIGNING, TRANCHE_DISBURSEMENT, ACTIVE_SERVICING, RESTRUCTURED, DELINQUENT, LEGAL_DISPUTE, COMPLETED, CLOSED, ACTIVE
+    val repaymentFrequency: String = "MONTHLY", // MONTHLY, WEEKLY, BI_WEEKLY, CUSTOM
     val createdAt: Long = System.currentTimeMillis(),
     val closedAt: Long? = null,
     val notes: String = "",

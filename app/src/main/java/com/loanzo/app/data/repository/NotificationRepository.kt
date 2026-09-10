@@ -6,42 +6,69 @@ import com.loanzo.app.data.dao.LoanDao
 import com.loanzo.app.data.dao.NotificationDao
 import com.loanzo.app.data.dao.RepaymentDao
 import com.loanzo.app.data.entity.NotificationEntity
+import com.loanzo.app.data.dao.UserDao
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class NotificationRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val notificationDao: NotificationDao,
     private val loanDao: LoanDao,
-    private val repaymentDao: RepaymentDao
+    private val repaymentDao: RepaymentDao,
+    private val userDao: UserDao
 ) {
     companion object {
         private const val TAG = "NotificationRepo"
     }
 
-    fun getNotifications(userId: String): Flow<List<NotificationEntity>> =
-        notificationDao.getNotificationsForUser(userId)
+    fun getNotifications(userId: String): Flow<List<NotificationEntity>> {
+        if (userId.isBlank()) return flowOf(emptyList())
+        val isDirectAdmin = com.loanzo.app.util.VerificationManager.isAppOwner(userId = userId)
+        return userDao.observeUser(userId).flatMapLatest { user ->
+            val isAdmin = isDirectAdmin || com.loanzo.app.util.VerificationManager.isAppOwner(user) || user?.role?.uppercase() == "ADMIN"
+            notificationDao.getNotificationsForUser(userId, isAdmin)
+        }
+    }
 
-    fun getUnreadCount(userId: String): Flow<Int> =
-        notificationDao.getUnreadCount(userId)
+    fun getUnreadCount(userId: String): Flow<Int> {
+        if (userId.isBlank()) return flowOf(0)
+        val isDirectAdmin = com.loanzo.app.util.VerificationManager.isAppOwner(userId = userId)
+        return userDao.observeUser(userId).flatMapLatest { user ->
+            val isAdmin = isDirectAdmin || com.loanzo.app.util.VerificationManager.isAppOwner(user) || user?.role?.uppercase() == "ADMIN"
+            notificationDao.getUnreadCount(userId, isAdmin)
+        }
+    }
 
     suspend fun markAsRead(notificationId: String) =
         notificationDao.markAsRead(notificationId)
 
-    suspend fun markAllAsRead(userId: String) =
-        notificationDao.markAllAsRead(userId)
+    suspend fun markAllAsRead(userId: String) {
+        val user = userDao.getUserById(userId)
+        val isDirectAdmin = com.loanzo.app.util.VerificationManager.isAppOwner(userId = userId)
+        val isAdmin = isDirectAdmin || com.loanzo.app.util.VerificationManager.isAppOwner(user) || user?.role?.uppercase() == "ADMIN"
+        notificationDao.markAllAsRead(userId, isAdmin)
+    }
 
     suspend fun deleteNotification(notificationId: String) =
         notificationDao.deleteNotification(notificationId)
 
-    suspend fun clearAll(userId: String) =
-        notificationDao.clearAllForUser(userId)
+    suspend fun clearAll(userId: String) {
+        val user = userDao.getUserById(userId)
+        val isDirectAdmin = com.loanzo.app.util.VerificationManager.isAppOwner(userId = userId)
+        val isAdmin = isDirectAdmin || com.loanzo.app.util.VerificationManager.isAppOwner(user) || user?.role?.uppercase() == "ADMIN"
+        notificationDao.clearAllForUser(userId, isAdmin)
+    }
 
     suspend fun insertNotification(notification: NotificationEntity) =
         notificationDao.insertNotification(notification)
@@ -63,9 +90,9 @@ class NotificationRepository @Inject constructor(
             val dayKeyFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val todayDayKey = dayKeyFormat.format(Date())
 
-            // Get all active loans the user is involved in
+            // Get all active and overdue loans the user is involved in (Bug #12: include OVERDUE status)
             val allLoans = loanDao.getAllLoansForUser(userId).first()
-            val activeLoans = allLoans.filter { it.status == "ACTIVE" }
+            val activeLoans = allLoans.filter { it.status == "ACTIVE" || it.status == "OVERDUE" || it.status == "DEFAULTED" }
 
             val newNotifications = mutableListOf<NotificationEntity>()
 
@@ -273,41 +300,169 @@ class NotificationRepository @Inject constructor(
         }
     }
 
-    private fun postSystemNotification(title: String, body: String) {
+    fun postSystemNotification(title: String, body: String, actionRoute: String? = null) {
         try {
-            val channelId = "loanzo_deadline_channel"
+            com.loanzo.app.util.NotificationChannelHelper.setupNotificationChannels(context)
+            val isAdminAlert = actionRoute?.contains("app_owner_hub") == true || actionRoute?.contains("agent_main") == true
+            val channelId = if (isAdminAlert) com.loanzo.app.util.NotificationChannelHelper.CHANNEL_ADMIN else com.loanzo.app.util.NotificationChannelHelper.CHANNEL_ALERTS
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                val channel = android.app.NotificationChannel(
-                    channelId,
-                    "Loan Deadlines & Reminders",
-                    android.app.NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Upcoming EMI deadlines, overdue payments, and loan alerts"
+            val intent = android.content.Intent(context, com.loanzo.app.MainActivity::class.java).apply {
+                flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (!actionRoute.isNullOrBlank()) {
+                    putExtra("navigate_to", actionRoute)
                 }
-                notificationManager.createNotificationChannel(channel)
             }
-
-            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
             val pendingIntent = android.app.PendingIntent.getActivity(
-                context, 0, intent,
+                context,
+                System.currentTimeMillis().toInt(),
+                intent,
                 android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
             )
 
             val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(com.loanzo.app.R.drawable.ic_launcher_foreground)
-                .setContentTitle(title.replace(Regex("[⏰⚡🔔⚠️📜]"), "").trim())
+                .setSmallIcon(com.loanzo.app.R.mipmap.ic_launcher)
+                .setContentTitle(title.replace(Regex("[⏰⚡🔔⚠️📜🚨👑⚖️]"), "").trim())
                 .setContentText(body)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
                 .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
                 .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(body))
                 .build()
 
             notificationManager.notify(System.currentTimeMillis().toInt(), notification)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to post system notification", e)
+        }
+    }
+
+    /**
+     * Actively listens to real-time Firestore cloud notifications for the user
+     * and persists them to the local Room database, popping an OS notification.
+     * If the user is an Admin, also listens to shared "ADMIN" cloud notifications.
+     */
+    fun listenToCloudNotifications(userId: String, scope: kotlinx.coroutines.CoroutineScope) {
+        if (userId.isBlank()) return
+        val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+
+        // 1. Listen for user-specific notifications
+        try {
+            firestore.collection("notifications")
+                .whereEqualTo("userId", userId)
+                .addSnapshotListener { snapshots, error ->
+                    if (error != null) {
+                        Log.w(TAG, "Cloud notifications listener error: ${error.message}")
+                        return@addSnapshotListener
+                    }
+                    if (snapshots != null && !snapshots.isEmpty) {
+                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            val now = System.currentTimeMillis()
+                            for (doc in snapshots.documentChanges) {
+                                if (doc.type == com.google.firebase.firestore.DocumentChange.Type.ADDED ||
+                                    doc.type == com.google.firebase.firestore.DocumentChange.Type.MODIFIED
+                                ) {
+                                    try {
+                                        val entity = doc.document.toNotificationEntity()
+                                        if (entity != null) {
+                                            val alreadyExists = notificationDao.existsNotificationById(entity.notificationId)
+                                            notificationDao.insertNotification(entity)
+                                            // Bug #10: Only post system notification for genuinely new, recent, unread alerts
+                                            if (doc.type == com.google.firebase.firestore.DocumentChange.Type.ADDED
+                                                && !entity.isRead
+                                                && !alreadyExists
+                                                && (now - entity.timestamp) < 5 * 60 * 1000L // Only if < 5 min old
+                                            ) {
+                                                postSystemNotification(entity.title, entity.message, entity.actionRoute)
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.w(TAG, "Failed to parse cloud notification: ${e.message}")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        } catch (e: Exception) {
+            Log.w(TAG, "Firestore not available for cloud notifications: ${e.message}")
+        }
+
+        // 2. If user is Admin, ALSO listen for shared "ADMIN" cloud notifications
+        val isDirectAdmin = com.loanzo.app.util.VerificationManager.isAppOwner(userId = userId)
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val user = userDao.getUserById(userId)
+            val isAdmin = isDirectAdmin || com.loanzo.app.util.VerificationManager.isAppOwner(user) || user?.role?.uppercase() == "ADMIN"
+            if (isAdmin) {
+                try {
+                    firestore.collection("notifications")
+                        .whereEqualTo("userId", "ADMIN")
+                        .addSnapshotListener { snapshots, error ->
+                            if (error != null) {
+                                Log.w(TAG, "Admin cloud notifications listener error: ${error.message}")
+                                return@addSnapshotListener
+                            }
+                            if (snapshots != null && !snapshots.isEmpty) {
+                                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                    val now = System.currentTimeMillis()
+                                    for (doc in snapshots.documentChanges) {
+                                        if (doc.type == com.google.firebase.firestore.DocumentChange.Type.ADDED ||
+                                            doc.type == com.google.firebase.firestore.DocumentChange.Type.MODIFIED
+                                        ) {
+                                            try {
+                                                val entity = doc.document.toNotificationEntity()
+                                                if (entity != null) {
+                                                    val alreadyExists = notificationDao.existsNotificationById(entity.notificationId)
+                                                    notificationDao.insertNotification(entity)
+                                                    // Bug #10: Only post system notification for genuinely new, recent, unread alerts
+                                                    if (doc.type == com.google.firebase.firestore.DocumentChange.Type.ADDED
+                                                        && !entity.isRead
+                                                        && !alreadyExists
+                                                        && (now - entity.timestamp) < 5 * 60 * 1000L
+                                                    ) {
+                                                        postSystemNotification(entity.title, entity.message, entity.actionRoute)
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                Log.w(TAG, "Failed to parse admin cloud notification: ${e.message}")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Admin cloud notifications listener error: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toNotificationEntity(): NotificationEntity? {
+        val d = this.data ?: return null
+        return try {
+            this.toObject(NotificationEntity::class.java)
+        } catch (_: Exception) {
+            null
+        } ?: run {
+            val ts = when (val t = d["timestamp"]) {
+                is Number -> t.toLong()
+                is com.google.firebase.Timestamp -> t.toDate().time
+                is String -> t.toLongOrNull() ?: System.currentTimeMillis()
+                else -> System.currentTimeMillis()
+            }
+            NotificationEntity(
+                notificationId = (d["notificationId"] as? String) ?: this.id,
+                userId = (d["userId"] as? String) ?: "",
+                title = (d["title"] as? String) ?: "",
+                message = (d["message"] as? String) ?: "",
+                type = (d["type"] as? String) ?: "SYSTEM",
+                relatedLoanId = d["relatedLoanId"] as? String,
+                timestamp = ts,
+                isRead = (d["isRead"] as? Boolean) ?: false,
+                actionRoute = d["actionRoute"] as? String,
+                dayKey = (d["dayKey"] as? String) ?: ""
+            )
         }
     }
 

@@ -6,14 +6,14 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "users")
 data class UserEntity(
     @PrimaryKey
-    val userId: String,
-    val name: String,
-    val email: String,
-    val phone: String,
+    val userId: String = "",
+    val name: String = "",
+    val email: String = "",
+    val phone: String = "",
     val username: String = "",
     val password: String = "",
-    val role: String, // BORROWER, LENDER
-    val kycStatus: String, // PENDING, IN_PROGRESS, VERIFIED, REJECTED
+    val role: String = "BORROWER", // BORROWER, LENDER, ADMIN, AGENT
+    val kycStatus: String = "PENDING", // PENDING, IN_PROGRESS, VERIFIED, REJECTED
     val panNumber: String = "",
     val aadhaarNumber: String = "",
     val aadhaarVerified: Boolean = false,

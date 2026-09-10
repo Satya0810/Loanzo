@@ -6,8 +6,32 @@ enum class UserRole { BORROWER, LENDER }
 /** KYC verification status */
 enum class KycStatus { PENDING, IN_PROGRESS, VERIFIED, REJECTED }
 
-/** Loan lifecycle status */
-enum class LoanStatus { DRAFT, ACTIVE, CLOSED, DEFAULTED }
+/** Loan lifecycle status matching Loanzo 12-state verified machine */
+enum class LoanStatus {
+    DRAFT,
+    MARKETPLACE,
+    BID_ACCEPTED,
+    COLLATERAL_VALUATION,
+    CONTRACT_SIGNING,
+    TRANCHE_DISBURSEMENT,
+    ACTIVE,             // Maintained for backward compatibility
+    ACTIVE_SERVICING,   // Flowchart canonical state
+    RESTRUCTURED,
+    DELINQUENT,
+    LEGAL_DISPUTE,
+    CLOSED,             // Maintained for backward compatibility
+    COMPLETED,          // Flowchart canonical state
+    DEFAULTED;          // Legacy default
+
+    val isServicing: Boolean
+        get() = this == ACTIVE || this == ACTIVE_SERVICING || this == RESTRUCTURED
+
+    val isDelinquentOrDispute: Boolean
+        get() = this == DELINQUENT || this == LEGAL_DISPUTE || this == DEFAULTED
+
+    val isSettledOrCompleted: Boolean
+        get() = this == COMPLETED || this == CLOSED
+}
 
 /** Loan type / purpose category */
 enum class LoanType { PERSONAL, BUSINESS, EDUCATION, MEDICAL, AGRICULTURE, OTHER }
