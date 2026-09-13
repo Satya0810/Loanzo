@@ -32,7 +32,7 @@
 
 ## 📖 Executive Summary
 
-**Loanzo** is an enterprise-grade Android microfinance platform engineered to bridge the gap between credit-worthy borrowers and private retail lenders. By combining **direct peer-to-peer social bidding (Lenme style)**, **purpose-bound merchant disbursements**, **multi-asset collateral vaulting (Gold, Property, Hardware, Vehicles, Invoices)**, **DigiLocker biometric e-Sign**, and an **automated Telegram & FCM alert desk**, Loanzo completely eliminates fraudulent loan scams, predatory interest traps, and unmonitored fund diversion.
+**Loanzo** is an enterprise grade Android microfinance platform engineered to bridge the gap between credit-worthy borrowers and private retail lenders. By combining **direct peer-to-peer social bidding (Lenme style)**, **purpose-bound merchant disbursements**, **multi-asset collateral vaulting (Gold, Property, Hardware, Vehicles, Invoices)**, **DigiLocker biometric e-Sign**, and an **automated Telegram & FCM alert desk**, Loanzo completely eliminates fraudulent loan scams, predatory interest traps, and unmonitored fund diversion.
 
 Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12, Kotlin Coroutines & Flow)**, Loanzo provides offline-first resiliency, military-grade client-side encryption, and seamless cloud synchronization with both Google Drive and Firebase.
 
