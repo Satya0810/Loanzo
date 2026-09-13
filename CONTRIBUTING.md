@@ -44,7 +44,7 @@ Always create a feature or bugfix branch off `main`:
 - `refactor/<scope>` (e.g., `refactor/vault-crypto-engine`)
 - `docs/<doc-topic>` (e.g., `docs/architecture-update`)
 
-### 2. Coding Standards
+### 2. Coding Standard
 - **Language**: Kotlin 2.0+ with modern idioms.
 - **UI Toolkit**: 100% Jetpack Compose using Material 3 and the design system in `com.loanzo.app.ui.theme`.
 - **Architecture**: Single Activity (`MainActivity`), unidirectional data flow with `ViewModel`, Kotlin `StateFlow`, and Room Database DAOs.
