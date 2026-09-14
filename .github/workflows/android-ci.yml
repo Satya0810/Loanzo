@@ -27,14 +27,13 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
+      - name: Configure Gradle Environment
+        run: |
+          chmod +x gradlew
+          sed -i '/org.gradle.java.home/d' gradle.properties
 
       - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v3
-
-      - name: Run Kotlin Compilation
-        run: ./gradlew compileDebugKotlin --stacktrace
 
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest --stacktrace
