@@ -449,4 +449,282 @@ object DemoDocumentGenerator {
 
         results
     }
+
+    suspend fun generatePredefinedAccountDocuments(context: Context, vaultDir: File): Map<String, Pair<File, String>> = withContext(Dispatchers.IO) {
+        vaultDir.mkdirs()
+        val engine = LoanzoPdfEngine(context)
+        val results = mutableMapOf<String, Pair<File, String>>()
+
+        // 1. Sanction Letter - Kumar Manish (50K Business Loan)
+        try {
+            val file1 = File(vaultDir, "Sanction_Letter_Kumar_50k.pdf")
+            val doc1 = PdfDocument()
+            val p1Info = PdfDocument.PageInfo.Builder(engine.pageWidth.toInt(), engine.pageHeight.toInt(), 1).create()
+            val p1 = doc1.startPage(p1Info)
+            val c1 = p1.canvas
+
+            var y1 = engine.drawHeader(
+                canvas = c1,
+                pageNumber = 1,
+                totalPages = 1,
+                documentTitle = "Official Loan Sanction Letter",
+                documentRefId = "LZ-SANCTION-KUMAR-50K-2026",
+                securityClassification = "OFFICIAL SANCTION ADVICE • BINDING"
+            )
+
+            y1 = engine.drawKpiGrid(
+                canvas = c1,
+                startY = y1,
+                cards = listOf(
+                    LoanzoPdfEngine.KpiCard("Sanctioned Amount", "₹50,000", "11.5% p.a. Simple", engine.colorEmerald),
+                    LoanzoPdfEngine.KpiCard("Tenure", "12 Months", "Monthly Amortization", engine.colorNavyDeep),
+                    LoanzoPdfEngine.KpiCard("Monthly EMI", "₹4,427", "Due on 26th of month", engine.colorGold),
+                    LoanzoPdfEngine.KpiCard("Credit Health", "795 AAA", "Field Agent Verified", engine.colorEmerald)
+                )
+            )
+
+            y1 = engine.drawSectionHeader(c1, y1 + 10f, "1. Facility Details & Contracting Parties")
+            y1 = engine.drawKeyValueGrid(
+                canvas = c1,
+                startY = y1 + 5f,
+                items = listOf(
+                    LoanzoPdfEngine.KeyValue("Borrower Name", "Kumar Manish (@kumar)"),
+                    LoanzoPdfEngine.KeyValue("Borrower Phone", "+91 98765 43210"),
+                    LoanzoPdfEngine.KeyValue("Lender Name", "Satyam Kumar (@satyam0810)"),
+                    LoanzoPdfEngine.KeyValue("Lender Role", "Platform Admin & Capital Provider"),
+                    LoanzoPdfEngine.KeyValue("Facility Category", "MSME INVENTORY & WORKING CAPITAL"),
+                    LoanzoPdfEngine.KeyValue("Field Inspection", "Verified by Field Agent Abhisi", isHighlight = true),
+                    LoanzoPdfEngine.KeyValue("Disbursement Account", "HDFC Bank A/C ending 9103"),
+                    LoanzoPdfEngine.KeyValue("Regulatory Directives", "RBI/2026 P2P Master Directions")
+                ),
+                columns = 2
+            )
+
+            y1 = engine.drawSectionHeader(c1, y1 + 10f, "2. Key Statutory Terms & Digital Security")
+            y1 = engine.drawTable(
+                canvas = c1,
+                startY = y1 + 5f,
+                headers = listOf("Statutory Covenant", "Terms Agreed", "Enforceability Basis"),
+                rows = listOf(
+                    listOf("Annual Percentage Rate", "11.50% per annum (Simple)", "Section 10A IT Act 2000"),
+                    listOf("Prepayment Charges", "₹0.00 (Zero foreclosures penalty)", "Borrower Protection Charter"),
+                    listOf("Field Verification Payout", "₹450.00 (Dispatched to Agent)", "Field Operations Policy"),
+                    listOf("Escrow Handling", "Direct peer-to-peer bank transfer", "RBI Trustee Escrow Guidelines")
+                ),
+                colWidthRatios = listOf(1.5f, 2.0f, 1.5f)
+            )
+
+            y1 = engine.drawVerificationStamp(c1, y1 + 15f, "LZ-SANCTION-KUMAR-50K-2026", "b7a4892c908f12d8a4392f44001bcde617938fa4510b99182390abff1190cd91")
+
+            doc1.finishPage(p1)
+            FileOutputStream(file1).use { doc1.writeTo(it) }
+            doc1.close()
+            results["Sanction_Letter_Kumar_50k.pdf"] = Pair(file1, calculateChecksum(file1))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 2. Signed Loan Agreement - Kumar Manish
+        try {
+            val file2 = File(vaultDir, "Agreement_Kumar_Manish.pdf")
+            val doc2 = PdfDocument()
+            val p2Info = PdfDocument.PageInfo.Builder(engine.pageWidth.toInt(), engine.pageHeight.toInt(), 1).create()
+            val p2 = doc2.startPage(p2Info)
+            val c2 = p2.canvas
+
+            var y2 = engine.drawHeader(
+                canvas = c2,
+                pageNumber = 1,
+                totalPages = 1,
+                documentTitle = "eSigned Tripartite Loan Agreement",
+                documentRefId = "LZ-AGREEMENT-KUMAR-50K-2026",
+                securityClassification = "LEGALLY ENFORCEABLE • IT ACT 2000 SEC 65B"
+            )
+
+            y2 = engine.drawKpiGrid(
+                canvas = c2,
+                startY = y2,
+                cards = listOf(
+                    LoanzoPdfEngine.KpiCard("Principal Disbursed", "₹50,000", "Direct Escrow Payout", engine.colorNavyDeep),
+                    LoanzoPdfEngine.KpiCard("Interest Rate", "11.5% Simple", "Fixed for 12 Months", engine.colorGold),
+                    LoanzoPdfEngine.KpiCard("Total Repayable", "₹53,124", "12 Installments of ₹4,427", engine.colorEmerald),
+                    LoanzoPdfEngine.KpiCard("Contract Status", "EXECUTED ✅", "Dual Aadhaar eSigned", engine.colorEmerald)
+                )
+            )
+
+            y2 = engine.drawSectionHeader(c2, y2 + 8f, "1. Contracting Parties & Physical Field Audit")
+            y2 = engine.drawKeyValueGrid(
+                canvas = c2,
+                startY = y2 + 5f,
+                items = listOf(
+                    LoanzoPdfEngine.KeyValue("Lender", "Satyam Kumar (@satyam0810)"),
+                    LoanzoPdfEngine.KeyValue("Borrower", "Kumar Manish (@kumar)"),
+                    LoanzoPdfEngine.KeyValue("Field Officer", "Abhisi (@abhisi) - Biometric Verified", isHighlight = true),
+                    LoanzoPdfEngine.KeyValue("Escrow Platform", "Loanzo Technologies Private Limited"),
+                    LoanzoPdfEngine.KeyValue("eSign Protocol", "Aadhaar eKYC OTP & RSA-2048 Hash"),
+                    LoanzoPdfEngine.KeyValue("Arbitration Jurisdiction", "Noida Commercial Dispute Tribunal")
+                ),
+                columns = 2
+            )
+
+            y2 = engine.drawSectionHeader(c2, y2 + 8f, "2. Digital Signatures & Field Inspection Confirmation")
+            y2 = engine.drawTable(
+                canvas = c2,
+                startY = y2 + 5f,
+                headers = listOf("Signatory / Verifier", "Signature Method", "Geotag / Timestamp", "Audit Status"),
+                rows = listOf(
+                    listOf("Satyam Kumar (Lender)", "eSign OTP + Biometric", "Sector 120, Noida", "Verified ✅"),
+                    listOf("Kumar Manish (Borrower)", "eSign OTP + Biometric", "Sector 62, Noida", "Verified ✅"),
+                    listOf("Field Agent Abhisi", "GPS Inspection App", "GPS: 28.6280, 77.3780", "Inspected ✅")
+                ),
+                colWidthRatios = listOf(1.5f, 1.5f, 1.4f, 1.1f)
+            )
+
+            y2 = engine.drawVerificationStamp(c2, y2 + 15f, "LZ-AGREEMENT-KUMAR-50K-2026", "cf83ac10879e96f18546523910f545110d9f4893bc489201a4bc51034f81249b")
+
+            doc2.finishPage(p2)
+            FileOutputStream(file2).use { doc2.writeTo(it) }
+            doc2.close()
+            results["Agreement_Kumar_Manish.pdf"] = Pair(file2, calculateChecksum(file2))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 3. Sanction Letter - Prince Sharma (75K Education Loan)
+        try {
+            val file3 = File(vaultDir, "Sanction_Letter_Prince_75k.pdf")
+            val doc3 = PdfDocument()
+            val p3Info = PdfDocument.PageInfo.Builder(engine.pageWidth.toInt(), engine.pageHeight.toInt(), 1).create()
+            val p3 = doc3.startPage(p3Info)
+            val c3 = p3.canvas
+
+            var y3 = engine.drawHeader(
+                canvas = c3,
+                pageNumber = 1,
+                totalPages = 1,
+                documentTitle = "Education Facility Sanction Advice",
+                documentRefId = "LZ-SANCTION-PRINCE-75K-2026",
+                securityClassification = "OFFICIAL SANCTION ADVICE • BINDING"
+            )
+
+            y3 = engine.drawKpiGrid(
+                canvas = c3,
+                startY = y3,
+                cards = listOf(
+                    LoanzoPdfEngine.KpiCard("Sanctioned Amount", "₹75,000", "9.5% p.a. Simple", engine.colorEmerald),
+                    LoanzoPdfEngine.KpiCard("Tenure", "18 Months", "Monthly Amortization", engine.colorNavyDeep),
+                    LoanzoPdfEngine.KpiCard("Monthly EMI", "₹4,490", "Due on 21st of month", engine.colorGold),
+                    LoanzoPdfEngine.KpiCard("Academic Status", "VERIFIED", "Cloud Certification Track", engine.colorEmerald)
+                )
+            )
+
+            y3 = engine.drawSectionHeader(c3, y3 + 10f, "1. Facility Details & Beneficiary Information")
+            y3 = engine.drawKeyValueGrid(
+                canvas = c3,
+                startY = y3 + 5f,
+                items = listOf(
+                    LoanzoPdfEngine.KeyValue("Borrower Name", "Prince Sharma (@prince25)"),
+                    LoanzoPdfEngine.KeyValue("Borrower Phone", "+91 98321 65498"),
+                    LoanzoPdfEngine.KeyValue("Lender Name", "Satyam Kumar (@satyam0810)"),
+                    LoanzoPdfEngine.KeyValue("Lender Role", "Lead Capital Provider"),
+                    LoanzoPdfEngine.KeyValue("Facility Category", "FULL STACK & CLOUD UPSKILLING"),
+                    LoanzoPdfEngine.KeyValue("Assigned Inspector", "Field Officer Abhisi (PIN: 4821)", isHighlight = true),
+                    LoanzoPdfEngine.KeyValue("Disbursement Account", "State Bank of India A/C ending 9482"),
+                    LoanzoPdfEngine.KeyValue("Statutory Basis", "Digital Education Grant P2P Frame")
+                ),
+                columns = 2
+            )
+
+            y3 = engine.drawSectionHeader(c3, y3 + 10f, "2. Key Loan Terms & Schedule")
+            y3 = engine.drawTable(
+                canvas = c3,
+                startY = y3 + 5f,
+                headers = listOf("Term / Condition", "Contractual Specification", "Statutory Reference"),
+                rows = listOf(
+                    listOf("Annual Percentage Rate (APR)", "9.50% per annum (Simple)", "RBI/2026/P2P Guidelines"),
+                    listOf("Foreclosure Charges", "₹0.00 (Nil Prepayment Penalty)", "Borrower Rights Code"),
+                    listOf("Security Handshake Code", "PIN 4821 (Biometric Handshake)", "Loanzo Security Protocol"),
+                    listOf("Disbursement Channel", "Direct Escrow RTGS to SBI Account", "Section 10A IT Act 2000")
+                ),
+                colWidthRatios = listOf(1.5f, 2.0f, 1.5f)
+            )
+
+            y3 = engine.drawVerificationStamp(c3, y3 + 15f, "LZ-SANCTION-PRINCE-75K-2026", "89acde1058204910fbc239104820dbe49102834bca8192039481203948129034")
+
+            doc3.finishPage(p3)
+            FileOutputStream(file3).use { doc3.writeTo(it) }
+            doc3.close()
+            results["Sanction_Letter_Prince_75k.pdf"] = Pair(file3, calculateChecksum(file3))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 4. Signed Loan Agreement - Prince Sharma
+        try {
+            val file4 = File(vaultDir, "Agreement_Prince_Sharma.pdf")
+            val doc4 = PdfDocument()
+            val p4Info = PdfDocument.PageInfo.Builder(engine.pageWidth.toInt(), engine.pageHeight.toInt(), 1).create()
+            val p4 = doc4.startPage(p4Info)
+            val c4 = p4.canvas
+
+            var y4 = engine.drawHeader(
+                canvas = c4,
+                pageNumber = 1,
+                totalPages = 1,
+                documentTitle = "eSigned Digital Education Loan Agreement",
+                documentRefId = "LZ-AGREEMENT-PRINCE-75K-2026",
+                securityClassification = "LEGALLY ENFORCEABLE • IT ACT 2000 SEC 65B"
+            )
+
+            y4 = engine.drawKpiGrid(
+                canvas = c4,
+                startY = y4,
+                cards = listOf(
+                    LoanzoPdfEngine.KpiCard("Principal Granted", "₹75,000", "Disbursed to Institute Fee Pool", engine.colorNavyDeep),
+                    LoanzoPdfEngine.KpiCard("Interest Rate", "9.5% Simple", "Fixed for 18 Months", engine.colorGold),
+                    LoanzoPdfEngine.KpiCard("Total Repayable", "₹80,820", "18 Installments of ₹4,490", engine.colorEmerald),
+                    LoanzoPdfEngine.KpiCard("Agreement Status", "EXECUTED ✅", "Digitally Sealed by Parties", engine.colorEmerald)
+                )
+            )
+
+            y4 = engine.drawSectionHeader(c4, y4 + 8f, "1. Contracting Parties & Verification Audit")
+            y4 = engine.drawKeyValueGrid(
+                canvas = c4,
+                startY = y4 + 5f,
+                items = listOf(
+                    LoanzoPdfEngine.KeyValue("Lender", "Satyam Kumar (@satyam0810)"),
+                    LoanzoPdfEngine.KeyValue("Borrower", "Prince Sharma (@prince25)"),
+                    LoanzoPdfEngine.KeyValue("Inspection Unit", "Field Agent Abhisi (Bengaluru East)", isHighlight = true),
+                    LoanzoPdfEngine.KeyValue("Escrow Platform", "Loanzo Technologies Private Limited"),
+                    LoanzoPdfEngine.KeyValue("Digital Signature", "Aadhaar eSign & SHA-256 Digest"),
+                    LoanzoPdfEngine.KeyValue("Governing Jurisdiction", "Bengaluru City Civil Court")
+                ),
+                columns = 2
+            )
+
+            y4 = engine.drawSectionHeader(c4, y4 + 8f, "2. Digital Signature Audit Trail")
+            y4 = engine.drawTable(
+                canvas = c4,
+                startY = y4 + 5f,
+                headers = listOf("Party", "Verification Mode", "Location Reference", "Validation"),
+                rows = listOf(
+                    listOf("Satyam Kumar (Lender)", "Aadhaar eSign OTP", "Noida, UP", "Verified ✅"),
+                    listOf("Prince Sharma (Borrower)", "Aadhaar eSign OTP", "Bellandur, Bengaluru", "Verified ✅"),
+                    listOf("Field Officer Abhisi", "Physical Handshake PIN 4821", "GPS: 12.9260, 77.6762", "Scheduled ✅")
+                ),
+                colWidthRatios = listOf(1.5f, 1.5f, 1.4f, 1.1f)
+            )
+
+            y4 = engine.drawVerificationStamp(c4, y4 + 15f, "LZ-AGREEMENT-PRINCE-75K-2026", "1920384756192837465019283746501928374650192837465019283746501928")
+
+            doc4.finishPage(p4)
+            FileOutputStream(file4).use { doc4.writeTo(it) }
+            doc4.close()
+            results["Agreement_Prince_Sharma.pdf"] = Pair(file4, calculateChecksum(file4))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        results
+    }
 }

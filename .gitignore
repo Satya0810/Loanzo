@@ -70,8 +70,21 @@ desktop.ini
 
 # Scratch / Agent directories
 .agents/
+.codeatlas/
 scratch/
 ~$*
 *.tmp
 *.bak
 .vscode/
+
+# Credentials, Secrets & Service Accounts
+**/firebase_service_account*.json
+**/service-account*.json
+secrets.properties
+signing.properties
+
+# Keystores & Keys
+*.jks
+*.keystore
+*.key
+

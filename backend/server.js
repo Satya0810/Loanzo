@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const CLIENT_ID = process.env.CLIENT_ID || '4cudz44sgzrhzo3eemgxp3tbmx4esoe1myjl06eykcu';
+const CLIENT_ID = process.env.CLIENT_ID || '';
 
 // In-memory persistent user store (persists across requests during server runtime)
 const usersDb = new Map();
@@ -394,7 +394,10 @@ app.post('/api/kyc/digilocker/verify', async (req, res) => {
 // ==========================================
 // TELEGRAM BOT WEBHOOK & ADVANCED RBAC SYSTEM
 // ==========================================
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8911421683:AAEkc1ykoS-VIg_Dnl8deLnakd6nJE88pqc';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+if (!TELEGRAM_BOT_TOKEN) {
+    console.warn('[Telegram] WARNING: TELEGRAM_BOT_TOKEN is not configured in environment variables.');
+}
 const SUPER_ADMIN_USERNAME = 'satyam_081';
 const SUPER_ADMIN_ALIAS = 'satyam@081';
 const SUPER_ADMIN_ID = 8234574147;

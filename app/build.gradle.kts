@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,21 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
+}
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        FileInputStream(localPropertiesFile).use { load(it) }
+    }
+}
+
+fun getSecret(key: String, defaultValue: String = ""): String {
+    return localProperties.getProperty(key) ?: System.getenv(key) ?: defaultValue
+}
+
+fun escapeJavaString(value: String): String {
+    return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 }
 
 android {
@@ -19,6 +37,15 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Secret credentials loaded safely from git-ignored local.properties or CI environment
+        buildConfigField("String", "TELEGRAM_BOT_TOKEN", escapeJavaString(getSecret("TELEGRAM_BOT_TOKEN")))
+        buildConfigField("String", "DRIVE_WEB_APP_URL", escapeJavaString(getSecret("DRIVE_WEB_APP_URL")))
+        buildConfigField("String", "DRIVE_API_KEY", escapeJavaString(getSecret("DRIVE_API_KEY")))
+        buildConfigField("String", "CLOUDFLARE_TOKEN", escapeJavaString(getSecret("CLOUDFLARE_TOKEN")))
+        buildConfigField("String", "CLOUDFLARE_ACCOUNT_ID", escapeJavaString(getSecret("CLOUDFLARE_ACCOUNT_ID")))
+        buildConfigField("String", "SAMBANOVA_API_KEY", escapeJavaString(getSecret("SAMBANOVA_API_KEY")))
+        buildConfigField("String", "LLM7_API_KEY", escapeJavaString(getSecret("LLM7_API_KEY")))
     }
 
     buildTypes {
@@ -39,6 +66,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources.excludes.add("META-INF/DEPENDENCIES")
@@ -55,6 +83,7 @@ android {
     }
     @Suppress("UnstableApiUsage")
     testOptions {
+        unitTests.isReturnDefaultValues = true
         unitTests.all {
             it.useJUnitPlatform()
         }

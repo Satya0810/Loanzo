@@ -2,8 +2,23 @@ package com.loanzo.app.ui.dashboard
 
 import com.loanzo.app.util.isSuperAdmin
 import com.loanzo.app.ui.marketplace.VouchReasonDialog
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.loanzo.app.ui.notification.NotificationViewModel
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import com.loanzo.app.data.entity.LoanEntity
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.blur
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,6 +32,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -66,15 +83,20 @@ fun DashboardScreen(
     onNavigateToCalculator: () -> Unit = {},
     onNavigateToLoanDetail: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToPortfolio: () -> Unit = {},
     onNavigateToApproval: (String) -> Unit = {},
     onNavigateToLoansTab: () -> Unit = {},
+    onNavigateToCommunity: () -> Unit = {},
     onNavigateToChat: (String) -> Unit = {},
     onNavigateToChatHub: () -> Unit = {},
     onNavigateToKyc: () -> Unit = {},
     onNavigateToAdminHub: (Int) -> Unit = {},
     onNavigateToSupport: () -> Unit = {},
     onNavigateToUserProfile: (String) -> Unit = {},
-    onPushDemoData: () -> Unit = {}
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToAgentCockpit: () -> Unit = {},
+    onPushDemoData: () -> Unit = {},
+    onRefresh: () -> Unit = {}
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
     var showChatSheet by remember { mutableStateOf(false) }
@@ -85,15 +107,11 @@ fun DashboardScreen(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
-    val dashboardGuideSeen by userRepository.isGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_DASHBOARD_SEEN)
-        .collectAsStateWithLifecycle(initialValue = true)
     val questCommunityDone by userRepository.isQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_COMMUNITY_EXPLORED)
         .collectAsStateWithLifecycle(initialValue = false)
     val questCalculatorDone by userRepository.isQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_CALCULATOR_TRIED)
         .collectAsStateWithLifecycle(initialValue = false)
     val questKycDone = state.user?.kycStatus == "VERIFIED"
-    val questDemoDone by userRepository.isQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_DEMO_SEEDED)
-        .collectAsStateWithLifecycle(initialValue = false)
     val questDismissed by userRepository.isQuestCardDismissed()
         .collectAsStateWithLifecycle(initialValue = true) // default true to avoid flash on navigation
     val scope = rememberCoroutineScope()
@@ -108,12 +126,81 @@ fun DashboardScreen(
     val adminMeetings by adminRepository.allMeetings.collectAsStateWithLifecycle(initialValue = emptyList())
     val adminApplications by adminRepository.allAgentApplications.collectAsStateWithLifecycle(initialValue = emptyList())
     val adminRequests by adminRepository.allAdminRequests.collectAsStateWithLifecycle(initialValue = emptyList())
+    val menuBlurRadius by animateDpAsState(
+        targetValue = if (isMenuExpanded) 20.dp else 0.dp,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "menu_blur_radius"
+    )
+    val menuScrimAlpha by animateFloatAsState(
+        targetValue = if (isMenuExpanded) 0.45f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "menu_scrim_alpha"
+    )
 
     Box(modifier = Modifier.fillMaxSize()) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 100.dp)
-    ) {
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(menuBlurRadius),
+                contentPadding = PaddingValues(bottom = 100.dp)
+            ) {
+        // Persistent Field Officer Active Shift Banner (Rupeek/Uber Driver style)
+        val isFieldOfficer = com.loanzo.app.util.VerificationManager.isFieldAgent(state.user)
+        if (isFieldOfficer) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = BrandIceBlue,
+                    border = BorderStroke(1.dp, BrandCobalt.copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 6.dp)
+                        .clickable { onNavigateToAgentCockpit() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Emerald500)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "FIELD OFFICER SHIFT ACTIVE",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = BrandRoyalBlue
+                                )
+                                Text(
+                                    text = "${agentVisits.count { it.status != "COMPLETED" }} stops assigned • Tap to return to Cockpit",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextNavyDark
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Return to Cockpit",
+                            tint = BrandRoyalBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         // Greeting header
         item {
             Box(
@@ -141,283 +228,201 @@ fun DashboardScreen(
                                 onClick = onNavigateToProfile
                             )
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                val dateStr = remember {
-                                    java.text.SimpleDateFormat("EEEE, d MMMM", java.util.Locale.getDefault()).format(java.util.Date())
-                                }
-                                Text(
-                                    text = dateStr.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    letterSpacing = 0.5.sp,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                val displayName = state.user?.name?.trim()?.split(" ")?.firstOrNull()?.takeIf { it.isNotBlank() }
-                                Text(
-                                    text = if (displayName != null) stringResource(R.string.hello_user, displayName) else stringResource(R.string.welcome_to_loanzo),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = stringResource(R.string.welcome_to_loanzo),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                            val profileName = state.user?.name?.trim()?.takeIf { it.isNotBlank() } ?: "User"
+                            Text(
+                                text = profileName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onNavigateToProfile() }
+                            )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = BrandAmberGold.copy(alpha = 0.12f),
-                                border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.4f)),
-                                modifier = Modifier.clickable {
-                                    scope.launch {
-                                        userRepository.setActiveTour(com.loanzo.app.ui.components.AppTours.REQUEST_LOAN, 0)
-                                    }
-                                }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text("🧭", fontSize = 12.sp)
-                                    Text(stringResource(R.string.guide), color = BrandAmberGold, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
-                                }
-                            }
+                            val moreMenuRotation by animateFloatAsState(
+                                targetValue = if (isMenuExpanded) 90f else 0f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                ),
+                                label = "more_menu_rotation"
+                            )
+                            val moreMenuScale by animateFloatAsState(
+                                targetValue = if (isMenuExpanded) 1.08f else 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                ),
+                                label = "more_menu_scale"
+                            )
+                            val moreMenuBgColor by animateColorAsState(
+                                targetValue = if (isMenuExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                else MaterialTheme.colorScheme.surface,
+                                label = "more_menu_bg"
+                            )
+                            val moreMenuBorderColor by animateColorAsState(
+                                targetValue = if (isMenuExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.outlineVariant,
+                                label = "more_menu_border"
+                            )
+                            val moreMenuIconTint by animateColorAsState(
+                                targetValue = if (isMenuExpanded) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                                label = "more_menu_tint"
+                            )
 
                             Box {
                                 IconButton(
-                                    onClick = { isMenuExpanded = true },
+                                    onClick = { isMenuExpanded = !isMenuExpanded },
                                     modifier = Modifier
                                         .size(42.dp)
+                                        .graphicsLayer {
+                                            scaleX = moreMenuScale
+                                            scaleY = moreMenuScale
+                                        }
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surface)
-                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                                        .background(moreMenuBgColor)
+                                        .border(1.dp, moreMenuBorderColor, CircleShape)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.MoreVert,
                                         contentDescription = "More Options",
-                                        tint = MaterialTheme.colorScheme.onSurface
+                                        tint = moreMenuIconTint,
+                                        modifier = Modifier.rotate(moreMenuRotation)
                                     )
                                 }
 
-                            DropdownMenu(
-                                expanded = isMenuExpanded,
-                                onDismissRequest = { isMenuExpanded = false },
-                                modifier = Modifier
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
-                            ) {
-                                // Option 1: Chat
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                text = stringResource(R.string.chat),
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 14.sp
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.chat_subtitle),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                fontSize = 11.sp
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        isMenuExpanded = false
-                                        onNavigateToChatHub()
-                                    },
-                                    leadingIcon = {
+                                if (isMenuExpanded) {
+                                    androidx.compose.ui.window.Popup(
+                                        alignment = Alignment.TopEnd,
+                                        offset = androidx.compose.ui.unit.IntOffset(x = 0, y = 140),
+                                        onDismissRequest = { isMenuExpanded = false },
+                                        properties = androidx.compose.ui.window.PopupProperties(focusable = true)
+                                    ) {
                                         Surface(
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                            modifier = Modifier.size(32.dp)
+                                            shape = RoundedCornerShape(22.dp),
+                                            color = MaterialTheme.colorScheme.surface,
+                                            tonalElevation = 12.dp,
+                                            shadowElevation = 16.dp,
+                                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                            modifier = Modifier
+                                                .width(260.dp)
+                                                .padding(end = 16.dp)
                                         ) {
-                                            Icon(
-                                                Icons.Default.Chat,
-                                                contentDescription = "Chat",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(7.dp)
-                                            )
-                                        }
-                                    }
-                                )
+                                            Column(modifier = Modifier.padding(8.dp)) {
+                                                // Header with Title & Close (Cross) Button
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        text = "Quick Actions",
+                                                        style = MaterialTheme.typography.labelLarge,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                    IconButton(
+                                                        onClick = { isMenuExpanded = false },
+                                                        modifier = Modifier.size(28.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Close,
+                                                            contentDescription = "Close Menu",
+                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
+                                                }
 
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                                                HorizontalDivider(
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                    thickness = 0.5.dp,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
 
-                                // Option 2: Report
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                text = stringResource(R.string.report),
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 14.sp
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.report_subtitle),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = Red400,
-                                                fontSize = 11.sp
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        isMenuExpanded = false
-                                        showReportSheet = true
-                                    },
-                                    leadingIcon = {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = Red400.copy(alpha = 0.12f),
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Default.ReportProblem,
-                                                contentDescription = "Report",
-                                                tint = Red400,
-                                                modifier = Modifier.padding(7.dp)
-                                            )
-                                        }
-                                    }
-                                )
+                                                // Option 1: Report
+                                                DashboardMenuRow(
+                                                    icon = Icons.Default.ReportProblem,
+                                                    iconTint = Red400,
+                                                    iconBg = Red400.copy(alpha = 0.12f),
+                                                    title = stringResource(R.string.report),
+                                                    subtitle = stringResource(R.string.report_subtitle),
+                                                    onClick = {
+                                                        isMenuExpanded = false
+                                                        showReportSheet = true
+                                                    }
+                                                )
 
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                                                HorizontalDivider(
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                    thickness = 0.5.dp,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
 
-                                // Option 3: Simulator
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                text = stringResource(R.string.simulator),
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 14.sp
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.simulator_subtitle),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = Emerald400,
-                                                fontSize = 11.sp
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        isMenuExpanded = false
-                                        onNavigateToCalculator()
-                                    },
-                                    leadingIcon = {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = Emerald400.copy(alpha = 0.12f),
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Calculate,
-                                                contentDescription = "Simulator",
-                                                tint = Emerald400,
-                                                modifier = Modifier.padding(7.dp)
-                                            )
-                                        }
-                                    }
-                                )
+                                                // Option 2: Simulator
+                                                DashboardMenuRow(
+                                                    icon = Icons.Default.Calculate,
+                                                    iconTint = Emerald400,
+                                                    iconBg = Emerald400.copy(alpha = 0.12f),
+                                                    title = stringResource(R.string.simulator),
+                                                    subtitle = stringResource(R.string.simulator_subtitle),
+                                                    onClick = {
+                                                        isMenuExpanded = false
+                                                        onNavigateToCalculator()
+                                                    }
+                                                )
 
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                                                HorizontalDivider(
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                    thickness = 0.5.dp,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
 
-                                // Option 4: Interactive Guide
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                text = stringResource(R.string.interactive_guide),
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 14.sp
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.guide_subtitle),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = BrandAmberGold,
-                                                fontSize = 11.sp
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        isMenuExpanded = false
-                                        scope.launch {
-                                            userRepository.setActiveTour(com.loanzo.app.ui.components.AppTours.REQUEST_LOAN, 0)
-                                        }
-                                    },
-                                    leadingIcon = {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = BrandAmberGold.copy(alpha = 0.15f),
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Text("🧭", fontSize = 16.sp)
+                                                // Option 3: Interactive Guide
+                                                DashboardMenuRow(
+                                                    icon = Icons.Default.Explore,
+                                                    iconTint = BrandAmberGold,
+                                                    iconBg = BrandAmberGold.copy(alpha = 0.15f),
+                                                    title = stringResource(R.string.interactive_guide),
+                                                    subtitle = stringResource(R.string.guide_subtitle),
+                                                    onClick = {
+                                                        isMenuExpanded = false
+                                                        scope.launch {
+                                                            userRepository.setActiveTour(com.loanzo.app.ui.components.AppTours.REQUEST_LOAN, 0)
+                                                        }
+                                                    }
+                                                )
+
+                                                HorizontalDivider(
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                    thickness = 0.5.dp,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
+
+                                                // Option 4: Help & Support
+                                                DashboardMenuRow(
+                                                    icon = Icons.Default.SupportAgent,
+                                                    iconTint = BrandRoyalBlue,
+                                                    iconBg = BrandIceBlue,
+                                                    title = stringResource(R.string.help_support),
+                                                    subtitle = stringResource(R.string.support_subtitle),
+                                                    onClick = {
+                                                        isMenuExpanded = false
+                                                        onNavigateToSupport()
+                                                    }
+                                                )
                                             }
                                         }
                                     }
-                                )
-
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                                // Option 5: Help & Support
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(
-                                                text = stringResource(R.string.help_support),
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 14.sp
-                                            )
-                                            Text(
-                                                text = stringResource(R.string.support_subtitle),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = BrandSapphire,
-                                                fontSize = 11.sp
-                                            )
-                                        }
-                                    },
-                                    onClick = {
-                                        isMenuExpanded = false
-                                        onNavigateToSupport()
-                                    },
-                                    leadingIcon = {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = BrandIceBlue,
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Default.SupportAgent,
-                                                contentDescription = "Help & Support",
-                                                tint = BrandRoyalBlue,
-                                                modifier = Modifier.padding(7.dp)
-                                            )
-                                        }
-                                    }
-                                )
-                            }
+                                }
                         }
                     }
                 }
@@ -794,143 +799,78 @@ fun DashboardScreen(
                             }
                         }
 
-                        // Urgent Pending Review & Police Clearance Queue
+                        // Urgent Pending Review Queue Banner
                         val pendingAgentApps = remember(adminApplications) { adminApplications.filter { it.status == "PENDING" } }
                         val pendingAdminReqs = remember(adminRequests) { adminRequests.filter { it.status == "PENDING" } }
+                        val totalPendingAlerts = pendingAgentApps.size + pendingAdminReqs.size
 
-                        if (pendingAgentApps.isNotEmpty() || pendingAdminReqs.isNotEmpty()) {
+                        if (totalPendingAlerts > 0) {
                             Spacer(modifier = Modifier.height(14.dp))
-                            Card(
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
-                                border = BorderStroke(1.5.dp, Gold500.copy(alpha = 0.8f)),
-                                modifier = Modifier.fillMaxWidth()
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = Color(0xFFFFFBEB),
+                                border = BorderStroke(1.5.dp, Gold500.copy(alpha = 0.7f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onNavigateToAdminHub(0) }
                             ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                        modifier = Modifier.weight(1f),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text("🚨", fontSize = 16.sp)
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = "ACTION REQUIRED: PENDING DOSSIERS",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = Color(0xFFB45309)
-                                            )
-                                        }
                                         Surface(
                                             shape = CircleShape,
                                             color = Color(0xFFEF4444)
                                         ) {
+                                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(26.dp)) {
+                                                Text(
+                                                    text = "$totalPendingAlerts",
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                        Column {
                                             Text(
-                                                text = "${pendingAgentApps.size + pendingAdminReqs.size}",
-                                                fontSize = 10.sp,
+                                                text = "ACTION REQUIRED: PENDING DOSSIERS",
+                                                fontSize = 11.sp,
                                                 fontWeight = FontWeight.ExtraBold,
-                                                color = Color.White,
-                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                                color = Color(0xFFB45309),
+                                                letterSpacing = 0.3.sp
+                                            )
+                                            val summaryText = buildString {
+                                                if (pendingAgentApps.isNotEmpty()) append("${pendingAgentApps.size} Agent Application${if (pendingAgentApps.size > 1) "s" else ""}")
+                                                if (pendingAgentApps.isNotEmpty() && pendingAdminReqs.isNotEmpty()) append(" • ")
+                                                if (pendingAdminReqs.isNotEmpty()) append("${pendingAdminReqs.size} Elevation Request${if (pendingAdminReqs.size > 1) "s" else ""}")
+                                            }
+                                            Text(
+                                                text = summaryText,
+                                                fontSize = 11.sp,
+                                                color = Color(0xFF0F172A),
+                                                fontWeight = FontWeight.SemiBold
                                             )
                                         }
                                     }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    // Display Pending Agent Empanelment & Police Clearance Applications
-                                    for (app in pendingAgentApps) {
-                                        Surface(
-                                            shape = RoundedCornerShape(10.dp),
-                                            color = Color.White,
-                                            border = BorderStroke(1.dp, Color(0xFFFDE68A)),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 4.dp)
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Gold500,
+                                        contentColor = Navy900
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
-                                            Column(modifier = Modifier.padding(10.dp)) {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Column(modifier = Modifier.weight(1f)) {
-                                                        Text(
-                                                            text = "👮 Police Clearance & Identity Check",
-                                                            fontSize = 12.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = Color(0xFF0F172A)
-                                                        )
-                                                        Text(
-                                                            text = "Applicant: ${app.applicantName.ifBlank { "Agent Applicant" }} • ${app.applicantPhone}",
-                                                            fontSize = 11.sp,
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            color = Color(0xFF2563EB)
-                                                        )
-                                                        Text(
-                                                            text = "Station: ${app.policeStation.ifBlank { "Local Jurisdiction" }} • City: ${app.operatingCity.ifBlank { "India" }}",
-                                                            fontSize = 10.sp,
-                                                            color = Color(0xFF64748B)
-                                                        )
-                                                        if (app.policeVerificationNumber.isNotBlank()) {
-                                                            Text(
-                                                                text = "PCC #: ${app.policeVerificationNumber}",
-                                                                fontSize = 10.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = Color(0xFFD97706)
-                                                            )
-                                                        }
-                                                    }
-                                                    Button(
-                                                        onClick = { onNavigateToAdminHub(1) },
-                                                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                                    ) {
-                                                        Text("Audit & Empanel ➔", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    // Display Pending Admin Access Requests
-                                    for (req in pendingAdminReqs) {
-                                        Surface(
-                                            shape = RoundedCornerShape(10.dp),
-                                            color = Color.White,
-                                            border = BorderStroke(1.dp, Color(0xFFFDE68A)),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 4.dp)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(10.dp).fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = "👑 Admin Elevation Request",
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color(0xFF0F172A)
-                                                    )
-                                                    Text(
-                                                        text = "${req.userName} requested ${req.requestedRole}",
-                                                        fontSize = 11.sp,
-                                                        color = Color(0xFF64748B)
-                                                    )
-                                                }
-                                                Button(
-                                                    onClick = { onNavigateToAdminHub(0) },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                                ) {
-                                                    Text("Review ➔", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                                }
-                                            }
+                                            Text("Review ➔", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }
@@ -939,63 +879,66 @@ fun DashboardScreen(
 
                         Spacer(modifier = Modifier.height(18.dp))
 
-                        // 8-Desk Operational Matrix on Dashboard
+                        // 4-Module Executive Operational Matrix (2x2 Grid)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "OPERATIONAL COMMAND DESKS",
+                                text = "OPERATIONAL COMMAND MODULES",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFF0F172A),
                                 letterSpacing = 0.5.sp
                             )
                             Text(
-                                text = "1-Tap Direct Desk Entry",
+                                text = "Institutional Console",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Emerald500
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         val dashDesks = listOf(
-                            DashboardAdminDesk(0, "Users & KYC", Icons.Default.People, "Verification", pendingDocsCount, if (pendingDocsCount > 0) Gold500 else Emerald400),
-                            DashboardAdminDesk(1, "Agents", Icons.Default.Groups, "${adminApplications.size} Empaneled", pendingDocsCount, Gold500),
-                            DashboardAdminDesk(3, "Dispatch", Icons.Default.NearMe, "$unassignedVisitsCount Unassigned", unassignedVisitsCount, if (unassignedVisitsCount > 0) Color(0xFFF97316) else Emerald400),
-                            DashboardAdminDesk(4, "Vault", Icons.Default.Diamond, "${adminVaultItems.size} Lockers", 0, Emerald400),
-                            DashboardAdminDesk(5, "Grievance", Icons.Default.Gavel, "$openComplaintsCount Open", openComplaintsCount, if (openComplaintsCount > 0) Color(0xFFEF4444) else Emerald400),
-                            DashboardAdminDesk(6, "Legal NOC", Icons.Default.Description, "${adminNocs.size} Certificates", 0, Emerald400),
-                            DashboardAdminDesk(7, "Hearings", Icons.Default.Event, "${adminMeetings.size} Scheduled", 0, Emerald400),
-                            DashboardAdminDesk(8, "SMS Tokens", Icons.Default.Key, "Live Overrule", 0, Emerald400),
-                            DashboardAdminDesk(9, "Tickets", Icons.Default.SupportAgent, "Support & Callback", 0, Emerald400),
-                            DashboardAdminDesk(2, "Agent KYC", Icons.Default.AssignmentInd, "Agent Verification", 0, Emerald400)
+                            DashboardAdminDesk(0, "Identity & Agents", Icons.Default.People, "${adminApplications.size} Agents • $pendingDocsCount Pending", pendingDocsCount, if (pendingDocsCount > 0) Gold500 else Emerald400),
+                            DashboardAdminDesk(1, "Field Dispatch", Icons.Default.NearMe, "${adminVisits.size} Visits • $unassignedVisitsCount Unassigned", unassignedVisitsCount, if (unassignedVisitsCount > 0) Color(0xFFF97316) else Emerald400),
+                            DashboardAdminDesk(2, "Vault & NOC", Icons.Default.Diamond, "${adminVaultItems.size} Lockers • ${adminNocs.size} NOCs", 0, Emerald400),
+                            DashboardAdminDesk(3, "Disputes & Support", Icons.Default.Gavel, "$openComplaintsCount Open • ${adminMeetings.size} Hearings", openComplaintsCount, if (openComplaintsCount > 0) Color(0xFFEF4444) else Emerald400)
                         )
 
-                        // 5 rows x 2 columns
-                        val rowCount = dashDesks.size / 2
-                        for (rowIndex in 0 until rowCount) {
-                            val deskA = dashDesks[rowIndex * 2]
-                            val deskB = dashDesks[rowIndex * 2 + 1]
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                DashboardAdminDeskCard(
-                                    desk = deskA,
-                                    onClick = { onNavigateToAdminHub(deskA.id) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                DashboardAdminDeskCard(
-                                    desk = deskB,
-                                    onClick = { onNavigateToAdminHub(deskB.id) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            if (rowIndex < rowCount - 1) Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            DashboardAdminDeskCard(
+                                desk = dashDesks[0],
+                                onClick = { onNavigateToAdminHub(0) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            DashboardAdminDeskCard(
+                                desk = dashDesks[1],
+                                onClick = { onNavigateToAdminHub(1) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            DashboardAdminDeskCard(
+                                desk = dashDesks[2],
+                                onClick = { onNavigateToAdminHub(2) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            DashboardAdminDeskCard(
+                                desk = dashDesks[3],
+                                onClick = { onNavigateToAdminHub(3) },
+                                modifier = Modifier.weight(1f)
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
@@ -1027,7 +970,6 @@ fun DashboardScreen(
                         isCommunityDone = questCommunityDone,
                         isCalculatorDone = questCalculatorDone,
                         isKycDone = questKycDone,
-                        isDemoDone = questDemoDone,
                         onExploreCommunity = {
                             scope.launch {
                                 userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_COMMUNITY_EXPLORED)
@@ -1041,12 +983,6 @@ fun DashboardScreen(
                         },
                         onVerifyKyc = {
                             onNavigateToKyc()
-                        },
-                        onSeedDemo = {
-                            scope.launch {
-                                userRepository.markQuestStepDone(com.loanzo.app.data.repository.UserRepository.QUEST_DEMO_SEEDED)
-                            }
-                            onPushDemoData()
                         },
                         onDismiss = {
                             scope.launch {
@@ -1063,6 +999,7 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
+                        .clickable { onNavigateToPortfolio() }
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1097,17 +1034,33 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Emerald400.copy(alpha = 0.15f)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.active),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Emerald400,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Emerald400.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.active),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Emerald400,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Surface(
+                                shape = CircleShape,
+                                color = Color.White.copy(alpha = 0.12f),
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                        contentDescription = "Smart Portfolio",
+                                        tint = GoldCoinBright,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -1179,7 +1132,7 @@ fun DashboardScreen(
                             border = BorderStroke(0.8.dp, Emerald400.copy(alpha = 0.3f)),
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { onNavigateToLoansTab() }
+                                .clickable { onNavigateToPortfolio() }
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1217,7 +1170,7 @@ fun DashboardScreen(
                             border = BorderStroke(0.8.dp, GoldCoinRich.copy(alpha = 0.3f)),
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { onNavigateToLoansTab() }
+                                .clickable { onNavigateToPortfolio() }
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1249,275 +1202,192 @@ fun DashboardScreen(
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color.White.copy(alpha = 0.08f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onNavigateToLoansTab() }
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 10.dp, horizontal = 14.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.manage_all_loans_tab),
-                                color = Color.White,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = GoldCoinBright,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
                 }
-                Spacer(modifier = Modifier.height(20.dp))
             }
         }
-        // ─── COMMUNITY LOAN WALL (LIVE & OPEN DIRECTLY ON HOME) ────────────────
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            ) {
-                // Header with LIVE badge + Create Post CTA
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+        // ─── MY LOANS & ENGAGEMENTS SECTION (FOR CONSUMER BORROWERS & LENDERS ONLY) ───
+        if (!isAdmin) {
+            item {
+                val allActiveLoans = remember(state.loansAsLender, state.loansAsBorrower) {
+                    (state.loansAsLender + state.loansAsBorrower)
+                        .filter { it.status != "CLOSED" && it.status != "COMPLETED" }
+                        .distinctBy { it.loanId }
+                        .sortedByDescending { it.createdAt }
+                }
+                val activeLentLoans = remember(state.loansAsLender) {
+                    state.loansAsLender
+                        .filter { it.status != "CLOSED" && it.status != "COMPLETED" }
+                        .sortedByDescending { it.createdAt }
+                }
+                val activeBorrowedLoans = remember(state.loansAsBorrower) {
+                    state.loansAsBorrower
+                        .filter { it.status != "CLOSED" && it.status != "COMPLETED" }
+                        .sortedByDescending { it.createdAt }
+                }
+
+                val pagerState = rememberPagerState(initialPage = 0) { 3 }
+                val tabs = listOf(
+                    "All (${allActiveLoans.size})",
+                    "Lent (${activeLentLoans.size})",
+                    "Borrowed (${activeBorrowedLoans.size})"
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
                 ) {
-                    Column {
+                    // Section Header with "History ➔"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                stringResource(R.string.community_loan_wall),
+                                text = "My Loans & Engagements",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Emerald400.copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
-                            ) {
-                                Text(
-                                    "LIVE",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Emerald400,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
+                            if (allActiveLoans.isNotEmpty()) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Emerald400.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
+                                ) {
+                                    Text(
+                                        text = "${allActiveLoans.size} ACTIVE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Emerald400,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.5.sp,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
-                        Text(
-                            stringResource(R.string.community_wall_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp
-                        )
-                    }
 
-                    Surface(
-                        onClick = { 
-                            onNavigateToCreatePost("OFFER_TO_LEND")
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(stringResource(R.string.nav_post), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Segmented Tabs (All Offers, Lenders, Borrowers, My Posts)
-                val tabs = listOf(
-                    stringResource(R.string.tab_all_offers),
-                    stringResource(R.string.tab_lenders),
-                    stringResource(R.string.tab_borrowers),
-                    stringResource(R.string.tab_my_posts)
-                )
-                val selectedTabIndex = when (marketState.selectedTab) {
-                    MarketplaceTabFilter.ALL -> 0
-                    MarketplaceTabFilter.LENDERS -> 1
-                    MarketplaceTabFilter.BORROWERS -> 2
-                    MarketplaceTabFilter.MY_POSTS -> 3
-                }
-                SegmentedCapsuleTab(
-                    tabs = tabs,
-                    selectedIndex = selectedTabIndex,
-                    onTabSelected = { idx ->
-                        val selected = when (idx) {
-                            0 -> MarketplaceTabFilter.ALL
-                            1 -> MarketplaceTabFilter.LENDERS
-                            2 -> MarketplaceTabFilter.BORROWERS
-                            else -> MarketplaceTabFilter.MY_POSTS
-                        }
-                        onTabSelected(selected)
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Embedded Search Bar
-                OutlinedTextField(
-                    value = marketState.searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Search by purpose, name, city (#Medical, #Education)...", fontSize = 13.sp, color = Gray400) },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = "Search", tint = GoldCoinRich, modifier = Modifier.size(20.dp))
-                    },
-                    trailingIcon = {
-                        if (marketState.searchQuery.isNotBlank()) {
-                            IconButton(onClick = { onSearchQueryChange("") }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear", tint = Gray400, modifier = Modifier.size(18.dp))
-                            }
-                        }
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Golden Category Chips
-                val categories = listOf("ALL", "EDUCATION", "MEDICAL", "BUSINESS", "EMERGENCY", "PERSONAL")
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(categories) { cat ->
-                        val isSelected = marketState.selectedCategoryTag.equals(cat, ignoreCase = true)
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { onCategoryTagSelected(cat) },
-                            label = {
-                                Text(
-                                    if (cat == "ALL") "All Categories" else "#$cat",
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            colors = goldFilterChipColors(),
-                            border = goldFilterChipBorder(isSelected),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        // Live Community Post Cards directly in LazyColumn
-        if (marketState.isLoading && marketState.posts.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = GoldCoinRich)
-                }
-            }
-        } else if (marketState.posts.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(24.dp).fillMaxWidth()
-                        ) {
-                            Icon(Icons.Outlined.Forum, contentDescription = null, tint = Gray400, modifier = Modifier.size(44.dp))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("No Community Posts Found", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(onClick = onNavigateToLoansTab) {
                             Text(
-                                "Be the first to publish a lending offer or loan request!",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
+                                text = "History ➔",
+                                color = Gold500,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.5.sp
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = { 
-                                    onNavigateToCreatePost("OFFER_TO_LEND")
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                shape = RoundedCornerShape(10.dp)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Synced Segmented Capsule Tabs
+                    SegmentedCapsuleTab(
+                        tabs = tabs,
+                        selectedIndex = pagerState.currentPage,
+                        onTabSelected = { idx ->
+                            scope.launch {
+                                pagerState.animateScrollToPage(idx)
+                            }
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Swipeable HorizontalPager
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { page ->
+                        val pageLoans = when (page) {
+                            1 -> activeLentLoans
+                            2 -> activeBorrowedLoans
+                            else -> allActiveLoans
+                        }
+
+                        if (pageLoans.isEmpty()) {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
                             ) {
-                                Text("Create Post", fontWeight = FontWeight.Bold)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = when (page) {
+                                            1 -> Icons.Default.Savings
+                                            2 -> Icons.Default.CreditCard
+                                            else -> Icons.Default.ReceiptLong
+                                        },
+                                        contentDescription = null,
+                                        tint = Gold500,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = when (page) {
+                                            1 -> "No loans lent out"
+                                            2 -> "No active debts"
+                                            else -> "No active loans right now"
+                                        },
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = when (page) {
+                                            1 -> "Offer capital or grant peer loans to earn monthly interest."
+                                            2 -> "Borrow directly from trusted peers with transparent terms."
+                                            else -> "Grant or request peer loans with complete transparency."
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Gray400,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                pageLoans.take(5).forEach { loan ->
+                                    val isLender = state.loansAsLender.any { it.loanId == loan.loanId }
+                                    HomeLoanCard(
+                                        loan = loan,
+                                        isLender = isLender,
+                                        onNavigateToDetail = onNavigateToLoanDetail,
+                                        onNavigateToChat = onNavigateToChat
+                                    )
+                                }
+                                if (pageLoans.size > 5) {
+                                    TextButton(
+                                        onClick = onNavigateToLoansTab,
+                                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                                    ) {
+                                        Text(
+                                            text = "View all ${pageLoans.size} loans ➔",
+                                            color = Gold500,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.5.sp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(14.dp))
             }
-        } else {
-            items(marketState.posts, key = { it.postId }) { post ->
-                val isVouched = post.postId in marketState.vouchedPostIds
-                val isSelf = post.authorId == marketState.currentUserId
-                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
-                    SocialPostCard(
-                        post = post,
-                        isVouched = isVouched,
-                        isSelf = isSelf,
-                        onAuthorClick = { onNavigateToUserProfile(post.authorId) },
-                        onVouch = {
-                            if (isSelf) {
-                                // Self-post vouch blocked
-                            } else if (isVouched) {
-                                onVouchPost(post.postId, "", "")
-                            } else {
-                                postToVouch = post
-                            }
-                        },
-                        onPrimaryAction = { selectedPostForBid = post }
-                    )
-                }
-            }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
+
+
         }
+
 
         // Pending approvals section (if any)
         if (state.pendingApprovals.isNotEmpty()) {
@@ -1583,44 +1453,6 @@ fun DashboardScreen(
             }
         }
 
-        // Recent Loans on Home (Unified list)
-        item {
-            val allRecentLoans = (state.loansAsLender + state.loansAsBorrower)
-                .distinctBy { it.loanId }
-                .sortedByDescending { it.createdAt }
-
-            SectionHeader(
-                title = "Recent Loans",
-                actionText = if (allRecentLoans.isNotEmpty()) "View All" else null,
-                onAction = onNavigateToLoansTab,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            if (allRecentLoans.isEmpty() && !state.isLoading) {
-                EmptyState(
-                    icon = Icons.Default.Folder,
-                    title = "No loans found",
-                    subtitle = "Grant or request a loan to get started"
-                )
-            } else {
-                allRecentLoans.take(3).forEach { loan ->
-                    val isLender = state.loansAsLender.any { it.loanId == loan.loanId }
-                    LoanSummaryCard(
-                        loanId = loan.loanId,
-                        purpose = loan.purpose,
-                        amount = loan.sanctionedAmount,
-                        outstanding = loan.outstandingAmount,
-                        status = loan.status,
-                        counterpartyName = if (isLender) "Lent" else "Borrowed",
-                        date = loan.createdAt.toDateString(),
-                        onClick = { onNavigateToLoanDetail(loan.loanId) },
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
-                        loanType = loan.loanType
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-        }
 
 
         // Recent activity
@@ -1694,6 +1526,20 @@ fun DashboardScreen(
         }
 
         item { Spacer(modifier = Modifier.height(24.dp)) }
+        }
+    }
+
+    // Smooth backdrop scrim when 3-dots popup is open (dismisses popup on click)
+    if (menuScrimAlpha > 0.01f) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = menuScrimAlpha))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { isMenuExpanded = false }
+        )
     }
 
     if (showChatSheet) {
@@ -1777,31 +1623,7 @@ fun DashboardScreen(
             }
         )
     }
-
-    if (!dashboardGuideSeen) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            ContextualGuideCard(
-                visible = true,
-                icon = Icons.Default.Dashboard,
-                title = "Your Financial Command Center",
-                body = "Explore the Community Loan Wall, view portfolio metrics, and track all your active loans — all in one place.",
-                onDismiss = {
-                    scope.launch {
-                        userRepository.markGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_DASHBOARD_SEEN)
-                    }
-                },
-                autoDismissSeconds = 8
-            )
-        }
-    }
-
-
-    }
+}
 }
 
 data class DashboardAdminDesk(
@@ -1871,4 +1693,225 @@ private fun DashboardAdminDeskCard(
 
 private fun Double.formatDecimal(decimals: Int): String {
     return String.format(java.util.Locale.getDefault(), "%.${decimals}f", this)
+}
+
+@Composable
+fun HomeLoanCard(
+    loan: LoanEntity,
+    isLender: Boolean,
+    onNavigateToDetail: (String) -> Unit,
+    onNavigateToChat: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val statusColor = when (loan.status) {
+        "ACTIVE", "ACTIVE_SERVICING" -> Emerald400
+        "CLOSED", "COMPLETED" -> Gray400
+        "DELINQUENT", "LEGAL_DISPUTE" -> Red400
+        "CONTRACT_SIGNING", "BID_ACCEPTED" -> Blue400
+        else -> Gold500
+    }
+    val roleLabel = if (isLender) "Lending Out" else "Borrowed"
+    val roleColor = if (isLender) Emerald400 else GoldCoinBright
+    val repaidAmount = (loan.sanctionedAmount - loan.outstandingAmount).coerceAtLeast(0.0)
+    val progressRatio = if (loan.sanctionedAmount > 0) (repaidAmount / loan.sanctionedAmount).toFloat() else 0f
+    val progressPercent = (progressRatio * 100).toInt().coerceIn(0, 100)
+
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onNavigateToDetail(loan.loanId) }
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header Row: Role Pill + Loan ID + Status Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = roleColor.copy(alpha = 0.14f),
+                        border = BorderStroke(0.5.dp, roleColor.copy(alpha = 0.35f))
+                    ) {
+                        Text(
+                            text = roleLabel,
+                            color = roleColor,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    Text(
+                        text = "#${loan.loanId.take(8)}",
+                        fontSize = 11.sp,
+                        color = Gray400,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                StatusBadge(text = loan.status.replace("_", " "), color = statusColor)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Purpose and Amount
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = loan.purpose.ifBlank { "Personal Loan" },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = loan.sanctionedAmount.toInrString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Progress Bar & Outstanding Amount
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Repaid $progressPercent%",
+                    fontSize = 11.sp,
+                    color = Gray400,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "${loan.outstandingAmount.toInrString()} remaining",
+                    fontSize = 11.5.sp,
+                    color = if (loan.outstandingAmount > 0) roleColor else Emerald400,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            LinearProgressIndicator(
+                progress = { progressRatio.coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = roleColor,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Actions Row: Terms info + Chat + Details/Pay
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${loan.interestRate}% APR • ${loan.tenureMonths} mo",
+                    fontSize = 11.sp,
+                    color = Gray400
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(
+                        onClick = { onNavigateToChat(loan.loanId) },
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ChatBubbleOutline,
+                            contentDescription = "Chat",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        modifier = Modifier.clickable { onNavigateToDetail(loan.loanId) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (!isLender && loan.outstandingAmount > 0) "Pay EMI ➔" else "Details ➔",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardMenuRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    iconBg: Color,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        color = Color.Transparent,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = iconBg,
+                modifier = Modifier.size(34.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.5.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 10.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
 }

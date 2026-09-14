@@ -21,6 +21,7 @@ import com.loanzo.app.data.entity.NotificationEntity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -56,26 +57,31 @@ class LoanzoMessagingService : FirebaseMessagingService() {
 
         Log.d(TAG, "Notification: title=$title, body=$body, actionRoute=$actionRoute")
 
-        // Bug #5: Persist incoming push to local Room DB so it appears in in-app inbox
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-        if (userId.isNotBlank()) {
-            val entity = NotificationEntity(
-                notificationId = "push_${System.currentTimeMillis()}_${(Math.random() * 10000).toInt()}",
-                userId = userId,
-                title = title,
-                message = body,
-                type = notificationType,
-                relatedLoanId = relatedLoanId,
-                timestamp = System.currentTimeMillis(),
-                isRead = false,
-                actionRoute = actionRoute
-            )
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    database.notificationDao().insertNotification(entity)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to persist push notification to Room: ${e.message}")
+        // Persist incoming push to local Room DB so it appears in in-app inbox
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                var targetUserId = data["userId"] ?: data["targetUserId"]
+                if (targetUserId.isNullOrBlank()) {
+                    val localUsers = database.userDao().getAllUsers().firstOrNull() ?: emptyList()
+                    targetUserId = localUsers.firstOrNull()?.userId ?: FirebaseAuth.getInstance().currentUser?.uid ?: ""
                 }
+                if (!targetUserId.isNullOrBlank()) {
+                    val entity = NotificationEntity(
+                        notificationId = data["notificationId"] ?: "push_${System.currentTimeMillis()}_${(Math.random() * 10000).toInt()}",
+                        userId = targetUserId,
+                        title = title,
+                        message = body,
+                        type = notificationType,
+                        relatedLoanId = relatedLoanId,
+                        timestamp = System.currentTimeMillis(),
+                        isRead = false,
+                        actionRoute = actionRoute
+                    )
+                    database.notificationDao().insertNotification(entity)
+                    Log.d(TAG, "Persisted push notification for user $targetUserId")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to persist push notification to Room: ${e.message}")
             }
         }
 
@@ -110,7 +116,7 @@ class LoanzoMessagingService : FirebaseMessagingService() {
             Log.d(TAG, "User not authenticated yet — token cached for deferred upload")
             return
         }
-        val firestore = FirebaseFirestore.getInstance()
+        val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
         val updates = hashMapOf<String, Any>("fcmToken" to token)
         firestore.collection("users").document(user.uid)
             .set(updates, SetOptions.merge())
@@ -184,7 +190,7 @@ class LoanzoMessagingService : FirebaseMessagingService() {
          * and retrieve current token if none was cached.
          */
         fun registerFcmToken(context: Context, userId: String) {
-            val firestore = FirebaseFirestore.getInstance()
+            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
 
             // 1. Check for cached token from onNewToken
             val prefs = context.getSharedPreferences("loanzo_fcm_prefs", Context.MODE_PRIVATE)

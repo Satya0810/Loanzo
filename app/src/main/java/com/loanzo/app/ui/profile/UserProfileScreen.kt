@@ -13,10 +13,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -47,6 +54,16 @@ fun UserProfileScreen(
     val context = LocalContext.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showMoreMenu by remember { mutableStateOf(false) }
+    val moreMenuBlurRadius by animateDpAsState(
+        targetValue = if (showMoreMenu) 20.dp else 0.dp,
+        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        label = "profile_menu_blur"
+    )
+    val moreMenuScrimAlpha by animateFloatAsState(
+        targetValue = if (showMoreMenu) 0.45f else 0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "profile_menu_scrim"
+    )
 
     LaunchedEffect(userId) {
         viewModel.loadProfile(userId)
@@ -146,54 +163,74 @@ fun UserProfileScreen(
                     Text("User not found or profile unavailable.")
                 }
             } else {
-                LazyColumn(
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    item {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        ProfileHeroCard(profile = profile)
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .blur(moreMenuBlurRadius)
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            ProfileHeroCard(profile = profile)
+                        }
+
+                        item {
+                            VerificationStatusCard(status = profile.verificationStatus)
+                        }
+
+                        item {
+                            TrustScoreGaugeCard(
+                                trustScore = profile.trustScore,
+                                tier = profile.trustScoreTier
+                            )
+                        }
+
+                        item {
+                            WhyTrustworthySection(signals = profile.trustworthySignals)
+                        }
+
+                        item {
+                            MultiFactorAuditCard(profile = profile)
+                        }
+
+                        item {
+                            RepaymentHistoryGrid(profile = profile)
+                        }
+
+                        item {
+                            ProfileActionsSection(
+                                profile = profile,
+                                onChatClick = {
+                                    val myId = state.currentUserId ?: ""
+                                    val channel = com.loanzo.app.ui.loan.ChatViewModel.getDirectChannelId(myId, profile.userId)
+                                    onNavigateToChat(channel, null, profile.userId)
+                                },
+                                onReportClick = { viewModel.setReportDialogVisible(true) },
+                                onBlockClick = { viewModel.setBlockDialogVisible(true) },
+                                onReKycClick = onNavigateToKyc
+                            )
+                            Spacer(modifier = Modifier.height(32.dp))
+                        }
                     }
 
-                    item {
-                        VerificationStatusCard(status = profile.verificationStatus)
-                    }
-
-                    item {
-                        TrustScoreGaugeCard(
-                            trustScore = profile.trustScore,
-                            tier = profile.trustScoreTier
+                    if (moreMenuScrimAlpha > 0.01f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = moreMenuScrimAlpha))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    showMoreMenu = false
+                                }
                         )
-                    }
-
-                    item {
-                        WhyTrustworthySection(signals = profile.trustworthySignals)
-                    }
-
-                    item {
-                        MultiFactorAuditCard(profile = profile)
-                    }
-
-                    item {
-                        RepaymentHistoryGrid(profile = profile)
-                    }
-
-                    item {
-                        ProfileActionsSection(
-                            profile = profile,
-                            onChatClick = {
-                                val myId = state.currentUserId ?: ""
-                                val channel = com.loanzo.app.ui.loan.ChatViewModel.getDirectChannelId(myId, profile.userId)
-                                onNavigateToChat(channel, null, profile.userId)
-                            },
-                            onReportClick = { viewModel.setReportDialogVisible(true) },
-                            onBlockClick = { viewModel.setBlockDialogVisible(true) },
-                            onReKycClick = onNavigateToKyc
-                        )
-                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
             }

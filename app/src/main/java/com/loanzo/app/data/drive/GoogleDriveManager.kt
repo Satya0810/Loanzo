@@ -18,8 +18,8 @@ import javax.inject.Singleton
 class GoogleDriveManager @Inject constructor() {
 
     // The Google Apps Script Web App URL acting as a secure proxy for Google Drive uploads
-    private val WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwapyq3jYJHgqeIuFOv5qcg0nJdIyMvVdxmZx5hXv7B5G4nsi5Ap8Mra_JPRDiAjKQB/exec"
-    private val API_KEY = "LOANZO_KYC_SECURE_KEY_2026"
+    private val WEB_APP_URL: String get() = com.loanzo.app.BuildConfig.DRIVE_WEB_APP_URL
+    private val API_KEY: String get() = com.loanzo.app.BuildConfig.DRIVE_API_KEY
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
@@ -29,7 +29,7 @@ class GoogleDriveManager @Inject constructor() {
 
     suspend fun uploadFile(context: Context, uri: Uri, fileName: String): Result<String> = withContext(Dispatchers.IO) {
         try {
-            if (WEB_APP_URL == "YOUR_WEB_APP_URL_HERE") {
+            if (WEB_APP_URL.isBlank() || WEB_APP_URL == "YOUR_WEB_APP_URL_HERE") {
                 return@withContext Result.failure(Exception("Please configure your Web App URL in GoogleDriveManager!"))
             }
 
@@ -111,16 +111,7 @@ class GoogleDriveManager @Inject constructor() {
     suspend fun downloadFileToLocal(url: String, targetFile: java.io.File): Boolean = withContext(Dispatchers.IO) {
         try {
             if (url.isBlank()) return@withContext false
-            val downloadUrl = if (url.contains("drive.google.com")) {
-                val fileId = if (url.contains("/d/")) {
-                    url.substringAfter("/d/").substringBefore("/")
-                } else if (url.contains("id=")) {
-                    url.substringAfter("id=").substringBefore("&")
-                } else null
-                if (!fileId.isNullOrBlank()) {
-                    "https://drive.google.com/uc?export=view&id=$fileId"
-                } else url
-            } else url
+            val downloadUrl = com.loanzo.app.util.convertGoogleDriveUrlToDirectStream(url)
 
             val request = Request.Builder()
                 .url(downloadUrl)

@@ -108,6 +108,22 @@ fun calculateEMI(principal: Double, annualRate: Double, tenureMonths: Int): Doub
     if (factor <= 1.0) return principal / tenureMonths
     return principal * monthlyRate * factor / (factor - 1)
 }
+/**
+ * Transforms Google Drive HTML view URLs into direct image stream download URLs.
+ */
+fun convertGoogleDriveUrlToDirectStream(url: String): String {
+    if (!url.contains("drive.google.com")) return url
+    val fileId = when {
+        url.contains("/d/") -> url.substringAfter("/d/").substringBefore("/").substringBefore("?").substringBefore("&")
+        url.contains("id=") -> url.substringAfter("id=").substringBefore("&").substringBefore("?")
+        else -> null
+    }
+    return if (!fileId.isNullOrBlank()) {
+        "https://drive.google.com/thumbnail?id=$fileId&sz=w1000"
+    } else {
+        url
+    }
+}
 
 /**
  * Resolves the profile photo into a model that Coil can actually render.
@@ -129,16 +145,9 @@ fun com.loanzo.app.data.entity.UserEntity?.getDisplayProfilePhoto(context: andro
         if (f.exists() && f.length() > 0) return f
     }
 
-    // 3. If profilePhotoUri is a Google Drive link, convert to working direct stream URL
+    // 3. If profilePhotoUri is a Google Drive link, convert to working direct thumbnail stream URL
     if (this.profilePhotoUri.contains("drive.google.com")) {
-        val fileId = if (this.profilePhotoUri.contains("/d/")) {
-            this.profilePhotoUri.substringAfter("/d/").substringBefore("/")
-        } else if (this.profilePhotoUri.contains("id=")) {
-            this.profilePhotoUri.substringAfter("id=").substringBefore("&")
-        } else null
-        if (!fileId.isNullOrBlank()) {
-            return "https://drive.google.com/uc?export=view&id=$fileId"
-        }
+        return convertGoogleDriveUrlToDirectStream(this.profilePhotoUri)
     }
 
     // 4. Any other http/https URL (e.g. Google avatar)

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -311,13 +312,11 @@ private fun AddGuarantorDialog(
                         phone = user.phone
                         email = user.email
                         if (user.panNumber.isNotBlank()) pan = user.panNumber
-                        if (user.userId.contains("nirmala")) relationship = "PARENT"
-                        else if (user.userId.contains("rohan")) relationship = "BUSINESS_PARTNER"
                     },
                     label = "Pick Registered Member (Auto-Fill)",
-                    placeholder = "Select @dr_rohan_patil, @nirmala_devi...",
+                    placeholder = "Search registered users...",
                     preferredRole = "BORROWER",
-                    candidateUsers = com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS,
+                    candidateUsers = emptyList(),
                     onSearchOnline = { query -> userRepository.searchUsersOnline(query) }
                 )
 

@@ -22,6 +22,7 @@ class LoanRepositoryTest {
     private val guarantorDao = mockk<GuarantorDao>(relaxed = true)
     private val auditEventDao = mockk<AuditEventDao>(relaxed = true)
     private val penaltyEngine = mockk<PenaltyEngine>(relaxed = true)
+    private val firebaseManager = mockk<com.loanzo.app.data.firebase.FirebaseManager>(relaxed = true)
 
     private lateinit var repository: LoanRepository
 
@@ -35,7 +36,8 @@ class LoanRepositoryTest {
             pledgeDao = pledgeDao,
             guarantorDao = guarantorDao,
             auditEventDao = auditEventDao,
-            penaltyEngine = penaltyEngine
+            penaltyEngine = penaltyEngine,
+            firebaseManager = firebaseManager
         )
     }
 

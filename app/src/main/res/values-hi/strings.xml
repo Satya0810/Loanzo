@@ -138,7 +138,9 @@
     <string name="my_loans">मेरे ऋण</string>
     <string name="nav_home">घर</string>
     <string name="nav_loans">ऋण</string>
+    <string name="nav_community">समुदाय</string>
     <string name="nav_alerts">अलर्ट</string>
+    <string name="nav_notifications">सूचनाएं</string>
     <string name="nav_profile">प्रोफ़ाइल</string>
     <string name="kyc_documents">केवाईसी दस्तावेज़</string>
     <string name="appearance">उपस्थिति</string>

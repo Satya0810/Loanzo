@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,8 +36,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -75,7 +78,8 @@ enum class ProfileSubPage {
     DOCUMENT_VAULT,
     BANK_ACCOUNTS,
     PREFERENCES,
-    TERMS_AND_CONDITIONS
+    TERMS_AND_CONDITIONS,
+    ABOUT_US
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,6 +92,7 @@ fun ProfileScreen(
     onSetThemeMode: (String) -> Unit,
     currentLanguageCode: String = "en",
     onSelectLanguage: (String) -> Unit = {},
+    onUploadProfilePhoto: (android.net.Uri) -> Unit = {},
     onUploadKycDocument: (android.net.Uri, String) -> Unit = { _, _ -> },
     onUpdateBankDetails: (String, String) -> Unit = { _, _ -> },
     onPushDemoData: ((Boolean, String) -> Unit) -> Unit = { _ -> },
@@ -101,31 +106,24 @@ fun ProfileScreen(
     onBack: () -> Unit,
     vaultViewModel: DocumentVaultViewModel = hiltViewModel()
 ) {
-    var currentSubPage by remember { mutableStateOf(ProfileSubPage.MAIN) }
+    var currentSubPage by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(ProfileSubPage.MAIN) }
     var showBankDialog by remember { mutableStateOf(false) }
     var showLanguageSheet by remember { mutableStateOf(false) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
-    var showDemoDataDialog by remember { mutableStateOf(false) }
-    var isSeedingDemo by remember { mutableStateOf(false) }
     var isVaultUnlocked by remember { mutableStateOf(false) }
     var showPermissionsSheet by remember { mutableStateOf(false) }
     var showVaultPasswordDialog by remember { mutableStateOf(false) }
-    val adminRepository = com.loanzo.app.util.LocalAdminRepository.current
-    var showAdminRequestDialog by remember { mutableStateOf(false) }
-    var adminJustification by remember { mutableStateOf("") }
-    var isSubmittingAdminRequest by remember { mutableStateOf(false) }
+    var showRoleUpgradeDialog by remember { mutableStateOf(false) }
+    var showRegisterTelegramDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
 
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
     val profileGuideSeen by userRepository.isGuideSeen(com.loanzo.app.data.repository.UserRepository.GUIDE_PROFILE_SEEN)
         .collectAsStateWithLifecycle(initialValue = true)
+    val isFloatingBotEnabled by userRepository.isFloatingChatbotEnabled().collectAsStateWithLifecycle(initialValue = true)
     val vaultState by vaultViewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
-    var isGuideMeExpanded by remember { mutableStateOf(false) }
-    val guideChevronRotation by animateFloatAsState(
-        targetValue = if (isGuideMeExpanded) 180f else 0f,
-        label = "guide_chevron"
-    )
 
     // Hardware/Gesture Back navigation handler
     BackHandler(enabled = currentSubPage != ProfileSubPage.MAIN) {
@@ -160,25 +158,7 @@ fun ProfileScreen(
 
     val profilePhotoPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                try {
-                    val inputStream = context.contentResolver.openInputStream(uri)
-                    val targetFile = java.io.File(context.filesDir, "profile_${user.userId}.jpg")
-                    targetFile.outputStream().use { output ->
-                        inputStream?.copyTo(output)
-                    }
-                    val localPhotoUri = "file://${targetFile.absolutePath}"
-                    val updatedUser = user.copy(profilePhotoUri = localPhotoUri)
-                    userRepository.updateUser(updatedUser)
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(context, "Profile photo updated successfully!", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        Toast.makeText(context, "Failed to save photo: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
+            onUploadProfilePhoto(uri)
         }
     }
 
@@ -231,6 +211,15 @@ fun ProfileScreen(
                                 IconButton(onClick = onBack) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                                 }
+                            },
+                            actions = {
+                                IconButton(onClick = { showLogoutConfirmDialog = true }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Logout,
+                                        contentDescription = "Sign Out",
+                                        tint = Red400
+                                    )
+                                }
                             }
                         )
                     }
@@ -243,87 +232,186 @@ fun ProfileScreen(
                             .padding(horizontal = 20.dp, vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Compact Executive Hero Card
+                        // Modern Executive Horizontal Hero Card
                         Card(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(22.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(
-                                modifier = Modifier.padding(18.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                LoanzoAvatar(
-                                    user = user,
-                                    size = 94.dp,
-                                    showVerifiedBadge = true,
-                                    showEditBadge = true,
-                                    borderColor = if (isOwner) Gold500 else MaterialTheme.colorScheme.primary,
-                                    borderWidth = 2.5.dp,
-                                    onClick = { profilePhotoPickerLauncher.launch("image/*") },
-                                    onEditClick = { profilePhotoPickerLauncher.launch("image/*") }
-                                )
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                Text(
-                                    text = "Tap to change photo",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontSize = 10.sp
-                                )
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Text(
-                                    text = user.name.ifBlank { "Loanzo Member" },
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-
-                                if (user.username.isNotBlank()) {
-                                    Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                        modifier = Modifier.padding(top = 4.dp)
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Left: 72dp Avatar with role-based border
+                                    Box(
+                                        contentAlignment = Alignment.BottomEnd,
+                                        modifier = Modifier.size(72.dp)
                                     ) {
-                                        Text(
-                                            text = "@${user.username}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                                        val avatarBorderColor = when {
+                                            isOwner -> Gold500
+                                            user.role.uppercase() == "ADMIN" -> Color(0xFF6366F1)
+                                            isFieldAgent || user.role.uppercase() == "AGENT" -> Emerald400
+                                            else -> MaterialTheme.colorScheme.primary
+                                        }
+                                        LoanzoAvatar(
+                                            user = user,
+                                            size = 72.dp,
+                                            showVerifiedBadge = true,
+                                            showEditBadge = true,
+                                            borderColor = avatarBorderColor,
+                                            borderWidth = 2.dp,
+                                            onClick = { profilePhotoPickerLauncher.launch("image/*") },
+                                            onEditClick = { profilePhotoPickerLauncher.launch("image/*") }
                                         )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    // Right: Identity Details, UID Copy, and Role Badge
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = user.name.ifBlank { "Loanzo Member" },
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f, fill = false)
+                                            )
+
+                                            // Copyable UID pill
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+                                                modifier = Modifier.clickable {
+                                                    clipboardManager.setText(AnnotatedString(user.userId))
+                                                    Toast.makeText(context, "UID copied to clipboard", Toast.LENGTH_SHORT).show()
+                                                }
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "UID: ${user.userId.take(6)}...",
+                                                        fontSize = 10.sp,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        fontWeight = FontWeight.Medium
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text(
+                                                        text = "COPY",
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        if (user.username.isNotBlank()) {
+                                            Text(
+                                                text = "@${user.username}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.SemiBold,
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        // Role & Status Pill Bar
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            val roleLabel = when {
+                                                isOwner -> "👑 APP OWNER"
+                                                user.role.uppercase() == "ADMIN" -> "🛡️ MASTER ADMIN"
+                                                isFieldAgent || user.role.uppercase() == "AGENT" -> "🕵️ FIELD AGENT"
+                                                user.role.uppercase() == "LENDER" -> "💼 CAPITAL LENDER"
+                                                else -> "👤 BORROWER"
+                                            }
+                                            val roleColor = when {
+                                                isOwner -> Gold500
+                                                user.role.uppercase() == "ADMIN" -> Color(0xFF6366F1)
+                                                isFieldAgent || user.role.uppercase() == "AGENT" -> Emerald400
+                                                user.role.uppercase() == "LENDER" -> Blue400
+                                                else -> MaterialTheme.colorScheme.primary
+                                            }
+
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = roleColor.copy(alpha = 0.15f),
+                                                border = BorderStroke(0.5.dp, roleColor.copy(alpha = 0.4f))
+                                            ) {
+                                                Text(
+                                                    text = roleLabel,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = roleColor,
+                                                    fontSize = 9.5.sp,
+                                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                                                )
+                                            }
+
+                                            // Duty or Verification Pill
+                                            if (isFieldAgent || user.role.uppercase() == "AGENT") {
+                                                val dutyOn = user.isOnDuty
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = if (dutyOn) Emerald400.copy(alpha = 0.15f) else Gray400.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = if (dutyOn) "● ON DUTY" else "○ OFF DUTY",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (dutyOn) Emerald400 else Gray400,
+                                                        fontSize = 9.sp,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
+                                                    )
+                                                }
+                                            } else if (user.kycStatus == "VERIFIED") {
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = Emerald400.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = "VERIFIED ✓",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Emerald400,
+                                                        fontSize = 9.sp,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(14.dp))
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f), thickness = 0.7.dp)
+                                Spacer(modifier = Modifier.height(12.dp))
 
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (isOwner) Gold500.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
-                                ) {
-                                    Text(
-                                        text = if (isOwner) "👑 APP OWNER / MASTER ADMIN" else "VERIFIED ${user.role.uppercase()}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isOwner) Gold500 else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                // 3-Metric Trust Chips
+                                // Bottom Trust & Status strip
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     ProfileMetricChip(
-                                        label = "Trust Score".t(),
-                                        value = "820 Prime",
+                                        label = if (isFieldAgent) "Inspection Rating".t() else "Trust Score".t(),
+                                        value = if (isFieldAgent) "4.9 ★ Elite" else "820 Prime",
                                         color = Gold500,
                                         modifier = Modifier.weight(1f)
                                     )
@@ -334,12 +422,149 @@ fun ProfileScreen(
                                         modifier = Modifier.weight(1f)
                                     )
                                     ProfileMetricChip(
-                                        label = "Vault".t(),
-                                        value = if (isVaultUnlocked) "Unlocked 🔓" else "Locked 🔒",
-                                        color = if (isVaultUnlocked) Emerald400 else Blue400,
+                                        label = "Account Tier".t(),
+                                        value = if (isOwner) "Owner 👑" else if (isFieldAgent) "Officer 🛡️" else "Tier-1 Prime",
+                                        color = Emerald400,
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Role Upgrade Promotion Banner (Promotes Lender & Certified Agent)
+                        if (user != null && user.role.uppercase() != "ADMIN") {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(1.2.dp, Brush.horizontalGradient(listOf(Gold500, Color(0xFF3B82F6)))),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showRoleUpgradeDialog = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Gold500.copy(alpha = 0.15f),
+                                        modifier = Modifier.size(42.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.TrendingUp, null, tint = Gold500, modifier = Modifier.size(22.dp))
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "Upgrade User Role",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Gold500.copy(alpha = 0.2f)
+                                            ) {
+                                                Text(
+                                                    text = "PROMOTION",
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = Gold500,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "Become a Capital Provider (Lender) or Certified Field Agent to earn passive returns & commissions.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp,
+                                            lineHeight = 14.sp
+                                        )
+                                    }
+                                    Icon(Icons.Default.ChevronRight, null, tint = Gold500, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        // ==========================================
+                        // ⚡ QUICK ACTIONS RIBBON (Role Adaptive)
+                        // ==========================================
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // 1. Bank & UPI
+                            QuickActionTile(
+                                icon = Icons.Default.AccountBalance,
+                                iconTint = Blue400,
+                                title = "Bank & UPI".t(),
+                                subtitle = if (user.bankAccountNumber.isNotBlank()) "•••• ${user.bankAccountNumber.takeLast(4)}" else "Link Acct",
+                                onClick = { currentSubPage = ProfileSubPage.BANK_ACCOUNTS },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // 2. Doc Vault
+                            QuickActionTile(
+                                icon = if (isVaultUnlocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                                iconTint = if (isVaultUnlocked) Emerald400 else Gold500,
+                                title = "Doc Vault".t(),
+                                subtitle = if (isVaultUnlocked) "Unlocked" else "Protected",
+                                onClick = {
+                                    if (isVaultUnlocked) {
+                                        currentSubPage = ProfileSubPage.DOCUMENT_VAULT
+                                    } else {
+                                        showVaultPasswordDialog = true
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // 3. Security
+                            QuickActionTile(
+                                icon = Icons.Default.Fingerprint,
+                                iconTint = Emerald400,
+                                title = "Security".t(),
+                                subtitle = "PIN & Bio",
+                                onClick = { currentSubPage = ProfileSubPage.PERSONAL_INFO },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // 4. Dynamic Role Tile
+                            if (isOwner || user.role.uppercase() == "ADMIN") {
+                                QuickActionTile(
+                                    icon = Icons.Default.AdminPanelSettings,
+                                    iconTint = Color(0xFF6366F1),
+                                    title = "Admin Hub".t(),
+                                    subtitle = "Master",
+                                    onClick = onNavigateToAdminHub,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            } else if (isFieldAgent || user.role.uppercase() == "AGENT") {
+                                QuickActionTile(
+                                    icon = Icons.Default.Security,
+                                    iconTint = Emerald400,
+                                    title = "Agent Hub".t(),
+                                    subtitle = if (user.isOnDuty) "On Duty" else "Console",
+                                    onClick = onNavigateToAgent,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            } else {
+                                QuickActionTile(
+                                    icon = Icons.Default.VerifiedUser,
+                                    iconTint = if (user.kycStatus == "VERIFIED") Emerald400 else Gold500,
+                                    title = "KYC Status".t(),
+                                    subtitle = if (user.kycStatus == "VERIFIED") "Verified" else "Review",
+                                    onClick = onNavigateToKyc,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
 
@@ -388,14 +613,7 @@ fun ProfileScreen(
                                         }
                                     }
 
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Switch active role seamlessly. Core navigation (Home, Loans, Alerts, Profile) stays unified while features dynamically adapt.",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        lineHeight = 16.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(14.dp))
+                                    Spacer(modifier = Modifier.height(12.dp))
 
                                     // 3 Segmented Role Chips
                                     Row(
@@ -446,7 +664,6 @@ fun ProfileScreen(
                                                 .weight(1f)
                                                 .clickable {
                                                     scope.launch {
-                                                        agentRepository.seedSampleVisits(user.userId)
                                                         userRepository.updateUser(user.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true))
                                                         Toast.makeText(context, "Switched to Field Agent role", Toast.LENGTH_SHORT).show()
                                                     }
@@ -508,169 +725,9 @@ fun ProfileScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                        // Loanzo Field Agent Program Tile
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(18.dp))
-                                .clickable { onNavigateToAgent() }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = Gold500.copy(alpha = 0.15f),
-                                    modifier = Modifier.size(44.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.Security, contentDescription = null, tint = Gold500, modifier = Modifier.size(24.dp))
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    val isAgentApproved = isFieldAgent || user.agentStatus == "APPROVED"
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "Field Agent Program",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        val agentBadge = when {
-                                            isAgentApproved -> "CERTIFIED ✓"
-                                            user.agentStatus == "PENDING" -> "IN REVIEW"
-                                            else -> "EARN ₹1500"
-                                        }
-                                        val badgeTint = when {
-                                            isAgentApproved -> Emerald400
-                                            user.agentStatus == "PENDING" -> Gold500
-                                            else -> Color(0xFF38BDF8)
-                                        }
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = badgeTint.copy(alpha = 0.15f)
-                                        ) {
-                                            Text(
-                                                text = agentBadge,
-                                                color = badgeTint,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = when {
-                                            isAgentApproved -> "Certified Officer • Open Agent Console"
-                                            user.agentStatus == "PENDING" -> "Under background check • Check status"
-                                            else -> "Empanel as verification officer & earn per visit"
-                                        },
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Gray400, modifier = Modifier.size(18.dp))
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
-                        // ================= GROUP 1: IDENTITY & LEGAL =================
-                        ProfileSectionHeader(title = "IDENTITY & CREDENTIALS")
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column {
-                                ProfileActionRow(
-                                    icon = Icons.Default.VerifiedUser,
-                                    iconTint = if (user.kycStatus == "VERIFIED") Emerald400 else if (user.kycStatus == "REJECTED") Red400 else Gold500,
-                                    title = "Identity KYC & Re-Verification",
-                                    subtitle = when (user.kycStatus) {
-                                        "VERIFIED" -> "DigiLocker, Aadhaar & PAN verified • Tap to Re-KYC / Update"
-                                        "REJECTED" -> "⚠️ Re-submission requested by Admin • Tap to update"
-                                        "PENDING", "IN_PROGRESS" -> "Verification under review • Tap to check"
-                                        else -> "Not verified • Tap to complete Government KYC"
-                                    },
-                                    statusBadge = when (user.kycStatus) {
-                                        "VERIFIED" -> "VERIFIED ✓"
-                                        "REJECTED" -> "RE-KYC REQ"
-                                        "PENDING", "IN_PROGRESS" -> "PENDING"
-                                        else -> "NOT VERIFIED"
-                                    },
-                                    badgeColor = when (user.kycStatus) {
-                                        "VERIFIED" -> Emerald400
-                                        "REJECTED" -> Red400
-                                        "PENDING", "IN_PROGRESS" -> Gold500
-                                        else -> Gray400
-                                    },
-                                    onClick = onNavigateToKyc
-                                )
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
-                                ProfileActionRow(
-                                    icon = Icons.Default.Badge,
-                                    iconTint = MaterialTheme.colorScheme.primary,
-                                    title = "Personal & Identity Details",
-                                    subtitle = user.email.ifBlank { user.phone.ifBlank { "Contact & verification details" } },
-                                    onClick = { currentSubPage = ProfileSubPage.PERSONAL_INFO }
-                                )
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
-                                ProfileActionRow(
-                                    icon = if (isVaultUnlocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                                    iconTint = if (isVaultUnlocked) Emerald400 else MaterialTheme.colorScheme.primary,
-                                    title = "Encrypted Document Vault",
-                                    subtitle = if (isVaultUnlocked) "Session active • Tap to view documents" else "PAN, Aadhaar & Gov KYC • Password protected",
-                                    statusBadge = if (isVaultUnlocked) "UNLOCKED" else "LOCKED",
-                                    badgeColor = if (isVaultUnlocked) Emerald400 else MaterialTheme.colorScheme.primary,
-                                    onClick = {
-                                        if (isVaultUnlocked) {
-                                            currentSubPage = ProfileSubPage.DOCUMENT_VAULT
-                                        } else {
-                                            showVaultPasswordDialog = true
-                                        }
-                                    }
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
-                        // ================= GROUP 2: FINANCES & BANKING =================
-                        ProfileSectionHeader(title = "FINANCES & PAYOUTS")
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column {
-                                ProfileActionRow(
-                                    icon = Icons.Default.AccountBalance,
-                                    iconTint = Blue400,
-                                    title = "Bank & Payout Accounts",
-                                    subtitle = if (user.bankAccountNumber.isNotBlank()) "•••• ${user.bankAccountNumber.takeLast(4)} • Verified Payout Account" else "No account linked • Tap to add",
-                                    statusBadge = if (user.bankVerified) "VERIFIED ✓" else if (user.bankAccountNumber.isNotBlank()) "PENDING" else "ADD",
-                                    badgeColor = if (user.bankVerified) Emerald400 else MaterialTheme.colorScheme.primary,
-                                    onClick = { currentSubPage = ProfileSubPage.BANK_ACCOUNTS }
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
-                        // ================= GROUP 3: PREFERENCES & CONNECTIVITY =================
-                        ProfileSectionHeader(title = "PREFERENCES & CONNECTED SERVICES")
+                        // App Preferences & Display Card
                         Card(
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -682,24 +739,14 @@ fun ProfileScreen(
                                     icon = Icons.Default.Palette,
                                     iconTint = MaterialTheme.colorScheme.primary,
                                     title = "App Preferences & Display",
-                                    subtitle = "Theme: ${themeMode.lowercase().replaceFirstChar { it.uppercase() }} • Lang: ${com.loanzo.app.ui.components.getLanguageNameByCode(currentLanguageCode).substringBefore(" (")}",
                                     onClick = { currentSubPage = ProfileSubPage.PREFERENCES }
-                                )
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.8.dp)
-                                ProfileActionRow(
-                                    icon = Icons.AutoMirrored.Filled.Send,
-                                    iconTint = Emerald400,
-                                    title = "Telegram Assistant & Alerts",
-                                    subtitle = "@Loanzo_bot • Instant EMI reminders & updates",
-                                    onClick = { com.loanzo.app.util.TelegramManager.instance.openBotForLinking(context, user.userId) }
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        // ================= GROUP 4: LEGAL & COMPLIANCE =================
-                        ProfileSectionHeader(title = "LEGAL & COMPLIANCE")
+                        // Legal & Compliance Card
                         Card(
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -710,82 +757,15 @@ fun ProfileScreen(
                                 ProfileActionRow(
                                     icon = Icons.Default.Description,
                                     iconTint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    title = "Terms & Conditions & Legal",
-                                    subtitle = "RBI P2P guidelines, eSign legality & privacy rules",
-                                    statusBadge = "COMPLIANT",
-                                    badgeColor = Emerald400,
+                                    title = "Terms, Compliance & Legal",
                                     onClick = { currentSubPage = ProfileSubPage.TERMS_AND_CONDITIONS }
                                 )
                             }
                         }
 
-                        // ================= GROUP 5: APP OWNER ADMIN (Strictly Exclusive to @satyam0810) =================
-                        if (isOwner || canSwitchRoles) {
-                            Spacer(modifier = Modifier.height(18.dp))
-                            ProfileSectionHeader(title = "SYSTEM ADMINISTRATION")
-                            Card(
-                                shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                ProfileActionRow(
-                                    icon = Icons.Default.AdminPanelSettings,
-                                    iconTint = MaterialTheme.colorScheme.primary,
-                                    title = "App Owner Control Center",
-                                    subtitle = "Master KYC, user verification, system ledger & supervisory controls",
-                                    statusBadge = "MASTER",
-                                    badgeColor = MaterialTheme.colorScheme.primary,
-                                    onClick = onNavigateToAdminHub
-                                )
-                            }
-                        } else {
-                            // Non-admin users get option to request platform staff clearance
-                            Spacer(modifier = Modifier.height(18.dp))
-                            ProfileSectionHeader(title = "PLATFORM CLEARANCE")
-                            Card(
-                                shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.4f)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                ProfileActionRow(
-                                    icon = Icons.Default.AdminPanelSettings,
-                                    iconTint = Gold500,
-                                    title = "Request Platform Staff / Admin Access",
-                                    subtitle = "Apply for supervisory clearance to manage KYC, loans & agents",
-                                    statusBadge = "APPLY",
-                                    badgeColor = Gold500,
-                                    onClick = { showAdminRequestDialog = true }
-                                )
-                            }
-                        }
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        // ================= GROUP: DEMO & TESTING PLAYGROUND =================
-                        Spacer(modifier = Modifier.height(18.dp))
-                        ProfileSectionHeader(title = "DEMO & TESTING PLAYGROUND")
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.6f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column {
-                                ProfileActionRow(
-                                    icon = Icons.Default.PlayArrow,
-                                    iconTint = BrandAmberGold,
-                                    title = "Push Demo Data Everywhere",
-                                    subtitle = "Populate realistic active loans, community wall, EMIs, KYC & notifications",
-                                    statusBadge = "DEMO MODE",
-                                    badgeColor = BrandAmberGold,
-                                    onClick = { showDemoDataDialog = true }
-                                )
-                            }
-                        }
-
-                        // ================= GUIDE ME HUB =================
-                        Spacer(modifier = Modifier.height(18.dp))
-                        ProfileSectionHeader(title = "INTERACTIVE GUIDES")
+                        // About Us Card
                         Card(
                             shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -793,174 +773,34 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column {
-                                // Clickable header
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { isGuideMeExpanded = !isGuideMeExpanded }
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = Gold500.copy(alpha = 0.15f),
-                                        modifier = Modifier.size(40.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.Default.Explore,
-                                                contentDescription = "Guide Me",
-                                                tint = Gold500,
-                                                modifier = Modifier.size(22.dp)
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.width(14.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = "Guide Me 🧭",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                maxLines = 1,
-                                                softWrap = false
-                                            )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(6.dp),
-                                                color = Gold500.copy(alpha = 0.15f)
-                                            ) {
-                                                Text(
-                                                    text = "5 TOURS",
-                                                    color = Gold500,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    maxLines = 1,
-                                                    softWrap = false,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = "Interactive step-by-step walkthroughs of key features",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = if (isGuideMeExpanded) "Collapse" else "Expand",
-                                        tint = Gold500,
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .rotate(guideChevronRotation)
-                                    )
-                                }
-
-                                // Expandable tour list
-                                AnimatedVisibility(
-                                    visible = isGuideMeExpanded,
-                                    enter = expandVertically() + fadeIn(),
-                                    exit = shrinkVertically() + fadeOut()
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp)
-                                            .padding(bottom = 12.dp)
-                                    ) {
-                                        HorizontalDivider(
-                                            color = MaterialTheme.colorScheme.outlineVariant,
-                                            thickness = 0.5.dp,
-                                            modifier = Modifier.padding(bottom = 8.dp)
-                                        )
-
-
-
-                                        AppTours.all.forEachIndexed { index, tour ->
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clip(RoundedCornerShape(12.dp))
-                                                    .clickable {
-                                                        scope.launch {
-                                                            userRepository.setActiveTour(tour.id, 0)
-                                                            onBack()
-                                                        }
-                                                    }
-                                                    .padding(vertical = 10.dp, horizontal = 8.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(44.dp)
-                                                        .clip(RoundedCornerShape(10.dp))
-                                                        .border(1.dp, BrandAmberGold.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
-                                                ) {
-                                                    Image(
-                                                        painter = painterResource(tour.coverImageRes),
-                                                        contentDescription = null,
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        contentScale = ContentScale.Crop
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.width(12.dp))
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = tour.title,
-                                                        style = MaterialTheme.typography.bodyMedium,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                    Text(
-                                                        text = tour.subtitle,
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        maxLines = 1,
-                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                                    )
-                                                }
-                                                Icon(
-                                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                                    contentDescription = null,
-                                                    tint = Gray400,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-
-                                            if (index < AppTours.all.size - 1) {
-                                                HorizontalDivider(
-                                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                                    thickness = 0.5.dp,
-                                                    modifier = Modifier.padding(vertical = 2.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                                ProfileActionRow(
+                                    icon = Icons.Default.Info,
+                                    iconTint = MaterialTheme.colorScheme.primary,
+                                    title = "About Loanzo",
+                                    onClick = { currentSubPage = ProfileSubPage.ABOUT_US }
+                                )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // ================= GROUP 6: ACCOUNT SIGN OUT =================
-                        OutlinedButton(
-                            onClick = { showLogoutConfirmDialog = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
-                            border = BorderStroke(1.dp, Red400.copy(alpha = 0.5f))
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Logout, null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.logout), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        // Administrative Controls
+                        if (isOwner || canSwitchRoles) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Card(
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                ProfileActionRow(
+                                    icon = Icons.Default.AdminPanelSettings,
+                                    iconTint = MaterialTheme.colorScheme.primary,
+                                    title = "App Owner Control Center",
+                                    onClick = onNavigateToAdminHub
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(36.dp))
+                        Spacer(modifier = Modifier.height(28.dp))
                     }
 
                     if (!profileGuideSeen) {
@@ -1709,6 +1549,38 @@ fun ProfileScreen(
                             }
                         }
 
+                        // Floating AI Assistant Bubble Toggle
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Floating AI Assistant", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        "Display quick-access floating AI Assistant bubble on screen for instant answers and financial guidance.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Switch(
+                                    checked = isFloatingBotEnabled,
+                                    onCheckedChange = { enabled ->
+                                        scope.launch { userRepository.setFloatingChatbotEnabled(enabled) }
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = Emerald500
+                                    )
+                                )
+                            }
+                        }
+
                         // Telegram Assistant Bot
                         GlassCard(modifier = Modifier.fillMaxWidth()) {
                             Text("Telegram Bot Notifications", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
@@ -1716,18 +1588,58 @@ fun ProfileScreen(
                             Text(
                                 "Receive instant real-time EMI reminders, disbursal alerts, and loan status updates via our Telegram Bot (@Loanzo_bot).",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp
                             )
+                            if (user.telegramUsername.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Emerald500.copy(alpha = 0.12f),
+                                    border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.3f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.CheckCircle, null, tint = Emerald500, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Linked: @${user.telegramUsername}",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Emerald500
+                                        )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Text(
+                                            text = "Edit",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.clickable { showRegisterTelegramDialog = true }
+                                        )
+                                    }
+                                }
+                            }
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
-                                onClick = { com.loanzo.app.util.TelegramManager.instance.openBotForLinking(context, user.userId) },
+                                onClick = {
+                                    if (user.telegramUsername.isBlank()) {
+                                        showRegisterTelegramDialog = true
+                                    } else {
+                                        com.loanzo.app.util.TelegramManager.instance.openBotForLinking(context, user.userId)
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.Send, null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Open @Loanzo_bot on Telegram", fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (user.telegramUsername.isBlank()) "Register & Open @Loanzo_bot" else "Open @Loanzo_bot on Telegram",
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
@@ -1741,7 +1653,7 @@ fun ProfileScreen(
                 Scaffold(
                     topBar = {
                         TopAppBar(
-                            title = { Text("Terms & Conditions", fontWeight = FontWeight.Bold) },
+                            title = { Text("Terms, Compliance & Legal", fontWeight = FontWeight.Bold) },
                             navigationIcon = {
                                 IconButton(onClick = { currentSubPage = ProfileSubPage.MAIN }) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -1773,7 +1685,7 @@ fun ProfileScreen(
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    "Version 2026.9 • Compliant with Reserve Bank of India (RBI) P2P Lending Directives and the Information Technology Act, 2000.",
+                                    "Version 2026.9 • Fully aligned with Reserve Bank of India (RBI) NBFC-P2P Directives, Information Technology Act 2000, and DPDP Act 2023.",
                                     color = Gray300,
                                     fontSize = 11.sp,
                                     lineHeight = 15.sp
@@ -1783,20 +1695,20 @@ fun ProfileScreen(
 
                         LegalClauseCard(
                             clauseNumber = "1",
-                            title = "Decentralized P2P Facilitation",
-                            content = "Loanzo acts as a technology platform and marketplace facilitating direct peer-to-peer lending contracts between verified individuals. Loanzo is not a Non-Banking Financial Company (NBFC) or a bank, does not accept public deposits, and does not provide principal guarantees. All transactions are direct legal contracts between the Lender and Borrower."
+                            title = "Decentralized P2P Marketplace Facilitation",
+                            content = "Loanzo operates strictly as a financial technology platform and peer-to-peer marketplace facilitating direct bilateral loan contracts between verified participants. Loanzo is not a bank or deposit-taking entity, does not accept public deposits, and does not provide principal guarantees. All transactions represent direct legal contracts between the Capital Provider (Lender) and Borrower."
                         )
 
                         LegalClauseCard(
                             clauseNumber = "2",
-                            title = "Digital KYC & AML Verification",
-                            content = "Users explicitly consent to the verification of PAN card, Aadhaar records via DigiLocker API, and real-time facial liveness. Documents are stored in an AES-256 encrypted Document Vault. Any fraudulent, doctored, or falsified KYC submission constitutes a legal offense under the Prevention of Money Laundering Act (PMLA) and will result in immediate platform restriction and law enforcement reporting."
+                            title = "Digital KYC & PMLA Verification",
+                            content = "Users explicitly consent to the verification of PAN card, Aadhaar records via DigiLocker, and real-time facial liveness. Financial credentials are held in an AES-256 encrypted Document Vault with zero-knowledge derivation. Any fraudulent, doctored, or falsified KYC submission constitutes an offense under the Prevention of Money Laundering Act (PMLA) and will result in immediate account freeze and law enforcement escalation."
                         )
 
                         LegalClauseCard(
                             clauseNumber = "3",
                             title = "Dual-Party eSign & Contract Legality",
-                            content = "Loan agreements executed on Loanzo are legally valid and enforceable in courts of law under Section 10A of the Indian Information Technology Act, 2000. Agreements are sealed with dual-party digital signatures, CameraX ML Kit biometric authentication timestamps, and immutable audit hashes."
+                            content = "Loan agreements executed on Loanzo are legally binding and enforceable in courts of law under Section 10A of the Indian Information Technology Act, 2000. Agreements are sealed with dual-party digital signatures, CameraX ML Kit biometric authentication timestamps, and immutable SHA-256 audit hashes."
                         )
 
                         LegalClauseCard(
@@ -1807,23 +1719,147 @@ fun ProfileScreen(
 
                         LegalClauseCard(
                             clauseNumber = "5",
-                            title = "Repayments, Grace Periods & Penalties",
-                            content = "Borrowers agree to honor the repayment schedule, tenure, and agreed interest rate. Overdue repayments incur penalties strictly calculated by Loanzo's Compound Penalty Engine and capped in accordance with RBI fair practice codes. Repayment delays trigger automatic alerts to guarantors and Telegram recovery desks."
+                            title = "RBI Fair Practices Code & Penalty Capping",
+                            content = "Borrowers agree to honor the repayment schedule and agreed interest rate. Overdue repayments incur penalties strictly calculated by Loanzo's Compound Penalty Engine, capped in compliance with RBI fair practice codes. Usurious compounding and hidden processing deductions are strictly prohibited."
                         )
 
                         LegalClauseCard(
                             clauseNumber = "6",
-                            title = "Dispute Resolution & Legal Action",
-                            content = "Users agree to resolve disputes amicably through the built-in Dispute Center. In cases of persistent default, contract breach, or harassment, the aggrieved counterparty reserves full rights to initiate formal recovery proceedings under Section 138 of the Negotiable Instruments Act and the Indian Contract Act, 1872."
+                            title = "Anti-Harassment & Recovery Code of Conduct",
+                            content = "Loanzo enforces a zero-tolerance policy against borrower harassment. In accordance with RBI Fair Practices Code, recovery agents and lenders may only initiate communications between 8:00 AM and 7:00 PM. Threatening language, workplace intimidation, or contacting third parties without consent will result in immediate permanent banning and police prosecution. Borrowers have 24/7 access to the Anti-Harassment SOS Desk."
                         )
 
                         LegalClauseCard(
                             clauseNumber = "7",
-                            title = "Data Privacy & Zero-Knowledge Vault",
-                            content = "Your sensitive identification records are stored in a password-protected Document Vault with zero-knowledge protocols. Loanzo will never sell, lease, or share your financial data with third-party telemarketers or unauthorized lenders."
+                            title = "Digital Personal Data Protection (DPDP) Act 2023",
+                            content = "Your sensitive identification records are stored in a password-protected Document Vault with zero-knowledge protocols. Under the DPDP Act 2023, you retain the right to access your stored data, request rectification, or withdraw non-statutory processing consent upon complete loan settlement."
+                        )
+
+                        LegalClauseCard(
+                            clauseNumber = "8",
+                            title = "Dispute Redressal & Legal Escalation",
+                            content = "Users agree to resolve disputes amicably through the built-in Dispute Center. In cases of persistent wilful default or fraudulent evasion, the counterparty reserves full rights to initiate formal legal recovery proceedings under Section 138 of the Negotiable Instruments Act and the Indian Contract Act, 1872."
+                        )
+
+                        LegalClauseCard(
+                            clauseNumber = "9",
+                            title = "Statutory Disclosures & Grievance Redressal",
+                            content = "For escalations, dispute arbitration, or legal notices, contact our Nodal Grievance Officer: Satyam Kumar (grievance@loanzo.in). Grievances are formally acknowledged within 24 hours and addressed within 48 business hours pursuant to RBI grievance redressal directives."
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+            }
+
+            ProfileSubPage.ABOUT_US -> {
+                // ==========================================
+                // 7. ABOUT US SUB-PAGE
+                // ==========================================
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("About Loanzo", fontWeight = FontWeight.Bold) },
+                            navigationIcon = {
+                                IconButton(onClick = { currentSubPage = ProfileSubPage.MAIN }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            }
+                        )
+                    }
+                ) { padding ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Brand Hero Card
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Navy900,
+                                    border = BorderStroke(2.dp, Gold500),
+                                    modifier = Modifier.size(68.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.AccountBalance, null, tint = Gold500, modifier = Modifier.size(36.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text("LOANZO", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Gold500, letterSpacing = 2.sp)
+                                Text("Direct Peer-to-Peer Financial Inclusion", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    "Loanzo empowers communities across India with transparent, direct lending. By replacing predatory informal loan sharks with verifiable peer trust networks and legally binding contracts, we ensure credit is accessible, fair, and secure.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 20.sp,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+
+                        // Core Architecture & Security Pillars
+                        Text("Security & Regulatory Pillars", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+
+                        AboutPillarCard(
+                            icon = Icons.Default.Shield,
+                            iconTint = Gold500,
+                            title = "Zero-Knowledge Encryption",
+                            description = "Sensitive documents and biometric signatures in the Document Vault are safeguarded with AES-256-GCM encryption."
+                        )
+
+                        AboutPillarCard(
+                            icon = Icons.Default.Badge,
+                            iconTint = Emerald400,
+                            title = "Direct DigiLocker & PAN KYC",
+                            description = "Real-time government API integrations with DigiLocker and PAN ensure every counterparty is verified with facial liveness."
+                        )
+
+                        AboutPillarCard(
+                            icon = Icons.Default.Gavel,
+                            iconTint = Color(0xFF3B82F6),
+                            title = "Legally Enforceable e-Contracts",
+                            description = "Every peer loan is backed by a Section 10A IT Act 2000 digital agreement signed with biometric audit trails."
+                        )
+
+                        AboutPillarCard(
+                            icon = Icons.Default.VerifiedUser,
+                            iconTint = Color(0xFF8B5CF6),
+                            title = "RBI P2P Regulatory Alignment",
+                            description = "Engineered pursuant to Reserve Bank of India (RBI) NBFC-P2P platform guidelines and Fair Practices Code."
+                        )
+
+                        // Nodal Grievance Office
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Grievance Redressal & Support", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Nodal Officer: Satyam Kumar\nEmail: grievance@loanzo.in • support@loanzo.app\nTelegram Bot: @Loanzo_bot\nHeadquarters: Sector 120, Noida, Uttar Pradesh 201301", fontSize = 11.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+
+                        // Footer
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                            Text("Loanzo v2.4.0 (Build 42) • Made with ❤️ in India", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                        }
                     }
                 }
             }
@@ -1831,6 +1867,41 @@ fun ProfileScreen(
     }
 
     // ================= DIALOGS & MODALS =================
+
+    // 0. Role Upgrade Promotion Dialog
+    if (showRoleUpgradeDialog && user != null) {
+        RoleUpgradePromotionDialog(
+            currentRole = user.role,
+            onDismiss = { showRoleUpgradeDialog = false },
+            onUpgradeToLender = {
+                showRoleUpgradeDialog = false
+                scope.launch {
+                    userRepository.updateUser(user.copy(role = "LENDER"))
+                    Toast.makeText(context, "Role updated to Capital Provider (Lender)!", Toast.LENGTH_LONG).show()
+                }
+            },
+            onApplyAsAgent = {
+                showRoleUpgradeDialog = false
+                onNavigateToAgent()
+            }
+        )
+    }
+
+    // 0.1 Register Telegram Username Dialog
+    if (showRegisterTelegramDialog && user != null) {
+        RegisterTelegramDialog(
+            initialUsername = user.telegramUsername,
+            onDismiss = { showRegisterTelegramDialog = false },
+            onSaveAndOpen = { cleanUsername ->
+                showRegisterTelegramDialog = false
+                scope.launch {
+                    userRepository.updateTelegramUsername(user.userId, cleanUsername)
+                    Toast.makeText(context, "Registered @$cleanUsername! Opening Telegram...", Toast.LENGTH_SHORT).show()
+                    com.loanzo.app.util.TelegramManager.instance.openBotForLinking(context, user.userId)
+                }
+            }
+        )
+    }
 
     // 1. Password Verification Dialog for Document Vault
     if (showPermissionsSheet) {
@@ -1933,198 +2004,7 @@ fun ProfileScreen(
         )
     }
 
-    // Demo Data Seeder Dialog
-    if (showDemoDataDialog) {
-        AlertDialog(
-            onDismissRequest = { if (!isSeedingDemo) showDemoDataDialog = false },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = BrandAmberGold,
-                        modifier = Modifier.size(26.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Demo Testing Playground",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        text = "Push realistic demo data everywhere across the app to test features, UI flows, and lifecycle interactions:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    val items = listOf(
-                        "✅ Full KYC & Bank Verification" to "Unlocks loan creation, borrowing, and community wall posting without restrictions.",
-                        "💰 3 Diverse Active Loans" to "1 Lent loan (₹50k), 1 Borrowed loan (₹25k), and 1 Closed pristine loan.",
-                        "📅 EMI Schedules & Statements" to "Paid and upcoming scheduled installments with real UPI transaction references.",
-                        "🌐 Community Loan Wall Posts" to "4 rich posts (Lending offers & Borrowing requests) with interactive proposals/bids.",
-                        "🔔 Alerts & Audit Logs" to "EMI reminder notifications, disbursal receipts, and audit trail ledger."
-                    )
-                    
-                    items.forEach { (heading, desc) ->
-                        Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                            Column {
-                                Text(
-                                    text = heading,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = desc,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
 
-                    if (isSeedingDemo) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.dp,
-                                color = BrandAmberGold
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Applying demo records...",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = BrandAmberGold,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        isSeedingDemo = true
-                        onPushDemoData { success, msg ->
-                            isSeedingDemo = false
-                            showDemoDataDialog = false
-                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                        }
-                    },
-                    enabled = !isSeedingDemo,
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color.Black)
-                ) {
-                    Text("Push Demo Data", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                Row {
-                    OutlinedButton(
-                        onClick = {
-                            isSeedingDemo = true
-                            onClearDemoData { success, msg ->
-                                isSeedingDemo = false
-                                showDemoDataDialog = false
-                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        enabled = !isSeedingDemo
-                    ) {
-                        Text("Reset Demo Data")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(
-                        onClick = { showDemoDataDialog = false },
-                        enabled = !isSeedingDemo
-                    ) {
-                        Text("Cancel")
-                    }
-                }
-            }
-        )
-    }
-
-    // Admin Clearance Request Dialog
-    if (showAdminRequestDialog) {
-        AlertDialog(
-            onDismissRequest = { if (!isSubmittingAdminRequest) showAdminRequestDialog = false },
-            icon = {
-                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Gold500, modifier = Modifier.size(32.dp))
-            },
-            title = {
-                Text("Request Platform Staff Access", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "Platform Admin clearance grants access to collateral vault oversight, agent dispatching, KYC attestations, and ombudsman mediation.",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = adminJustification,
-                        onValueChange = { adminJustification = it },
-                        placeholder = { Text("Enter your reason / department / employee ID...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3,
-                        maxLines = 5,
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (adminJustification.isNotBlank()) {
-                            scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                isSubmittingAdminRequest = true
-                                adminRepository.submitAdminRequest(
-                                    userId = user.userId,
-                                    userName = user.name,
-                                    userPhone = user.phone,
-                                    userEmail = user.email,
-                                    currentRole = user.role,
-                                    justification = adminJustification.trim()
-                                )
-                                isSubmittingAdminRequest = false
-                                showAdminRequestDialog = false
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                    Toast.makeText(context, "Admin access request submitted to platform owner!", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        }
-                    },
-                    enabled = adminJustification.isNotBlank() && !isSubmittingAdminRequest,
-                    colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
-                ) {
-                    if (isSubmittingAdminRequest) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Navy900, strokeWidth = 2.dp)
-                    } else {
-                        Text("Submit Request", fontWeight = FontWeight.Bold)
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showAdminRequestDialog = false },
-                    enabled = !isSubmittingAdminRequest
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 
     // 4. Language Selection Sheet
     if (showLanguageSheet) {
@@ -2337,7 +2217,7 @@ private fun ProfileActionRow(
     icon: ImageVector,
     iconTint: Color,
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     statusBadge: String? = null,
     badgeColor: Color = Gold500,
     onClick: () -> Unit
@@ -2359,7 +2239,9 @@ private fun ProfileActionRow(
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            if (!subtitle.isNullOrBlank()) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
         }
         if (statusBadge != null) {
             Surface(
@@ -2568,6 +2450,65 @@ private fun ProfileMetricChip(
 }
 
 @Composable
+private fun QuickActionTile(
+    icon: ImageVector,
+    iconTint: Color,
+    title: String,
+    subtitle: String? = null,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = iconTint.copy(alpha = 0.12f),
+                modifier = Modifier.size(38.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProfileRow(icon: ImageVector, label: String, value: String) {
     Row(
         modifier = Modifier
@@ -2589,3 +2530,268 @@ private fun ProfileRow(icon: ImageVector, label: String, value: String) {
         }
     }
 }
+
+@Composable
+fun RoleUpgradePromotionDialog(
+    currentRole: String,
+    onDismiss: () -> Unit,
+    onUpgradeToLender: () -> Unit,
+    onApplyAsAgent: () -> Unit
+) {
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+                border = BorderStroke(1.2.dp, Gold500.copy(alpha = 0.4f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Gold500.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.3f))
+                        ) {
+                            Text(
+                                text = "ROLE UPGRADE PROMOTION",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Gold500,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
+                        }
+                    }
+
+                    Text(
+                        text = "Unlock Higher Financial Capabilities",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = "Elevate your account from borrower to capital provider or certified field partner to earn returns and commissions.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        fontSize = 12.sp
+                    )
+
+                    // Card 1: Capital Provider (Lender)
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        border = BorderStroke(1.dp, Gold500.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Gold500.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.AccountBalance, null, tint = Gold500, modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text("Capital Provider (Lender)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Earn 12% - 24% p.a. on P2P Loans", fontSize = 11.sp, color = Gold500, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "• Direct bilateral contracts under Section 10A IT Act\n• Automated ₹1 penny-drop borrower bank verification\n• Diversify across multiple vetted borrower risk tiers",
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Button(
+                                onClick = onUpgradeToLender,
+                                modifier = Modifier.fillMaxWidth().height(38.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(if (currentRole.equals("LENDER", ignoreCase = true)) "Active Role ✓" else "Switch to Capital Provider", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+
+                    // Card 2: Certified Field Agent
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Emerald400.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Badge, null, tint = Emerald400, modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text("Certified Field Agent", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("Earn ₹250 - ₹500 per Field Verification", fontSize = 11.sp, color = Emerald400, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "• Conduct physical borrower KYC and doorstep verification\n• On-Duty/Off-Duty status toggle with live GPS radar\n• Weekly instant payouts to your registered UPI ID",
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Button(
+                                onClick = onApplyAsAgent,
+                                modifier = Modifier.fillMaxWidth().height(38.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Color.White),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(if (currentRole.equals("AGENT", ignoreCase = true)) "Agent Active ✓" else "Apply as Field Agent", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RegisterTelegramDialog(
+    initialUsername: String,
+    onDismiss: () -> Unit,
+    onSaveAndOpen: (String) -> Unit
+) {
+    var inputUsername by remember { mutableStateOf(initialUsername.removePrefix("@")) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(Icons.AutoMirrored.Filled.Send, null, tint = Emerald500, modifier = Modifier.size(32.dp))
+        },
+        title = {
+            Text("Register Telegram Username", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "To enable our 24/7 Telegram Assistant (@Loanzo_bot) to recognize your account and send instant alerts, please enter your Telegram username.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp
+                )
+                OutlinedTextField(
+                    value = inputUsername,
+                    onValueChange = {
+                        inputUsername = it.trim().removePrefix("@")
+                        errorMsg = null
+                    },
+                    label = { Text("Telegram Username") },
+                    prefix = { Text("@", fontWeight = FontWeight.Bold, color = Emerald500) },
+                    singleLine = true,
+                    isError = errorMsg != null,
+                    supportingText = errorMsg?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val clean = inputUsername.trim().removePrefix("@")
+                    if (clean.length < 4) {
+                        errorMsg = "Username must be at least 4 characters"
+                        return@Button
+                    }
+                    onSaveAndOpen(clean)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Register & Open Bot", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun AboutPillarCard(
+    icon: ImageVector,
+    iconTint: Color,
+    title: String,
+    description: String
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = iconTint.copy(alpha = 0.15f),
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(description, fontSize = 11.sp, lineHeight = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+

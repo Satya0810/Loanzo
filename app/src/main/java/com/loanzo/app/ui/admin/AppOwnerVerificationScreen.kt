@@ -2,18 +2,8 @@ package com.loanzo.app.ui.admin
 
 import com.loanzo.app.ui.components.ExecutiveHeroCard
 import com.loanzo.app.ui.components.LoanzoAvatar
-import com.loanzo.app.ui.theme.Navy700
-import com.loanzo.app.ui.theme.Navy800
-import com.loanzo.app.ui.theme.Navy900
-import com.loanzo.app.ui.theme.SurfaceDarkElevated
-import com.loanzo.app.ui.theme.GoldCoinBright
-import com.loanzo.app.ui.theme.GoldCoinRich
-import com.loanzo.app.ui.theme.GoldCoinAmber
-import com.loanzo.app.ui.theme.Gray300
-import com.loanzo.app.ui.theme.Gray400
-import com.loanzo.app.ui.theme.Emerald400
-import com.loanzo.app.ui.theme.Gold500
-import com.loanzo.app.ui.theme.Emerald500
+import com.loanzo.app.ui.components.SegmentedCapsuleTab
+import com.loanzo.app.ui.theme.*
 
 
 import android.content.Intent
@@ -40,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,7 +88,6 @@ fun AppOwnerVerificationScreen(
 
     // Seed sample data and start real-time cloud sync on first entry
     LaunchedEffect(Unit) {
-        adminRepository.seedSampleAdminDataIfEmpty()
         adminRepository.startRealtimeAdminCloudSync(scope)
         scope.launch(Dispatchers.IO) {
             adminRepository.refreshAgentApplicationsFromCloud()
@@ -105,11 +95,37 @@ fun AppOwnerVerificationScreen(
         }
     }
 
-    // Active Tab state:
-    // 0: 👥 Agents, 1: 📑 Documents & KYC, 2: 🗺️ Dispatch, 3: 💎 Vault, 4: ⚖️ Complaints, 5: 📜 NOCs, 6: 📅 Hearings, 7: 🔑 SMS Tokens
-    var activeTab by remember(initialTab) { mutableIntStateOf(initialTab) }
+    // Active Operational Module:
+    // Module 0: 👥 Identity & Agents (Members, KYC, Empaneled Agents, PCC)
+    // Module 1: 🗺️ Field Dispatch (Visits, Dual-Officer Consensus Matrix)
+    // Module 2: 💎 Vault & Legal NOC (Collateral Lockers, Cryptographic NOCs)
+    // Module 3: ⚖️ Resolution & Support (Grievances, Ombudsman Hearings, Support Tickets)
+    val initialModule = remember(initialTab) {
+        when (initialTab) {
+            0, 10, 11 -> 0
+            1, 20, 21 -> 1
+            2, 4, 6, 30, 31 -> 2
+            3, 5, 7, 9, 40, 41, 42 -> 3
+            else -> 0
+        }
+    }
+    var activeTab by remember(initialTab) { mutableIntStateOf(initialModule) }
+    var identitySubTab by remember(initialTab) {
+        mutableIntStateOf(if (initialTab == 11) 1 else 0)
+    }
+    var vaultSubTab by remember(initialTab) {
+        mutableIntStateOf(if (initialTab == 6 || initialTab == 31) 1 else 0)
+    }
+    var supportSubTab by remember(initialTab) {
+        mutableIntStateOf(
+            when (initialTab) {
+                7, 41 -> 1
+                9, 42 -> 2
+                else -> 0
+            }
+        )
+    }
     var searchQuery by remember { mutableStateOf("") }
-    var manualTokenInput by remember { mutableStateOf("") }
 
     // Dialog & Sheet States
     var inspectingDoc by remember { mutableStateOf<DocumentInspectionData?>(null) }
@@ -128,14 +144,13 @@ fun AppOwnerVerificationScreen(
     val openComplaintsCount = remember(complaints) { complaints.count { it.status == "OPEN" || it.status == "INVESTIGATING" } }
     val unassignedCount = remember(unassignedVisits) { unassignedVisits.size }
     val vaultTotalValue = remember(vaultItems) { vaultItems.sumOf { it.estimatedValue } }
-    val pendingTokensCount = remember(verifications) { verifications.count { it.status == "PENDING" } }
     val openTicketsCount = remember(allTickets) { allTickets.count { it.status == "OPEN" || it.status == "UNDER_REVIEW" || it.status == "CALLBACK_SCHEDULED" || it.status == "IN_PROGRESS" } }
 
     LoanzoTheme(darkTheme = false) {
         Scaffold(
             topBar = {
                 Surface(
-                    shadowElevation = 2.dp,
+                    shadowElevation = 1.dp,
                     color = Color.White
                 ) {
                     TopAppBar(
@@ -144,26 +159,42 @@ fun AppOwnerVerificationScreen(
                                 Image(
                                     painter = painterResource(id = R.drawable.app_logo),
                                     contentDescription = "Loanzo Logo",
-                                    modifier = Modifier.size(34.dp).clip(RoundedCornerShape(8.dp))
+                                    modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp))
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
                                         Text(
-                                            text = "Master Admin Command Center",
-                                            fontWeight = FontWeight.Bold,
+                                            text = "Command Center",
+                                            fontWeight = FontWeight.ExtraBold,
                                             fontSize = 16.sp,
-                                            color = Color(0xFF0F172A),
+                                            color = TextNavyDark,
                                             maxLines = 1,
                                             softWrap = false,
                                             overflow = TextOverflow.Ellipsis
                                         )
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = GoldCoinCream,
+                                            border = BorderStroke(1.dp, GoldCoinBorder)
+                                        ) {
+                                            Text(
+                                                text = "MASTER ADMIN",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = GoldCoinAmber,
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                            )
+                                        }
                                     }
                                     Text(
-                                        text = "👑 Master Admin Command Center",
+                                        text = "Institutional Governance & Operations",
                                         fontSize = 11.sp,
-                                        color = Color(0xFFD97706),
-                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextSlateMuted,
+                                        fontWeight = FontWeight.Medium,
                                         maxLines = 1,
                                         softWrap = false
                                     )
@@ -172,7 +203,7 @@ fun AppOwnerVerificationScreen(
                         },
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A))
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextNavyDark)
                             }
                         },
                         actions = {
@@ -200,22 +231,31 @@ fun AppOwnerVerificationScreen(
                                     }
                                 }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Sync,
-                                    contentDescription = "Sync Cloud Data",
-                                    tint = Color(0xFF0F172A)
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(BrandIceBlue),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Sync,
+                                        contentDescription = "Sync Cloud Data",
+                                        tint = BrandRoyalBlue,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.White,
-                            titleContentColor = Color(0xFF0F172A),
-                            navigationIconContentColor = Color(0xFF0F172A)
+                            titleContentColor = TextNavyDark,
+                            navigationIconContentColor = TextNavyDark
                         )
                     )
                 }
             },
-            containerColor = Color(0xFFF1F5F9)
+            containerColor = CanvasPorcelain
         ) { padding ->
         Column(
             modifier = Modifier
@@ -232,18 +272,38 @@ fun AppOwnerVerificationScreen(
                 openComplaints = openComplaintsCount
             )
 
-            // Smart Horizontal Operational Desks Bar (10 Desks with Badges & Auto-scroll)
+            // Smart Operational Modules Bar (4 Strategic Desks)
             val desks = listOf(
-                AdminDeskItem(0, "Users & KYC", Icons.Default.People, allUsers.size, pendingUsersCount, if (pendingUsersCount > 0) Gold500 else Emerald400),
-                AdminDeskItem(1, "Agents", Icons.Default.Groups, agentApplications.size, pendingAgentsCount, Gold500),
-                AdminDeskItem(2, "Agent KYC", Icons.Default.AssignmentInd, pendingAgentsCount, pendingAgentsCount, if (pendingAgentsCount > 0) Gold500 else Emerald400),
-                AdminDeskItem(3, "Dispatch", Icons.Default.NearMe, unassignedCount, unassignedCount, if (unassignedCount > 0) Color(0xFFF97316) else Emerald400),
-                AdminDeskItem(4, "Vault", Icons.Default.Diamond, vaultItems.size),
-                AdminDeskItem(5, "Grievances", Icons.Default.Gavel, complaints.size, openComplaintsCount, if (openComplaintsCount > 0) Color(0xFFEF4444) else Emerald400),
-                AdminDeskItem(6, "Legal NOC", Icons.Default.Description, nocs.size),
-                AdminDeskItem(7, "Hearings", Icons.Default.Event, meetings.size),
-                AdminDeskItem(8, "Tokens", Icons.Default.Key, verifications.size, pendingTokensCount, if (pendingTokensCount > 0) Gold500 else Emerald400),
-                AdminDeskItem(9, "Tickets", Icons.Default.SupportAgent, allTickets.size, openTicketsCount, if (openTicketsCount > 0) Color(0xFFEF4444) else Emerald400)
+                AdminDeskItem(
+                    id = 0,
+                    title = "Identity & Agents",
+                    icon = Icons.Default.Badge,
+                    count = allUsers.size + agentApplications.size,
+                    alertCount = pendingUsersCount + pendingAgentsCount,
+                    alertColor = if ((pendingUsersCount + pendingAgentsCount) > 0) GoldCoinAmber else Emerald500
+                ),
+                AdminDeskItem(
+                    id = 1,
+                    title = "Field Dispatch",
+                    icon = Icons.Default.NearMe,
+                    count = allVisits.size,
+                    alertCount = unassignedCount,
+                    alertColor = if (unassignedCount > 0) BrandSolarOrange else Emerald500
+                ),
+                AdminDeskItem(
+                    id = 2,
+                    title = "Vault & Legal NOC",
+                    icon = Icons.Default.Diamond,
+                    count = vaultItems.size + nocs.size
+                ),
+                AdminDeskItem(
+                    id = 3,
+                    title = "Resolution & Support",
+                    icon = Icons.Default.Gavel,
+                    count = complaints.size + allTickets.size,
+                    alertCount = openComplaintsCount + openTicketsCount,
+                    alertColor = if ((openComplaintsCount + openTicketsCount) > 0) Red500 else Emerald500
+                )
             )
 
             Row(
@@ -268,81 +328,88 @@ fun AppOwnerVerificationScreen(
             // Main Tab Content Router
             Box(modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
                 when (activeTab) {
-                    0 -> UsersKycTab(
-                        users = allUsers,
-                        pendingAdminRequests = pendingAdminRequests,
-                        onApproveAdminRequest = { reqId ->
-                            scope.launch(Dispatchers.IO) {
-                                adminRepository.approveAdminRequest(reqId)
-                                kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "User role elevated to Admin successfully!", Toast.LENGTH_SHORT).show()
+                    0 -> Column(modifier = Modifier.fillMaxSize()) {
+                        SegmentedCapsuleTab(
+                            tabs = listOf(
+                                "Members & KYC (${allUsers.size})",
+                                "Field Agents (${agentApplications.size})"
+                            ),
+                            selectedIndex = identitySubTab,
+                            onTabSelected = { identitySubTab = it },
+                            modifier = Modifier.padding(bottom = 10.dp),
+                            activeColor = BrandRoyalBlue,
+                            activeTextColor = Color.White,
+                            inactiveTextColor = TextSlateMuted,
+                            containerColor = Color.White
+                        )
+                        if (identitySubTab == 0) {
+                            UsersKycTab(
+                                users = allUsers,
+                                pendingAdminRequests = pendingAdminRequests,
+                                onApproveAdminRequest = { reqId ->
+                                    scope.launch(Dispatchers.IO) {
+                                        adminRepository.approveAdminRequest(reqId)
+                                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "User role elevated to Admin successfully!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                onRejectAdminRequest = { reqId, reason ->
+                                    scope.launch(Dispatchers.IO) {
+                                        adminRepository.rejectAdminRequest(reqId, reason)
+                                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "Admin request rejected", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                onSendDirectNotif = { user ->
+                                    sendingNotificationToUser = user
+                                    directNotifTitle = "Platform Notification"
+                                    directNotifMessage = ""
+                                },
+                                onInspectDoc = { data -> inspectingDoc = data },
+                                onVerifyUser = onVerifyUserKyc,
+                                onCallUser = { phone ->
+                                    try {
+                                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {}
                                 }
-                            }
-                        },
-                        onRejectAdminRequest = { reqId, reason ->
-                            scope.launch(Dispatchers.IO) {
-                                adminRepository.rejectAdminRequest(reqId, reason)
-                                kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Admin request rejected", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                        onSendDirectNotif = { user ->
-                            sendingNotificationToUser = user
-                            directNotifTitle = "Platform Notification"
-                            directNotifMessage = ""
-                        },
-                        onInspectDoc = { data -> inspectingDoc = data },
-                        onVerifyUser = onVerifyUserKyc,
-                        onCallUser = { phone ->
-                            try {
-                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
-                                context.startActivity(intent)
-                            } catch (_: Exception) {}
-                        }
-                    )
-                    1 -> AgentsTab(
-                        agents = agentApplications,
-                        searchQuery = searchQuery,
-                        onSearchChange = { searchQuery = it },
-                        onApprove = onApproveAgentApplication,
-                        onReject = onRejectAgentApplication,
-                        onInspectDoc = { agent ->
-                            inspectingDoc = DocumentInspectionData(
-                                title = "Police Clearance Certificate (PCC)",
-                                category = "AGENT_EMPANELMENT",
-                                subjectName = agent.applicantName,
-                                subjectPhone = agent.applicantPhone,
-                                documentNumber = agent.policeVerificationNumber,
-                                issuingAuthority = agent.policeStation,
-                                photoUri = agent.policeDocUri,
-                                onApprove = { onApproveAgentApplication(agent.applicationId) },
-                                onReject = { reason -> onRejectAgentApplication(agent.applicationId, reason) }
                             )
-                        },
-                        onSuspend = { agentId -> scope.launch(Dispatchers.IO) { adminRepository.suspendAgent(agentId, "Admin suspension") } },
-                        onReactivate = { agentId -> scope.launch(Dispatchers.IO) { adminRepository.reactivateAgent(agentId) } },
-                        onRefreshCloud = {
-                            scope.launch(Dispatchers.IO) {
-                                adminRepository.refreshAgentApplicationsFromCloud()
-                                kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Agent applications refreshed from cloud", Toast.LENGTH_SHORT).show()
+                        } else {
+                            AgentsTab(
+                                agents = agentApplications,
+                                searchQuery = searchQuery,
+                                onSearchChange = { searchQuery = it },
+                                onApprove = onApproveAgentApplication,
+                                onReject = onRejectAgentApplication,
+                                onInspectDoc = { agent ->
+                                    inspectingDoc = DocumentInspectionData(
+                                        title = "Police Clearance Certificate (PCC)",
+                                        category = "AGENT_EMPANELMENT",
+                                        subjectName = agent.applicantName,
+                                        subjectPhone = agent.applicantPhone,
+                                        documentNumber = agent.policeVerificationNumber,
+                                        issuingAuthority = agent.policeStation,
+                                        photoUri = agent.policeDocUri,
+                                        onApprove = { onApproveAgentApplication(agent.applicationId) },
+                                        onReject = { reason -> onRejectAgentApplication(agent.applicationId, reason) }
+                                    )
+                                },
+                                onSuspend = { agentId -> scope.launch(Dispatchers.IO) { adminRepository.suspendAgent(agentId, "Admin suspension") } },
+                                onReactivate = { agentId -> scope.launch(Dispatchers.IO) { adminRepository.reactivateAgent(agentId) } },
+                                onRefreshCloud = {
+                                    scope.launch(Dispatchers.IO) {
+                                        adminRepository.refreshAgentApplicationsFromCloud()
+                                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "Agent applications refreshed from cloud", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
-                            }
+                            )
                         }
-                    )
-                    2 -> DocumentKycTab(
-                        pendingUsers = allUsers.filter {
-                            it.kycStatus in listOf("PENDING", "IN_PROGRESS", "IN_REVIEW", "UNDER_REVIEW", "RE_KYC_REQUESTED") ||
-                            (!it.aadhaarVerified || !it.panVerified)
-                        },
-                        agentApplications = agentApplications,
-                        onInspect = { data -> inspectingDoc = data },
-                        onVerifyUser = onVerifyUserKyc,
-                        onApproveAgent = onApproveAgentApplication,
-                        onRejectAgent = onRejectAgentApplication
-                    )
-                    3 -> DispatchTab(
+                    }
+                    1 -> DispatchTab(
                         unassignedVisits = unassignedVisits,
                         crossVerificationVisits = crossVerificationVisits,
                         allAgents = agentApplications.filter { it.status == "APPROVED" },
@@ -355,14 +422,14 @@ fun AppOwnerVerificationScreen(
 
                                 adminRepository.sendUserNotification(
                                     userId = borrowerUserId,
-                                    title = "🎉 Dual-Agent Consensus Approved!",
+                                    title = "Dual-Agent Consensus Approved",
                                     message = "Your loan verification ($title) has been certified by dual field officers with 100% consensus. Escrow sanction approved!",
                                     actionRoute = "loans"
                                 )
                                 if (targetLoan != null && lenderUserId.isNotBlank()) {
                                     adminRepository.sendUserNotification(
                                         userId = lenderUserId,
-                                        title = "🎉 Dual-Agent Consensus Approved!",
+                                        title = "Dual-Agent Consensus Approved",
                                         message = "Loan ($title) has passed 100% dual-agent consensus. Escrow sanction approved!",
                                         actionRoute = "loans"
                                     )
@@ -373,111 +440,142 @@ fun AppOwnerVerificationScreen(
                             }
                         }
                     )
-                    4 -> VaultTab(
-                        vaultItems = vaultItems,
-                        onAssignLocker = { item -> assigningLockerItem = item },
-                        onRelease = { loanId -> scope.launch(Dispatchers.IO) { adminRepository.releaseCollateral(loanId) } }
-                    )
-                    5 -> ComplaintsTab(
-                        complaints = complaints,
-                        onScheduleHearing = { cmp -> schedulingMediation = cmp },
-                        onResolve = { id -> scope.launch(Dispatchers.IO) { adminRepository.resolveComplaint(id, "Resolved by Master Admin") } },
-                        onDismiss = { id -> scope.launch(Dispatchers.IO) { adminRepository.dismissComplaint(id, "Dismissed post verification") } },
-                        onAuthorizeDeviceTransfer = { compId, userId, newDevId, newDevModel ->
-                            scope.launch(Dispatchers.IO) {
-                                adminRepository.authorizeDeviceTransfer(compId, userId, newDevId, newDevModel)
-                                kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Device transfer authorized for $userId to $newDevModel", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        }
-                    )
-                    6 -> NocTab(
-                        nocs = nocs,
-                        vaultItems = vaultItems,
-                        onGenerateNoc = { loanId, borrower, pan, lender, amount, repaid, desc ->
-                            scope.launch(Dispatchers.IO) {
-                                val targetLoan = adminRepository.getLoanById(loanId)
-                                val realBorrowerId = targetLoan?.borrowerId?.ifBlank { null }
-                                    ?: allUsers.firstOrNull { it.name.equals(borrower, ignoreCase = true) }?.userId
-                                    ?: "USR-BRW"
-                                val realLenderId = targetLoan?.lenderId?.ifBlank { null }
-                                    ?: allUsers.firstOrNull { it.name.equals(lender, ignoreCase = true) }?.userId
-                                    ?: "USR-LND"
+                    2 -> Column(modifier = Modifier.fillMaxSize()) {
+                        SegmentedCapsuleTab(
+                            tabs = listOf(
+                                "Collateral Lockers (${vaultItems.size})",
+                                "Legal NOC Registry (${nocs.size})"
+                            ),
+                            selectedIndex = vaultSubTab,
+                            onTabSelected = { vaultSubTab = it },
+                            modifier = Modifier.padding(bottom = 10.dp),
+                            activeColor = BrandRoyalBlue,
+                            activeTextColor = Color.White,
+                            inactiveTextColor = TextSlateMuted,
+                            containerColor = Color.White
+                        )
+                        if (vaultSubTab == 0) {
+                            VaultTab(
+                                vaultItems = vaultItems,
+                                onAssignLocker = { item -> assigningLockerItem = item },
+                                onRelease = { loanId -> scope.launch(Dispatchers.IO) { adminRepository.releaseCollateral(loanId) } }
+                            )
+                        } else {
+                            NocTab(
+                                nocs = nocs,
+                                vaultItems = vaultItems,
+                                onGenerateNoc = { loanId, borrower, pan, lender, amount, repaid, desc ->
+                                    scope.launch(Dispatchers.IO) {
+                                        val targetLoan = adminRepository.getLoanById(loanId)
+                                        val realBorrowerId = targetLoan?.borrowerId?.ifBlank { null }
+                                            ?: allUsers.firstOrNull { it.name.equals(borrower, ignoreCase = true) }?.userId
+                                            ?: "USR-BRW"
+                                        val realLenderId = targetLoan?.lenderId?.ifBlank { null }
+                                            ?: allUsers.firstOrNull { it.name.equals(lender, ignoreCase = true) }?.userId
+                                            ?: "USR-LND"
 
-                                adminRepository.generateNoc(
-                                    loanId = loanId,
-                                    borrowerId = realBorrowerId,
-                                    borrowerName = borrower,
-                                    borrowerPan = pan,
-                                    lenderId = realLenderId,
-                                    lenderName = lender,
-                                    principalAmount = amount,
-                                    totalRepaidAmount = repaid,
-                                    collateralDesc = desc
-                                )
-                                kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "Cryptographic NOC issued & collateral released!", Toast.LENGTH_SHORT).show()
+                                        adminRepository.generateNoc(
+                                            loanId = loanId,
+                                            borrowerId = realBorrowerId,
+                                            borrowerName = borrower,
+                                            borrowerPan = pan,
+                                            lenderId = realLenderId,
+                                            lenderName = lender,
+                                            principalAmount = amount,
+                                            totalRepaidAmount = repaid,
+                                            collateralDesc = desc
+                                        )
+                                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "Cryptographic NOC issued & collateral released!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
-                            }
+                            )
                         }
-                    )
-                    7 -> HearingsTab(
-                        meetings = meetings,
-                        onScheduleNew = { schedulingMediation = ComplaintEntity(
-                            complaintId = "GENERAL",
-                            complainantId = "ADMIN",
-                            complainantName = "Master Admin",
-                            complainantRole = "ADMIN",
-                            complainantPhone = "+917061559039",
-                            category = "OTHER",
-                            priority = "MEDIUM",
-                            subject = "Loan Mediation Hearing",
-                            description = "Executive hearing session",
-                            status = "OPEN"
-                        ) },
-                        onMarkCompleted = { id -> scope.launch(Dispatchers.IO) { adminRepository.updateMeetingStatus(id, "COMPLETED", "Concluded successfully") } }
-                    )
-                    8 -> SmsInterceptorTab(
-                        verifications = verifications,
-                        manualTokenInput = manualTokenInput,
-                        onManualTokenChange = { manualTokenInput = it },
-                        onApprove = onApproveVerification,
-                        onManualVerify = onManualVerify
-                    )
-                    9 -> AdminTicketConsole(
-                        tickets = allTickets,
-                        onScheduleCallback = { ticketId, callbackAt, notes ->
-                            scope.launch(Dispatchers.IO) {
-                                supportTicketRepository.scheduleCallback(ticketId, callbackAt, notes)
-                            }
-                        },
-                        onMarkUnderReview = { ticketId ->
-                            scope.launch(Dispatchers.IO) {
-                                supportTicketRepository.markUnderReview(ticketId)
-                            }
-                        },
-                        onMarkInProgress = { ticketId ->
-                            scope.launch(Dispatchers.IO) {
-                                supportTicketRepository.markInProgress(ticketId)
-                            }
-                        },
-                        onResolve = { ticketId, resolutionNotes ->
-                            scope.launch(Dispatchers.IO) {
-                                supportTicketRepository.resolveTicket(ticketId, resolutionNotes)
-                            }
-                        },
-                        onEscalate = { ticketId, notes ->
-                            scope.launch(Dispatchers.IO) {
-                                supportTicketRepository.escalateTicket(ticketId, notes)
-                            }
-                        },
-                        onReject = { ticketId, notes ->
-                            scope.launch(Dispatchers.IO) {
-                                supportTicketRepository.rejectTicket(ticketId, notes)
-                            }
+                    }
+                    3 -> Column(modifier = Modifier.fillMaxSize()) {
+                        SegmentedCapsuleTab(
+                            tabs = listOf(
+                                "Grievances (${complaints.size})",
+                                "Hearings (${meetings.size})",
+                                "Support Tickets (${allTickets.size})"
+                            ),
+                            selectedIndex = supportSubTab,
+                            onTabSelected = { supportSubTab = it },
+                            modifier = Modifier.padding(bottom = 10.dp),
+                            activeColor = BrandRoyalBlue,
+                            activeTextColor = Color.White,
+                            inactiveTextColor = TextSlateMuted,
+                            containerColor = Color.White
+                        )
+                        when (supportSubTab) {
+                            0 -> ComplaintsTab(
+                                complaints = complaints,
+                                onScheduleHearing = { cmp -> schedulingMediation = cmp },
+                                onResolve = { id -> scope.launch(Dispatchers.IO) { adminRepository.resolveComplaint(id, "Resolved by Master Admin") } },
+                                onDismiss = { id -> scope.launch(Dispatchers.IO) { adminRepository.dismissComplaint(id, "Dismissed post verification") } },
+                                onAuthorizeDeviceTransfer = { compId, userId, newDevId, newDevModel ->
+                                    scope.launch(Dispatchers.IO) {
+                                        adminRepository.authorizeDeviceTransfer(compId, userId, newDevId, newDevModel)
+                                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "Device transfer authorized for $userId to $newDevModel", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+                            )
+                            1 -> HearingsTab(
+                                meetings = meetings,
+                                onScheduleNew = {
+                                    schedulingMediation = ComplaintEntity(
+                                        complaintId = "GENERAL",
+                                        complainantId = "ADMIN",
+                                        complainantName = "Master Admin",
+                                        complainantRole = "ADMIN",
+                                        complainantPhone = "+917061559039",
+                                        category = "OTHER",
+                                        priority = "MEDIUM",
+                                        subject = "Loan Mediation Hearing",
+                                        description = "Executive hearing session",
+                                        status = "OPEN"
+                                    )
+                                },
+                                onMarkCompleted = { id -> scope.launch(Dispatchers.IO) { adminRepository.updateMeetingStatus(id, "COMPLETED", "Concluded successfully") } }
+                            )
+                            2 -> AdminTicketConsole(
+                                tickets = allTickets,
+                                onScheduleCallback = { ticketId, callbackAt, notes ->
+                                    scope.launch(Dispatchers.IO) {
+                                        supportTicketRepository.scheduleCallback(ticketId, callbackAt, notes)
+                                    }
+                                },
+                                onMarkUnderReview = { ticketId ->
+                                    scope.launch(Dispatchers.IO) {
+                                        supportTicketRepository.markUnderReview(ticketId)
+                                    }
+                                },
+                                onMarkInProgress = { ticketId ->
+                                    scope.launch(Dispatchers.IO) {
+                                        supportTicketRepository.markInProgress(ticketId)
+                                    }
+                                },
+                                onResolve = { ticketId, resolutionNotes ->
+                                    scope.launch(Dispatchers.IO) {
+                                        supportTicketRepository.resolveTicket(ticketId, resolutionNotes)
+                                    }
+                                },
+                                onEscalate = { ticketId, notes ->
+                                    scope.launch(Dispatchers.IO) {
+                                        supportTicketRepository.escalateTicket(ticketId, notes)
+                                    }
+                                },
+                                onReject = { ticketId, notes ->
+                                    scope.launch(Dispatchers.IO) {
+                                        supportTicketRepository.rejectTicket(ticketId, notes)
+                                    }
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
@@ -549,25 +647,27 @@ fun AppOwnerVerificationScreen(
                 onDismissRequest = { sendingNotificationToUser = null },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Campaign, null, tint = Gold500)
+                        Icon(Icons.Default.Campaign, null, tint = BrandRoyalBlue)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Send Direct Cloud Notification", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Send Direct Cloud Notification", color = TextNavyDark, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 },
                 text = {
                     Column {
-                        Text("Recipient: ${targetUser.name} (${targetUser.phone})", color = Color(0xFF64748B), fontSize = 12.sp)
+                        Text("Recipient: ${targetUser.name} (${targetUser.phone})", color = TextSlateMuted, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(10.dp))
                         OutlinedTextField(
                             value = directNotifTitle,
                             onValueChange = { directNotifTitle = it },
                             label = { Text("Notification Title") },
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color(0xFF0F172A),
-                                unfocusedTextColor = Color(0xFF0F172A),
-                                focusedBorderColor = Gold500,
-                                unfocusedBorderColor = Color(0xFFCBD5E1)
+                                focusedTextColor = TextNavyDark,
+                                unfocusedTextColor = TextNavyDark,
+                                focusedBorderColor = BrandRoyalBlue,
+                                unfocusedBorderColor = BrandIceBorder,
+                                focusedLabelColor = BrandRoyalBlue
                             )
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -577,11 +677,13 @@ fun AppOwnerVerificationScreen(
                             label = { Text("Message Body") },
                             modifier = Modifier.fillMaxWidth(),
                             maxLines = 4,
+                            shape = RoundedCornerShape(10.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color(0xFF0F172A),
-                                unfocusedTextColor = Color(0xFF0F172A),
-                                focusedBorderColor = Gold500,
-                                unfocusedBorderColor = Color(0xFFCBD5E1)
+                                focusedTextColor = TextNavyDark,
+                                unfocusedTextColor = TextNavyDark,
+                                focusedBorderColor = BrandRoyalBlue,
+                                unfocusedBorderColor = BrandIceBorder,
+                                focusedLabelColor = BrandRoyalBlue
                             )
                         )
                     }
@@ -602,7 +704,8 @@ fun AppOwnerVerificationScreen(
                                 Toast.makeText(context, "Notification delivered to ${targetUser.name}!", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Navy900),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White),
                         enabled = directNotifTitle.isNotBlank() && directNotifMessage.isNotBlank()
                     ) {
                         Text("Send to Device", fontWeight = FontWeight.Bold)
@@ -610,7 +713,7 @@ fun AppOwnerVerificationScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { sendingNotificationToUser = null }) {
-                        Text("Cancel", color = Color(0xFF64748B))
+                        Text("Cancel", color = TextSlateMuted)
                     }
                 },
                 containerColor = Color.White
@@ -672,7 +775,7 @@ data class AdminDeskItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val count: Int,
     val alertCount: Int = 0,
-    val alertColor: Color = Color(0xFFEF4444)
+    val alertColor: Color = Red500
 )
 
 @Composable
@@ -684,10 +787,10 @@ private fun AdminDeskPill(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        color = if (isSelected) Color(0xFF1E40AF) else Color.White,
+        color = if (isSelected) BrandRoyalBlue else Color.White,
         border = BorderStroke(
             1.dp,
-            if (isSelected) Color(0xFF1E40AF) else Color(0xFFE2E8F0)
+            if (isSelected) BrandRoyalBlue else BrandIceBorder
         ),
         modifier = Modifier.height(38.dp)
     ) {
@@ -699,14 +802,14 @@ private fun AdminDeskPill(
             Icon(
                 imageVector = desk.icon,
                 contentDescription = desk.title,
-                tint = if (isSelected) Color.White else Color(0xFF64748B),
+                tint = if (isSelected) Color.White else TextSlateMuted,
                 modifier = Modifier.size(16.dp)
             )
             Text(
                 text = desk.title,
                 fontSize = 12.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color.White else Color(0xFF334155),
+                color = if (isSelected) Color.White else TextNavyDark,
                 maxLines = 1,
                 softWrap = false
             )
@@ -726,14 +829,14 @@ private fun AdminDeskPill(
             } else if (desk.count > 0) {
                 Surface(
                     shape = CircleShape,
-                    color = if (isSelected) Color(0xFF1E293B) else Color(0xFFF1F5F9)
+                    color = if (isSelected) BrandCobalt else BrandIceBlue
                 ) {
                     Text(
                         text = "${desk.count}",
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isSelected) Color.White else Color(0xFF64748B),
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) Color.White else BrandRoyalBlue,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                     )
                 }
             }
@@ -764,7 +867,7 @@ private fun AdminExecutiveRibbon(
             value = "$totalUsers",
             subValue = if (pendingKycUsers > 0) "$pendingKycUsers Req" else "Verified",
             icon = Icons.Default.Person,
-            accentColor = if (pendingKycUsers > 0) Gold500 else Emerald400
+            accentColor = if (pendingKycUsers > 0) GoldCoinAmber else BrandRoyalBlue
         )
 
         // Vault Escrow Chip
@@ -772,7 +875,7 @@ private fun AdminExecutiveRibbon(
             label = "VAULT ESCROW",
             value = "₹${(vaultValue / 100000).formatDecimal(1)}L",
             icon = Icons.Default.Diamond,
-            accentColor = GoldCoinBright
+            accentColor = GoldCoinAmber
         )
 
         // Agents Chip
@@ -780,7 +883,7 @@ private fun AdminExecutiveRibbon(
             label = "AGENTS",
             value = "$activeAgents On-Duty",
             icon = Icons.Default.Shield,
-            accentColor = Emerald400
+            accentColor = Emerald500
         )
 
         // Dispatch Chip
@@ -788,7 +891,7 @@ private fun AdminExecutiveRibbon(
             label = "DISPATCH",
             value = if (unassignedVisits > 0) "$unassignedVisits Pending" else "All Assigned",
             icon = Icons.Default.NearMe,
-            accentColor = if (unassignedVisits > 0) Color(0xFFF97316) else Emerald400
+            accentColor = if (unassignedVisits > 0) BrandSolarOrange else Emerald500
         )
 
         // Ombudsman Chip
@@ -796,7 +899,7 @@ private fun AdminExecutiveRibbon(
             label = "OMBUDSMAN",
             value = if (openComplaints > 0) "$openComplaints Open" else "Zero Open",
             icon = Icons.Default.Gavel,
-            accentColor = if (openComplaints > 0) Color(0xFFEF4444) else Emerald400
+            accentColor = if (openComplaints > 0) Red500 else Emerald500
         )
     }
 }
@@ -812,7 +915,7 @@ private fun ExecutiveMetricChip(
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        border = BorderStroke(1.dp, BrandIceBorder)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -829,9 +932,9 @@ private fun ExecutiveMetricChip(
                 Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(13.dp))
             }
             Column {
-                Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B), letterSpacing = 0.5.sp)
+                Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSlateMuted, letterSpacing = 0.5.sp)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(value, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF0F172A))
+                    Text(value, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = TextNavyDark)
                     if (subValue != null) {
                         Text(subValue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = accentColor)
                     }
@@ -905,8 +1008,8 @@ private fun UsersKycTab(
         if (pendingAdminRequests.isNotEmpty()) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFFFFFBEB),
-                border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                color = GoldCoinCream,
+                border = BorderStroke(1.dp, GoldCoinBorder),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
@@ -924,29 +1027,29 @@ private fun UsersKycTab(
                                 modifier = Modifier
                                     .size(28.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFFEF3C7)),
+                                    .background(GoldCoinAmber.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = GoldCoinAmber, modifier = Modifier.size(16.dp))
                             }
                             Column {
                                 Text(
                                     text = "Staff / Admin Access Requests (${pendingAdminRequests.size})",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF92400E)
+                                    color = TextNavyDark
                                 )
                                 Text(
                                     text = if (isRequestsExpanded) "Tap to collapse" else "Tap to review & elevate requests",
                                     fontSize = 10.sp,
-                                    color = Color(0xFFB45309)
+                                    color = TextSlateMuted
                                 )
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Surface(
                                 shape = CircleShape,
-                                color = Color(0xFFD97706)
+                                color = GoldCoinAmber
                             ) {
                                 Text(
                                     text = "${pendingAdminRequests.size}",
@@ -959,7 +1062,7 @@ private fun UsersKycTab(
                             Icon(
                                 imageVector = if (isRequestsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                 contentDescription = if (isRequestsExpanded) "Collapse" else "Expand",
-                                tint = Color(0xFFD97706),
+                                tint = GoldCoinAmber,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -972,7 +1075,7 @@ private fun UsersKycTab(
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
                                 color = Color.White,
-                                border = BorderStroke(1.dp, Color(0xFFFED7AA)),
+                                border = BorderStroke(1.dp, BrandIceBorder),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp)
@@ -988,23 +1091,24 @@ private fun UsersKycTab(
                                                 text = req.userName,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp,
-                                                color = Color(0xFF0F172A)
+                                                color = TextNavyDark
                                             )
                                             Text(
                                                 text = "${req.userPhone} • Current: ${req.currentRole}",
                                                 fontSize = 11.sp,
-                                                color = Color(0xFF64748B)
+                                                color = TextSlateMuted
                                             )
                                         }
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
-                                            color = Color(0xFFFEF3C7)
+                                            color = GoldCoinCream,
+                                            border = BorderStroke(1.dp, GoldCoinBorder)
                                         ) {
                                             Text(
                                                 text = "REQ: ${req.requestedRole}",
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color(0xFFB45309),
+                                                color = GoldCoinAmber,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
                                         }
@@ -1014,14 +1118,14 @@ private fun UsersKycTab(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
-                                            color = Color(0xFFF8FAFC),
-                                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                                            color = CanvasPorcelain,
+                                            border = BorderStroke(1.dp, BrandIceBorder),
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Text(
                                                 text = "“${req.justification}”",
                                                 fontSize = 11.sp,
-                                                color = Color(0xFF334155),
+                                                color = TextNavyDark,
                                                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                                 modifier = Modifier.padding(8.dp)
                                             )
@@ -1038,8 +1142,8 @@ private fun UsersKycTab(
                                         OutlinedButton(
                                             onClick = { onRejectAdminRequest(req.requestId, "Admin clearance criteria not met") },
                                             shape = RoundedCornerShape(8.dp),
-                                            border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.6f)),
-                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                                            border = BorderStroke(1.dp, RedBorder),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red500),
                                             modifier = Modifier.height(32.dp),
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp)
                                         ) {
@@ -1051,7 +1155,7 @@ private fun UsersKycTab(
                                         Button(
                                             onClick = { onApproveAdminRequest(req.requestId) },
                                             shape = RoundedCornerShape(8.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706), contentColor = Color.White),
+                                            colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White),
                                             modifier = Modifier.height(32.dp),
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp)
                                         ) {
@@ -1073,12 +1177,12 @@ private fun UsersKycTab(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search by name, phone, PAN, Aadhaar...", color = Color(0xFF94A3B8), fontSize = 13.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp)) },
+            placeholder = { Text("Search by name, phone, PAN, Aadhaar...", color = TextSlateMuted, fontSize = 13.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp)) },
             trailingIcon = {
                 if (searchQuery.isNotBlank()) {
                     IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSlateMuted, modifier = Modifier.size(16.dp))
                     }
                 }
             },
@@ -1086,11 +1190,11 @@ private fun UsersKycTab(
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color(0xFFF8FAFC),
-                focusedBorderColor = Color(0xFF2563EB),
-                unfocusedBorderColor = Color(0xFFCBD5E1),
-                focusedTextColor = Color(0xFF0F172A),
-                unfocusedTextColor = Color(0xFF0F172A)
+                unfocusedContainerColor = CanvasPorcelain,
+                focusedBorderColor = BrandRoyalBlue,
+                unfocusedBorderColor = BrandIceBorder,
+                focusedTextColor = TextNavyDark,
+                unfocusedTextColor = TextNavyDark
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1106,11 +1210,11 @@ private fun UsersKycTab(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             FilterChipItem("All (${users.size})", selectedFilter == 0) { selectedFilter = 0 }
-            FilterChipItem("⚠️ Pending (${pendingCount})", selectedFilter == 1) { selectedFilter = 1 }
-            FilterChipItem("✅ Verified (${verifiedCount})", selectedFilter == 2) { selectedFilter = 2 }
-            FilterChipItem("🛡️ Agents (${agentCount})", selectedFilter == 3) { selectedFilter = 3 }
-            FilterChipItem("💰 Lenders (${lenderCount})", selectedFilter == 4) { selectedFilter = 4 }
-            FilterChipItem("📋 Borrowers (${borrowerCount})", selectedFilter == 5) { selectedFilter = 5 }
+            FilterChipItem("Pending Review (${pendingCount})", selectedFilter == 1) { selectedFilter = 1 }
+            FilterChipItem("Verified Members (${verifiedCount})", selectedFilter == 2) { selectedFilter = 2 }
+            FilterChipItem("Field Agents (${agentCount})", selectedFilter == 3) { selectedFilter = 3 }
+            FilterChipItem("Lenders (${lenderCount})", selectedFilter == 4) { selectedFilter = 4 }
+            FilterChipItem("Borrowers (${borrowerCount})", selectedFilter == 5) { selectedFilter = 5 }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -1201,20 +1305,21 @@ private fun UsersKycTab(
     if (isRejectDialogVisible && userForAction != null) {
         AlertDialog(
             onDismissRequest = { isRejectDialogVisible = false },
-            title = { Text("KYC Deficiency Notice: ${userForAction?.name}", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+            title = { Text("KYC Deficiency Notice: ${userForAction?.name}", color = TextNavyDark, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
             text = {
                 Column {
-                    Text("Specify the reason to notify the member for re-submission:", color = Color(0xFF64748B), fontSize = 13.sp)
+                    Text("Specify the reason to notify the member for re-submission:", color = TextSlateMuted, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = rejectionReason,
                         onValueChange = { rejectionReason = it },
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color(0xFF0F172A),
-                            unfocusedTextColor = Color(0xFF0F172A),
-                            focusedBorderColor = Color(0xFFEF4444),
-                            unfocusedBorderColor = Color(0xFFCBD5E1)
+                            focusedTextColor = TextNavyDark,
+                            unfocusedTextColor = TextNavyDark,
+                            focusedBorderColor = Red500,
+                            unfocusedBorderColor = BrandIceBorder
                         )
                     )
                 }
@@ -1227,7 +1332,7 @@ private fun UsersKycTab(
                         isRejectDialogVisible = false
                         rejectionReason = ""
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Red500, contentColor = Color.White),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Issue Notice", fontWeight = FontWeight.Bold)
@@ -1235,7 +1340,7 @@ private fun UsersKycTab(
             },
             dismissButton = {
                 TextButton(onClick = { isRejectDialogVisible = false }) {
-                    Text("Cancel", color = Color(0xFF64748B))
+                    Text("Cancel", color = TextSlateMuted)
                 }
             },
             containerColor = Color.White
@@ -1259,10 +1364,10 @@ private fun AdminUserKycCard(
     val isRejected = user.kycStatus == "REJECTED"
 
     val creditTier = when {
-        isVerified -> Pair("785 • Prime AAA", Emerald400)
-        user.kycStatus == "IN_PROGRESS" -> Pair("710 • Standard", Color(0xFF38BDF8))
-        isRejected -> Pair("580 • High Risk", Color(0xFFEF4444))
-        else -> Pair("660 • Unrated", Gold500)
+        isVerified -> Pair("785 • Prime AAA", Emerald500)
+        user.kycStatus == "IN_PROGRESS" -> Pair("710 • Standard", BrandCobalt)
+        isRejected -> Pair("580 • High Risk", Red500)
+        else -> Pair("660 • Unrated", GoldCoinAmber)
     }
 
     Surface(
@@ -1271,10 +1376,10 @@ private fun AdminUserKycCard(
         border = BorderStroke(
             1.dp,
             when {
-                isVerified -> Emerald400.copy(alpha = 0.4f)
-                isPending -> Gold500.copy(alpha = 0.5f)
-                isRejected -> Color(0xFFEF4444).copy(alpha = 0.4f)
-                else -> Color(0xFFE2E8F0)
+                isVerified -> EmeraldBorder
+                isPending -> GoldCoinBorder
+                isRejected -> RedBorder
+                else -> BrandIceBorder
             }
         ),
         modifier = Modifier.fillMaxWidth()
@@ -1291,7 +1396,7 @@ private fun AdminUserKycCard(
                         user = user,
                         size = 40.dp,
                         showVerifiedBadge = isVerified,
-                        borderColor = if (isVerified) Emerald400 else Gold500
+                        borderColor = if (isVerified) Emerald500 else GoldCoinAmber
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
@@ -1300,20 +1405,20 @@ private fun AdminUserKycCard(
                                 text = user.name.ifBlank { "Unnamed Member" },
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = Color(0xFF0F172A),
+                                color = TextNavyDark,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = Color(0xFFF1F5F9)
+                                color = BrandIceBlue
                             ) {
                                 Text(
                                     text = user.role.uppercase(),
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = Color(0xFF0284C7),
+                                    color = BrandRoyalBlue,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
@@ -1321,7 +1426,7 @@ private fun AdminUserKycCard(
                         Text(
                             text = "${user.phone} • ${user.email.ifBlank { "No email" }}",
                             fontSize = 11.sp,
-                            color = Color(0xFF64748B),
+                            color = TextSlateMuted,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1332,16 +1437,16 @@ private fun AdminUserKycCard(
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = when {
-                        isVerified -> Emerald400.copy(alpha = 0.12f)
-                        isPending -> Gold500.copy(alpha = 0.12f)
-                        else -> Color(0xFFEF4444).copy(alpha = 0.12f)
+                        isVerified -> EmeraldLight
+                        isPending -> GoldCoinCream
+                        else -> RedLight
                     },
                     border = BorderStroke(
                         1.dp,
                         when {
-                            isVerified -> Emerald400.copy(alpha = 0.4f)
-                            isPending -> Gold500.copy(alpha = 0.4f)
-                            else -> Color(0xFFEF4444).copy(alpha = 0.4f)
+                            isVerified -> EmeraldBorder
+                            isPending -> GoldCoinBorder
+                            else -> RedBorder
                         }
                     )
                 ) {
@@ -1359,8 +1464,8 @@ private fun AdminUserKycCard(
                             contentDescription = null,
                             tint = when {
                                 isVerified -> Emerald500
-                                isPending -> Gold500
-                                else -> Color(0xFFEF4444)
+                                isPending -> GoldCoinAmber
+                                else -> Red500
                             },
                             modifier = Modifier.size(13.dp)
                         )
@@ -1374,8 +1479,8 @@ private fun AdminUserKycCard(
                             fontWeight = FontWeight.ExtraBold,
                             color = when {
                                 isVerified -> Emerald500
-                                isPending -> Gold500
-                                else -> Color(0xFFEF4444)
+                                isPending -> GoldCoinAmber
+                                else -> Red500
                             }
                         )
                     }
@@ -1388,8 +1493,8 @@ private fun AdminUserKycCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
-                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                    .background(CanvasPorcelain, RoundedCornerShape(10.dp))
+                    .border(1.dp, BrandIceBorder, RoundedCornerShape(10.dp))
                     .padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -1436,19 +1541,19 @@ private fun AdminUserKycCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("CIBIL Rating:", fontSize = 11.sp, color = Color(0xFF64748B))
+                        Text("CIBIL Rating:", fontSize = 11.sp, color = TextSlateMuted)
                         Text(creditTier.first, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = creditTier.second)
                     }
                     if (user.agentStatus != "NOT_APPLIED") {
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFFF1F5F9)
+                            color = BrandIceBlue
                         ) {
                             Text(
                                 text = "AGENT: ${user.agentStatus}",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (user.agentStatus == "APPROVED") Emerald500 else Gold500,
+                                color = if (user.agentStatus == "APPROVED") Emerald500 else GoldCoinAmber,
                                 modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                             )
                         }
@@ -1470,7 +1575,7 @@ private fun AdminUserKycCard(
                         onClick = onCall,
                         modifier = Modifier
                             .size(36.dp)
-                            .background(Color(0xFFF1F5F9), CircleShape)
+                            .background(BrandIceBlue, CircleShape)
                     ) {
                         Icon(Icons.Default.Phone, contentDescription = "Call", tint = Emerald500, modifier = Modifier.size(16.dp))
                     }
@@ -1482,21 +1587,24 @@ private fun AdminUserKycCard(
                         onClick = onSendNotif,
                         modifier = Modifier
                             .size(36.dp)
-                            .background(Color(0xFFF1F5F9), CircleShape)
+                            .background(BrandIceBlue, CircleShape)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Message, contentDescription = "Send Direct Message", tint = Color(0xFF0284C7), modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.Message, contentDescription = "Send Direct Message", tint = BrandRoyalBlue, modifier = Modifier.size(16.dp))
                     }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
                 if (!isVerified) {
-                    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         OutlinedButton(
                             onClick = onReject,
                             shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, Color(0xFFEF4444)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
+                            border = BorderStroke(1.dp, Red500),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red500),
                             modifier = Modifier.height(36.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                         ) {
@@ -1506,19 +1614,20 @@ private fun AdminUserKycCard(
                         Button(
                             onClick = onApprove,
                             shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White),
                             modifier = Modifier.height(36.dp),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp)
                         ) {
                             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Verify KYC", fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("Verify KYC", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 } else {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Emerald400.copy(alpha = 0.1f)
+                        color = EmeraldLight,
+                        border = BorderStroke(1.dp, EmeraldBorder)
                     ) {
                         Text(
                             text = "✓ Certified Platform Member",
@@ -1551,11 +1660,11 @@ private fun AdminVerificationRow(
             Icon(
                 imageVector = if (isVerified) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                 contentDescription = null,
-                tint = if (isVerified) Emerald500 else Color(0xFF94A3B8),
+                tint = if (isVerified) Emerald500 else TextSlateMuted,
                 modifier = Modifier.size(13.dp)
             )
-            Text(label, fontSize = 11.sp, color = Color(0xFF64748B))
-            Text(value, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Color(0xFF0F172A))
+            Text(label, fontSize = 11.sp, color = TextSlateMuted)
+            Text(value, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextNavyDark)
         }
 
         if (hasDoc) {
@@ -1563,7 +1672,7 @@ private fun AdminVerificationRow(
                 text = "Inspect ➔",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF2563EB),
+                color = BrandRoyalBlue,
                 modifier = Modifier
                     .clickable { onInspect() }
                     .padding(horizontal = 4.dp, vertical = 2.dp)
@@ -1610,12 +1719,12 @@ private fun AgentsTab(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
-            placeholder = { Text("Search by Name, City, PCC #, Phone...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color(0xFF2563EB)) },
+            placeholder = { Text("Search by Name, City, PCC #, Phone...", color = TextSlateMuted, fontSize = 12.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, null, tint = BrandRoyalBlue) },
             trailingIcon = {
                 if (searchQuery.isNotBlank()) {
                     IconButton(onClick = { onSearchChange("") }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSlateMuted, modifier = Modifier.size(16.dp))
                     }
                 }
             },
@@ -1623,11 +1732,11 @@ private fun AgentsTab(
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color(0xFFF8FAFC),
-                focusedBorderColor = Color(0xFF2563EB),
-                unfocusedBorderColor = Color(0xFFCBD5E1),
-                focusedTextColor = Color(0xFF0F172A),
-                unfocusedTextColor = Color(0xFF0F172A)
+                unfocusedContainerColor = CanvasPorcelain,
+                focusedBorderColor = BrandRoyalBlue,
+                unfocusedBorderColor = BrandIceBorder,
+                focusedTextColor = TextNavyDark,
+                unfocusedTextColor = TextNavyDark
             )
         )
 
@@ -1639,14 +1748,14 @@ private fun AgentsTab(
             verticalAlignment = Alignment.CenterVertically
         ) {
             FilterChipItem("All Agents (${agents.size})", selectedFilter == "ALL") { selectedFilter = "ALL" }
-            FilterChipItem("Pending (${agents.count { it.status == "PENDING" }})", selectedFilter == "PENDING") { selectedFilter = "PENDING" }
-            FilterChipItem("Empaneled (${agents.count { it.status == "APPROVED" }})", selectedFilter == "APPROVED") { selectedFilter = "APPROVED" }
+            FilterChipItem("Pending Approval (${agents.count { it.status == "PENDING" }})", selectedFilter == "PENDING") { selectedFilter = "PENDING" }
+            FilterChipItem("Empaneled Active (${agents.count { it.status == "APPROVED" }})", selectedFilter == "APPROVED") { selectedFilter = "APPROVED" }
             FilterChipItem("Suspended (${agents.count { it.status == "SUSPENDED" }})", selectedFilter == "SUSPENDED") { selectedFilter = "SUSPENDED" }
 
             if (onRefreshCloud != null) {
                 Button(
                     onClick = onRefreshCloud,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
@@ -1661,7 +1770,7 @@ private fun AgentsTab(
 
         if (filteredAgents.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No agent records found", color = Color(0xFF64748B), fontSize = 13.sp)
+                Text("No agent records found", color = TextSlateMuted, fontSize = 13.sp)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
@@ -1716,7 +1825,7 @@ private fun AgentRosterCard(
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, if (isApproved) Emerald400.copy(alpha = 0.5f) else if (isSuspended) Color(0xFFEF4444).copy(alpha = 0.5f) else Color(0xFFE2E8F0)),
+        border = BorderStroke(1.dp, if (isApproved) EmeraldBorder else if (isSuspended) RedBorder else BrandIceBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -1728,18 +1837,18 @@ private fun AgentRosterCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = CircleShape,
-                        color = if (isApproved) Emerald400.copy(alpha = 0.15f) else if (isSuspended) Color(0xFFEF4444).copy(alpha = 0.15f) else Gold500.copy(alpha = 0.15f),
+                        color = if (isApproved) EmeraldLight else if (isSuspended) RedLight else GoldCoinCream,
                         modifier = Modifier.size(36.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Badge, null, tint = if (isApproved) Emerald500 else if (isSuspended) Color(0xFFEF4444) else Gold500, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Badge, null, tint = if (isApproved) Emerald500 else if (isSuspended) Red500 else GoldCoinAmber, modifier = Modifier.size(18.dp))
                         }
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text(
                             text = agent.applicantName.ifBlank { agent.permanentAddress.take(24) },
-                            color = Color(0xFF0F172A),
+                            color = TextNavyDark,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -1747,7 +1856,7 @@ private fun AgentRosterCard(
                         )
                         Text(
                             text = "${agent.operatingCity} • ${agent.serviceRadiusKm} km Radius",
-                            color = Color(0xFF64748B),
+                            color = TextSlateMuted,
                             fontSize = 11.sp
                         )
                     }
@@ -1755,11 +1864,12 @@ private fun AgentRosterCard(
 
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = if (isApproved) Emerald400.copy(alpha = 0.12f) else if (isSuspended) Color(0xFFEF4444).copy(alpha = 0.12f) else Gold500.copy(alpha = 0.12f)
+                    color = if (isApproved) EmeraldLight else if (isSuspended) RedLight else GoldCoinCream,
+                    border = BorderStroke(1.dp, if (isApproved) EmeraldBorder else if (isSuspended) RedBorder else GoldCoinBorder)
                 ) {
                     Text(
                         text = agent.status,
-                        color = if (isApproved) Emerald500 else if (isSuspended) Color(0xFFEF4444) else Gold500,
+                        color = if (isApproved) Emerald500 else if (isSuspended) Red500 else GoldCoinAmber,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
@@ -1773,13 +1883,13 @@ private fun AgentRosterCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFF8FAFC))
-                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                    .background(CanvasPorcelain)
+                    .border(1.dp, BrandIceBorder, RoundedCornerShape(8.dp))
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Text("Police Clearance: ${agent.policeVerificationNumber} (${agent.policeStation})", color = Color(0xFF0F172A), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                Text("Transport: ${agent.vehicleType} ${if (agent.drivingLicenseNumber.isNotBlank()) "• DL: ${agent.drivingLicenseNumber}" else ""}", color = Color(0xFF64748B), fontSize = 11.sp)
+                Text("Police Clearance: ${agent.policeVerificationNumber} (${agent.policeStation})", color = TextNavyDark, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text("Transport: ${agent.vehicleType} ${if (agent.drivingLicenseNumber.isNotBlank()) "• DL: ${agent.drivingLicenseNumber}" else ""}", color = TextSlateMuted, fontSize = 11.sp)
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -1792,26 +1902,26 @@ private fun AgentRosterCard(
                 OutlinedButton(
                     onClick = onInspectDoc,
                     shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Color(0xFF6366F1)),
+                    border = BorderStroke(1.dp, BrandIceBorder),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    Icon(Icons.Default.FindInPage, null, tint = Color(0xFF4F46E5), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.FindInPage, null, tint = BrandRoyalBlue, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Inspect PCC", color = Color(0xFF4F46E5), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Inspect PCC", color = BrandRoyalBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     IconButton(
                         onClick = onCall,
-                        modifier = Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFF1F5F9))
+                        modifier = Modifier.size(32.dp).clip(CircleShape).background(BrandIceBlue)
                     ) {
                         Icon(Icons.Default.Phone, null, tint = Emerald500, modifier = Modifier.size(16.dp))
                     }
                     IconButton(
                         onClick = onWhatsApp,
-                        modifier = Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFF1F5F9))
+                        modifier = Modifier.size(32.dp).clip(CircleShape).background(BrandIceBlue)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Message, null, tint = Emerald500, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.Message, null, tint = BrandRoyalBlue, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -1823,8 +1933,8 @@ private fun AgentRosterCard(
                         onClick = { onReject("PCC requirements or verification checklist failed.") },
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF4444)),
-                        border = BorderStroke(1.dp, Color(0xFFEF4444))
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Red500),
+                        border = BorderStroke(1.dp, RedBorder)
                     ) {
                         Text("Reject", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
@@ -1832,7 +1942,7 @@ private fun AgentRosterCard(
                         onClick = onApprove,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.weight(1.6f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                     ) {
                         Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
@@ -1845,8 +1955,8 @@ private fun AgentRosterCard(
                     onClick = onSuspend,
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFF97316)),
-                    border = BorderStroke(1.5.dp, Color(0xFFF97316))
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandSolarOrange),
+                    border = BorderStroke(1.dp, BrandSolarOrange)
                 ) {
                     Text("Suspend Field Agent", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
@@ -1867,193 +1977,7 @@ private fun AgentRosterCard(
     }
 }
 
-// --- MODULE 2: KYC & DOCUMENTS TAB ---
-@Composable
-private fun DocumentKycTab(
-    pendingUsers: List<UserEntity> = emptyList(),
-    agentApplications: List<AgentApplicationEntity>,
-    onInspect: (DocumentInspectionData) -> Unit,
-    onVerifyUser: (UserEntity, Boolean, String) -> Unit = { _, _, _ -> },
-    onApproveAgent: (String) -> Unit,
-    onRejectAgent: (String, String) -> Unit
-) {
-    val realPendingKycDocs = remember(pendingUsers) {
-        if (pendingUsers.isNotEmpty()) {
-            pendingUsers.map { user ->
-                DocumentInspectionData(
-                    title = if (!user.aadhaarVerified) "Aadhaar Card (UIDAI)" else if (!user.panVerified) "PAN Record Verification" else "Identity & Bank Dossier",
-                    category = "USER_KYC",
-                    subjectName = user.name,
-                    subjectPhone = user.phone,
-                    documentNumber = if (user.aadhaarNumber.isNotBlank()) user.aadhaarNumber else if (user.panNumber.isNotBlank()) user.panNumber else user.userId,
-                    issuingAuthority = if (user.aadhaarNumber.isNotBlank()) "UIDAI Govt of India" else "Govt of India / NSDL",
-                    photoUri = user.profilePhotoUri.ifBlank { user.aadhaarImageUrl.ifBlank { null } },
-                    onApprove = { onVerifyUser(user, true, "Verified by Master Admin post document inspection") },
-                    onReject = { reason -> onVerifyUser(user, false, reason) }
-                )
-            }
-        } else {
-            listOf(
-                DocumentInspectionData(
-                    title = "Aadhaar Card (UIDAI Verified)",
-                    category = "USER_KYC",
-                    subjectName = "Rahul Verma",
-                    subjectPhone = "+919876543210",
-                    documentNumber = "XXXX-XXXX-8921",
-                    issuingAuthority = "UIDAI Govt of India",
-                    photoUri = null,
-                    onApprove = {},
-                    onReject = {}
-                ),
-                DocumentInspectionData(
-                    title = "Income Tax Return (ITR-V)",
-                    category = "USER_KYC",
-                    subjectName = "Deepak Chawla",
-                    subjectPhone = "+919650112233",
-                    documentNumber = "ITR-AY25-26-88129",
-                    issuingAuthority = "Income Tax Dept",
-                    photoUri = null,
-                    onApprove = {},
-                    onReject = {}
-                )
-            )
-        }
-    }
-
-    var searchQuery by remember { mutableStateOf("") }
-
-    val filteredKycDocs = remember(realPendingKycDocs, searchQuery) {
-        if (searchQuery.isBlank()) realPendingKycDocs
-        else realPendingKycDocs.filter {
-            it.subjectName.contains(searchQuery, ignoreCase = true) ||
-            it.subjectPhone.contains(searchQuery, ignoreCase = true) ||
-            it.documentNumber.contains(searchQuery, ignoreCase = true) ||
-            it.title.contains(searchQuery, ignoreCase = true)
-        }
-    }
-
-    val filteredAgents = remember(agentApplications, searchQuery) {
-        if (searchQuery.isBlank()) agentApplications
-        else agentApplications.filter {
-            it.applicantName.contains(searchQuery, ignoreCase = true) ||
-            it.userId.contains(searchQuery, ignoreCase = true) ||
-            it.applicantPhone.contains(searchQuery, ignoreCase = true) ||
-            it.operatingCity.contains(searchQuery, ignoreCase = true) ||
-            it.policeStation.contains(searchQuery, ignoreCase = true) ||
-            it.policeVerificationNumber.contains(searchQuery, ignoreCase = true)
-        }
-    }
-
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
-        item {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Search by user name, phone, document #...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp)) },
-                trailingIcon = {
-                    if (searchQuery.isNotBlank()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
-                        }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(10.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color(0xFFF8FAFC),
-                    focusedBorderColor = Color(0xFF2563EB),
-                    unfocusedBorderColor = Color(0xFFCBD5E1),
-                    focusedTextColor = Color(0xFF0F172A),
-                    unfocusedTextColor = Color(0xFF0F172A)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        item {
-            Text("User Borrowers & Lenders KYC Queue (${filteredKycDocs.size})", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        }
-        items(filteredKycDocs) { doc ->
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(doc.title, color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text("${doc.subjectName} • ${doc.subjectPhone}", color = Color(0xFF64748B), fontSize = 11.sp)
-                        Text("Doc #: ${doc.documentNumber}", color = Color(0xFFD97706), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    Button(
-                        onClick = { onInspect(doc) },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text("Inspect & Audit", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(10.dp))
-            Text("Agent Police Clearance & DL Queue (${filteredAgents.size})", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        }
-        items(filteredAgents) { agent ->
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("PCC Clearance & Driving License", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text("Station: ${agent.policeStation} • City: ${agent.operatingCity}", color = Color(0xFF64748B), fontSize = 11.sp)
-                        Text("PCC #: ${agent.policeVerificationNumber}", color = Color(0xFFD97706), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    Button(
-                        onClick = {
-                            onInspect(
-                                DocumentInspectionData(
-                                    title = "Police Clearance Certificate (PCC)",
-                                    category = "AGENT_EMPANELMENT",
-                                    subjectName = agent.applicantName,
-                                    subjectPhone = agent.applicantPhone,
-                                    documentNumber = agent.policeVerificationNumber,
-                                    issuingAuthority = agent.policeStation,
-                                    photoUri = agent.policeDocUri,
-                                    onApprove = { onApproveAgent(agent.applicationId) },
-                                    onReject = { reason -> onRejectAgent(agent.applicationId, reason) }
-                                )
-                            )
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text("Audit PCC", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// --- MODULE 3: DISPATCH ENGINE & DUAL-AGENT CONSENSUS MATRIX ---
+// --- MODULE 1: DISPATCH ENGINE & DUAL-AGENT CONSENSUS MATRIX ---
 @Composable
 private fun DispatchTab(
     unassignedVisits: List<AgentVisitEntity>,
@@ -2097,12 +2021,12 @@ private fun DispatchTab(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search visits by borrower, agent, address, loan ID...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp)) },
+            placeholder = { Text("Search visits by borrower, agent, address, loan ID...", color = TextSlateMuted, fontSize = 12.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp)) },
             trailingIcon = {
                 if (searchQuery.isNotBlank()) {
                     IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSlateMuted, modifier = Modifier.size(16.dp))
                     }
                 }
             },
@@ -2110,11 +2034,11 @@ private fun DispatchTab(
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color(0xFFF8FAFC),
-                focusedBorderColor = Color(0xFF2563EB),
-                unfocusedBorderColor = Color(0xFFCBD5E1),
-                focusedTextColor = Color(0xFF0F172A),
-                unfocusedTextColor = Color(0xFF0F172A)
+                unfocusedContainerColor = CanvasPorcelain,
+                focusedBorderColor = BrandRoyalBlue,
+                unfocusedBorderColor = BrandIceBorder,
+                focusedTextColor = TextNavyDark,
+                unfocusedTextColor = TextNavyDark
             ),
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
@@ -2128,14 +2052,14 @@ private fun DispatchTab(
         ) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = if (subTab == 0) Color(0xFFFFF7ED) else Color.White,
-                border = BorderStroke(1.dp, if (subTab == 0) Color(0xFFF97316) else Color(0xFFE2E8F0)),
+                color = if (subTab == 0) BrandSolarOrange.copy(alpha = 0.1f) else Color.White,
+                border = BorderStroke(1.dp, if (subTab == 0) BrandSolarOrange else BrandIceBorder),
                 modifier = Modifier.weight(1f).clickable { subTab = 0 }
             ) {
                 Box(modifier = Modifier.padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        text = "🚨 Backlog Queue (${filteredUnassigned.size})",
-                        color = if (subTab == 0) Color(0xFFEA580C) else Color(0xFF64748B),
+                        text = "Backlog Queue (${filteredUnassigned.size})",
+                        color = if (subTab == 0) BrandSolarOrange else TextSlateMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -2144,14 +2068,14 @@ private fun DispatchTab(
 
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = if (subTab == 1) Color(0xFFFEFCE8) else Color.White,
-                border = BorderStroke(1.dp, if (subTab == 1) Color(0xFFCA8A04) else Color(0xFFE2E8F0)),
+                color = if (subTab == 1) BrandRoyalBlue.copy(alpha = 0.1f) else Color.White,
+                border = BorderStroke(1.dp, if (subTab == 1) BrandRoyalBlue else BrandIceBorder),
                 modifier = Modifier.weight(1.3f).clickable { subTab = 1 }
             ) {
                 Box(modifier = Modifier.padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                     Text(
-                        text = "🔄 Dual-Agent Consensus (${filteredPairs.size})",
-                        color = if (subTab == 1) Color(0xFFCA8A04) else Color(0xFF64748B),
+                        text = "Dual-Officer Consensus (${filteredPairs.size})",
+                        color = if (subTab == 1) BrandRoyalBlue else TextSlateMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -2163,10 +2087,10 @@ private fun DispatchTab(
             if (filteredUnassigned.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.DoneAll, null, tint = Emerald400, modifier = Modifier.size(48.dp))
+                        Icon(Icons.Default.DoneAll, null, tint = Emerald500, modifier = Modifier.size(48.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("All field visits currently mapped to agents!", color = Color(0xFF0F172A), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("Zero backlog in inspection queue", color = Color(0xFF64748B), fontSize = 12.sp)
+                        Text("All field visits currently mapped to agents!", color = TextNavyDark, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("Zero backlog in inspection queue", color = TextSlateMuted, fontSize = 12.sp)
                     }
                 }
             } else {
@@ -2175,7 +2099,7 @@ private fun DispatchTab(
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = BorderStroke(1.dp, Color(0xFFFED7AA)),
+                            border = BorderStroke(1.dp, BrandIceBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
@@ -2186,11 +2110,11 @@ private fun DispatchTab(
                                 ) {
                                     Surface(
                                         shape = RoundedCornerShape(6.dp),
-                                        color = Color(0xFFF97316).copy(alpha = 0.12f)
+                                        color = BrandSolarOrange.copy(alpha = 0.12f)
                                     ) {
                                         Text(
-                                            text = "🚨 UNASSIGNED VISIT",
-                                            color = Color(0xFFEA580C),
+                                            text = "UNASSIGNED VISIT",
+                                            color = BrandSolarOrange,
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
@@ -2198,23 +2122,23 @@ private fun DispatchTab(
                                     }
                                     Text(
                                         text = "Bounty: ₹${visit.payoutAmount.toInt()}",
-                                        color = Color(0xFFD97706),
+                                        color = GoldCoinAmber,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
 
                                 Spacer(modifier = Modifier.height(6.dp))
-                                Text(visit.title, color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                Text("Address: ${visit.targetAddress}", color = Color(0xFF64748B), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("Party: ${visit.borrowerName} (${visit.borrowerPhone})", color = Color(0xFF64748B), fontSize = 11.sp)
+                                Text(visit.title, color = TextNavyDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Text("Address: ${visit.targetAddress}", color = TextSlateMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("Party: ${visit.borrowerName} (${visit.borrowerPhone})", color = TextSlateMuted, fontSize = 11.sp)
 
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Button(
                                     onClick = { onOpenDispatch(visit) },
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
+                                    colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                                 ) {
                                     Icon(Icons.Default.NearMe, null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -2230,10 +2154,10 @@ private fun DispatchTab(
             if (filteredPairs.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Security, null, tint = Gold500, modifier = Modifier.size(48.dp))
+                        Icon(Icons.Default.Security, null, tint = GoldCoinAmber, modifier = Modifier.size(48.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("No Dual-Agent Inspections Dispatched", color = Color(0xFF0F172A), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("Dispatch a loan with 2-Officer Blind Swapped Protocol to view consensus matrix.", color = Color(0xFF64748B), fontSize = 12.sp, textAlign = TextAlign.Center)
+                        Text("No Dual-Agent Inspections Dispatched", color = TextNavyDark, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("Dispatch a loan with 2-Officer Blind Swapped Protocol to view consensus matrix.", color = TextSlateMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
                     }
                 }
             } else {
@@ -2262,7 +2186,7 @@ private fun DispatchTab(
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
-                            border = BorderStroke(1.dp, if (isDualCompleted && isTolerancePass) Emerald400.copy(alpha = 0.5f) else Color(0xFFE2E8F0)),
+                            border = BorderStroke(1.dp, if (isDualCompleted && isTolerancePass) EmeraldBorder else BrandIceBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
@@ -2275,22 +2199,23 @@ private fun DispatchTab(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Surface(
                                             shape = RoundedCornerShape(4.dp),
-                                            color = Gold500.copy(alpha = 0.15f)
+                                            color = BrandIceBlue,
+                                            border = BorderStroke(1.dp, BrandIceBorder)
                                         ) {
                                             Text(
-                                                text = "🛡️ DUAL-OFFICER AUDIT",
-                                                color = Color(0xFFB45309),
+                                                text = "BLIND RECIPROCAL AUDIT",
+                                                color = BrandRoyalBlue,
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
                                         }
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text(pairId, color = Color(0xFF64748B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Text(pairId, color = TextSlateMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Text(
                                         text = "Loan: ${v1?.loanId ?: ""}",
-                                        color = Color(0xFF0F172A),
+                                        color = TextNavyDark,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -2299,13 +2224,13 @@ private fun DispatchTab(
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = v1?.title ?: "Cross-Verification Inspection Pair",
-                                    color = Color(0xFF0F172A),
+                                    color = TextNavyDark,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = "Asset: ${v1?.collateralItemName ?: "Registered Collateral & KYC"}",
-                                    color = Color(0xFF64748B),
+                                    color = TextSlateMuted,
                                     fontSize = 11.sp
                                 )
 
@@ -2340,8 +2265,8 @@ private fun DispatchTab(
                                 // Stage 2 Swapped Progress Indicator
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = Color(0xFFF8FAFC),
-                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                                    color = CanvasPorcelain,
+                                    border = BorderStroke(1.dp, BrandIceBorder),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
@@ -2353,20 +2278,20 @@ private fun DispatchTab(
                                             Icon(
                                                 imageVector = if (isStage2Completed) Icons.Default.CheckCircle else Icons.Default.Sync,
                                                 contentDescription = null,
-                                                tint = if (isStage2Completed) Emerald500 else Gold500,
+                                                tint = if (isStage2Completed) Emerald500 else GoldCoinAmber,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
                                                 text = if (isStage2Completed) "Stage 2 Reciprocal Swap: Verified ✓" else if (isStage2Active) "Stage 2 Swapped Cross-Audit In-Progress..." else "Stage 2 Swap: Pending Stage 1 Completion",
-                                                color = Color(0xFF0F172A),
+                                                color = TextNavyDark,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                         }
                                         Text(
                                             text = if (isStage2Completed) "2/2 Done" else if (isStage2Active) "1/2 Done" else "0/2",
-                                            color = Color(0xFF64748B),
+                                            color = TextSlateMuted,
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -2378,8 +2303,8 @@ private fun DispatchTab(
                                 // Discrepancy & Consensus Analysis
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isTolerancePass && isDualCompleted) Emerald500.copy(alpha = 0.12f) else Color(0xFFFFF7ED),
-                                    border = BorderStroke(1.dp, if (isTolerancePass && isDualCompleted) Emerald400 else Color(0xFFF97316)),
+                                    color = if (isTolerancePass && isDualCompleted) EmeraldLight else CanvasPorcelain,
+                                    border = BorderStroke(1.dp, if (isTolerancePass && isDualCompleted) EmeraldBorder else BrandSolarOrange),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
@@ -2389,14 +2314,14 @@ private fun DispatchTab(
                                     ) {
                                         Column {
                                             Text(
-                                                text = if (isTolerancePass && isDualCompleted) "DUAL-OFFICER CONSENSUS: APPROVED ✅" else "INDEPENDENT EVALUATION IN PROGRESS",
-                                                color = if (isTolerancePass && isDualCompleted) Emerald500 else Color(0xFFEA580C),
+                                                text = if (isTolerancePass && isDualCompleted) "DUAL-OFFICER CONSENSUS: CERTIFIED ✓" else "INDEPENDENT EVALUATION IN PROGRESS",
+                                                color = if (isTolerancePass && isDualCompleted) Emerald500 else BrandSolarOrange,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 11.sp
                                             )
                                             Text(
                                                 text = "Valuation Delta: ${String.format("%.1f", discrepancyPct)}% (Tolerance Limit: 15.0%)",
-                                                color = Color(0xFF0F172A),
+                                                color = TextNavyDark,
                                                 fontSize = 10.sp
                                             )
                                         }
@@ -2424,7 +2349,7 @@ private fun DispatchTab(
                                     onClick = { onSanctionLoan(v1?.loanId ?: "", v1?.title ?: "") },
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
+                                    colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                                 ) {
                                     Icon(Icons.Default.VerifiedUser, null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -2454,23 +2379,24 @@ private fun OfficerReportCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = Color(0xFFF8FAFC),
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        color = CanvasPorcelain,
+        border = BorderStroke(1.dp, BrandIceBorder)
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
-            Text(officerRole, color = Color(0xFFB45309), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            Text(officerName, color = Color(0xFF0F172A), fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(officerRole, color = BrandRoyalBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(officerName, color = TextNavyDark, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
 
             Spacer(modifier = Modifier.height(6.dp))
 
             val isDone = visit?.status == "COMPLETED"
             Surface(
                 shape = RoundedCornerShape(4.dp),
-                color = if (isDone) Emerald400.copy(alpha = 0.15f) else Gold500.copy(alpha = 0.15f)
+                color = if (isDone) EmeraldLight else GoldCoinCream,
+                border = BorderStroke(1.dp, if (isDone) EmeraldBorder else GoldCoinBorder)
             ) {
                 Text(
-                    text = if (isDone) "Report: Submitted ✓" else "Status: ${visit?.status ?: "PENDING"}",
-                    color = if (isDone) Emerald500 else Color(0xFFB45309),
+                    text = if (isDone) "Report: Attested ✓" else "Status: ${visit?.status ?: "PENDING"}",
+                    color = if (isDone) Emerald500 else GoldCoinAmber,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -2478,17 +2404,17 @@ private fun OfficerReportCard(
             }
 
             Spacer(modifier = Modifier.height(6.dp))
-            Text("Appraised: ₹${appraisalValue.toInt()}", color = Color(0xFF0F172A), fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+            Text("Appraised: ₹${appraisalValue.toInt()}", color = TextNavyDark, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
             Text(
                 text = "Rec: ${visit?.officerRecommendation?.replace("RECOMMEND_", "") ?: "PENDING"}",
-                color = if (visit?.officerRecommendation == "RECOMMEND_APPROVAL") Emerald500 else Color(0xFF64748B),
+                color = if (visit?.officerRecommendation == "RECOMMEND_APPROVAL") Emerald500 else TextSlateMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold
             )
             if (visit?.agentRemarks?.isNotBlank() == true) {
                 Text(
                     text = "\"${visit.agentRemarks}\"",
-                    color = Color(0xFF64748B),
+                    color = TextSlateMuted,
                     fontSize = 9.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -2525,12 +2451,12 @@ private fun VaultTab(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search by owner, asset, locker #, seal #...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp)) },
+                placeholder = { Text("Search by owner, asset, locker #, seal #...", color = TextSlateMuted, fontSize = 12.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp)) },
                 trailingIcon = {
                     if (searchQuery.isNotBlank()) {
                         IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSlateMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                 },
@@ -2538,11 +2464,11 @@ private fun VaultTab(
                 shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color(0xFFF8FAFC),
-                    focusedBorderColor = Color(0xFF2563EB),
-                    unfocusedBorderColor = Color(0xFFCBD5E1),
-                    focusedTextColor = Color(0xFF0F172A),
-                    unfocusedTextColor = Color(0xFF0F172A)
+                    unfocusedContainerColor = CanvasPorcelain,
+                    focusedBorderColor = BrandRoyalBlue,
+                    unfocusedBorderColor = BrandIceBorder,
+                    focusedTextColor = TextNavyDark,
+                    unfocusedTextColor = TextNavyDark
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -2554,83 +2480,85 @@ private fun VaultTab(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No collateral records found matching query", color = Color(0xFF64748B), fontSize = 13.sp)
+                    Text("No collateral records found matching query", color = TextSlateMuted, fontSize = 13.sp)
                 }
             }
         } else {
             items(filteredVault) { item ->
-            val isSecured = item.custodyStatus == "SECURED_IN_VAULT"
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, if (isSecured) Emerald400.copy(alpha = 0.5f) else Color(0xFFE2E8F0)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Gold500.copy(alpha = 0.15f)
+                val isSecured = item.custodyStatus == "SECURED_IN_VAULT"
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    border = BorderStroke(1.dp, if (isSecured) EmeraldBorder else BrandIceBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = GoldCoinCream,
+                                border = BorderStroke(1.dp, GoldCoinBorder)
+                            ) {
+                                Text(
+                                    text = item.assetType,
+                                    color = GoldCoinAmber,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
                             Text(
-                                text = item.assetType,
-                                color = Color(0xFFB45309),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                text = "Est: ₹${item.estimatedValue.toInt()}",
+                                color = Emerald500,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
-                        Text(
-                            text = "Est: ₹${item.estimatedValue.toInt()}",
-                            color = Emerald500,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
 
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(item.assetDescription, color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("Borrower: ${item.borrowerName} • Facility: ${item.vaultFacilityName}", color = Color(0xFF64748B), fontSize = 11.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(item.assetDescription, color = TextNavyDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Borrower: ${item.borrowerName} • Facility: ${item.vaultFacilityName}", color = TextSlateMuted, fontSize = 11.sp)
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFF8FAFC))
-                            .border(BorderStroke(1.dp, Color(0xFFE2E8F0)), RoundedCornerShape(8.dp))
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Locker: ${item.lockerNumber}", color = Color(0xFFB45309), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Seal: ${if (item.tamperSealNumber.isNotBlank()) item.tamperSealNumber else "Pending"}", color = Color(0xFF0F172A), fontSize = 11.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { onAssignLocker(item) },
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = if (isSecured) Color(0xFF0F172A) else Gold500, contentColor = if (isSecured) Color.White else Navy900)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CanvasPorcelain)
+                                .border(BorderStroke(1.dp, BrandIceBorder), RoundedCornerShape(8.dp))
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(if (isSecured) "Re-Assign Locker" else "Seal & Locker", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Locker: ${item.lockerNumber}", color = GoldCoinAmber, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Seal: ${if (item.tamperSealNumber.isNotBlank()) item.tamperSealNumber else "Pending"}", color = TextNavyDark, fontSize = 11.sp)
                         }
 
-                        if (item.custodyStatus == "READY_FOR_RELEASE") {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
-                                onClick = { onRelease(item.loanId) },
+                                onClick = { onAssignLocker(item) },
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
+                                colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                             ) {
-                                Text("Release to Borrower", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Icon(Icons.Default.VpnKey, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(if (isSecured) "Re-Assign Locker" else "Seal & Locker", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            if (item.custodyStatus == "READY_FOR_RELEASE") {
+                                Button(
+                                    onClick = { onRelease(item.loanId) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
+                                ) {
+                                    Text("Release to Borrower", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
@@ -2638,7 +2566,6 @@ private fun VaultTab(
             }
         }
     }
-}
 }
 
 // --- MODULE 5: COMPLAINTS TAB ---
@@ -2676,12 +2603,12 @@ private fun ComplaintsTab(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search grievances by user, subject, issue...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp)) },
+                placeholder = { Text("Search grievances by user, subject, issue...", color = TextSlateMuted, fontSize = 12.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp)) },
                 trailingIcon = {
                     if (searchQuery.isNotBlank()) {
                         IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSlateMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                 },
@@ -2689,11 +2616,11 @@ private fun ComplaintsTab(
                 shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color(0xFFF8FAFC),
-                    focusedBorderColor = Color(0xFF2563EB),
-                    unfocusedBorderColor = Color(0xFFCBD5E1),
-                    focusedTextColor = Color(0xFF0F172A),
-                    unfocusedTextColor = Color(0xFF0F172A)
+                    unfocusedContainerColor = CanvasPorcelain,
+                    focusedBorderColor = BrandRoyalBlue,
+                    unfocusedBorderColor = BrandIceBorder,
+                    focusedTextColor = TextNavyDark,
+                    unfocusedTextColor = TextNavyDark
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -2705,7 +2632,7 @@ private fun ComplaintsTab(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Zero open complaints matching search query", color = Color(0xFF64748B), fontSize = 13.sp)
+                    Text("Zero open complaints matching search query", color = TextSlateMuted, fontSize = 13.sp)
                 }
             }
         } else {
@@ -2718,7 +2645,7 @@ private fun ComplaintsTab(
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = BorderStroke(1.dp, if (isRecovery) Color(0xFF8B5CF6).copy(alpha = 0.5f) else if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444).copy(alpha = 0.5f) else Color(0xFFE2E8F0)),
+                    border = BorderStroke(1.dp, if (isRecovery) BrandIceBorder else if (cmp.priority == "CRITICAL_LEGAL") RedBorder else BrandIceBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -2729,37 +2656,38 @@ private fun ComplaintsTab(
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = if (isRecovery) Color(0xFF7C3AED).copy(alpha = 0.12f) else if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444).copy(alpha = 0.12f) else Gold500.copy(alpha = 0.15f)
+                                color = if (isRecovery) BrandIceBlue else if (cmp.priority == "CRITICAL_LEGAL") RedLight else GoldCoinCream,
+                                border = BorderStroke(1.dp, if (isRecovery) BrandIceBorder else if (cmp.priority == "CRITICAL_LEGAL") RedBorder else GoldCoinBorder)
                             ) {
                                 Text(
-                                    text = if (isRecovery) "📱 DEVICE RECOVERY GRIEVANCE" else "${cmp.priority} • ${cmp.complainantRole}",
-                                    color = if (isRecovery) Color(0xFF7C3AED) else if (cmp.priority == "CRITICAL_LEGAL") Color(0xFFEF4444) else Color(0xFFB45309),
+                                    text = if (isRecovery) "DEVICE RECOVERY GRIEVANCE" else "${cmp.priority} • ${cmp.complainantRole}",
+                                    color = if (isRecovery) BrandRoyalBlue else if (cmp.priority == "CRITICAL_LEGAL") Red500 else GoldCoinAmber,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                                 )
                             }
-                            Text(cmp.status, color = Color(0xFF64748B), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text(cmp.status, color = TextSlateMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
 
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(cmp.subject, color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text(cmp.description, color = Color(0xFF64748B), fontSize = 11.sp)
+                        Text(cmp.subject, color = TextNavyDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(cmp.description, color = TextSlateMuted, fontSize = 11.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("From: ${cmp.complainantName} (${cmp.complainantPhone})", color = Color(0xFF0F172A), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text("From: ${cmp.complainantName} (${cmp.complainantPhone})", color = TextNavyDark, fontSize = 11.sp, fontWeight = FontWeight.Medium)
 
                         if (isRecovery) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFF5F3FF),
-                                border = BorderStroke(1.dp, Color(0xFFC7D2FE)),
+                                color = BrandIceBlue,
+                                border = BorderStroke(1.dp, BrandIceBorder),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("Hardware Device Transfer Request", fontWeight = FontWeight.Bold, color = Color(0xFF4338CA), fontSize = 12.sp)
-                                    Text("New Device Model: $extractedDevModel", fontSize = 11.sp, color = Color(0xFF1E1B4B), fontWeight = FontWeight.SemiBold)
-                                    Text("Hardware UID: $extractedDevId", fontSize = 10.sp, color = Color(0xFF6366F1))
+                                    Text("Hardware Device Transfer Request", fontWeight = FontWeight.Bold, color = BrandRoyalBlue, fontSize = 12.sp)
+                                    Text("New Device Model: $extractedDevModel", fontSize = 11.sp, color = TextNavyDark, fontWeight = FontWeight.SemiBold)
+                                    Text("Hardware UID: $extractedDevId", fontSize = 10.sp, color = TextSlateMedium)
                                 }
                             }
                         }
@@ -2773,7 +2701,8 @@ private fun ComplaintsTab(
                                         context.startActivity(intent)
                                     },
                                     shape = RoundedCornerShape(8.dp),
-                                    border = BorderStroke(1.dp, Emerald400)
+                                    border = BorderStroke(1.dp, BrandIceBorder),
+                                    colors = ButtonDefaults.outlinedButtonColors(containerColor = BrandIceBlue)
                                 ) {
                                     Icon(Icons.Default.Phone, null, tint = Emerald500, modifier = Modifier.size(14.dp))
                                 }
@@ -2785,7 +2714,7 @@ private fun ComplaintsTab(
                                         },
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.weight(1.4f),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
+                                        colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                                     ) {
                                         Icon(Icons.Default.SecurityUpdateGood, null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
@@ -2795,16 +2724,17 @@ private fun ComplaintsTab(
                                     OutlinedButton(
                                         onClick = { onDismiss(cmp.complaintId) },
                                         shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, BrandIceBorder),
                                         modifier = Modifier.weight(1.0f)
                                     ) {
-                                        Text("Dismiss", fontSize = 11.sp)
+                                        Text("Dismiss", fontSize = 11.sp, color = TextSlateMuted)
                                     }
                                 } else {
                                     Button(
                                         onClick = { onScheduleHearing(cmp) },
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.weight(1.3f),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                                        colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                                     ) {
                                         Icon(Icons.Default.VideoCall, null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
@@ -2850,37 +2780,17 @@ private fun NocTab(
         }
     }
 
-    val eligibleLoan = remember {
-        object {
-            val loanId = "LOAN-84920"
-            val borrower = "Rahul Verma"
-            val pan = "ABCDE1234F"
-            val lender = "Kapil Dev Sharma"
-            val amount = 100000.0
-            val repaid = 106000.0
-            val collateral = "22K Hallmark Gold Coins (20g)"
-        }
-    }
-
-    val isEligibleMatched = remember(eligibleLoan, searchQuery) {
-        searchQuery.isBlank() ||
-        eligibleLoan.borrower.contains(searchQuery, ignoreCase = true) ||
-        eligibleLoan.pan.contains(searchQuery, ignoreCase = true) ||
-        eligibleLoan.lender.contains(searchQuery, ignoreCase = true) ||
-        eligibleLoan.loanId.contains(searchQuery, ignoreCase = true)
-    }
-
     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
         item {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search NOCs by borrower, PAN, loan ID...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp)) },
+                placeholder = { Text("Search NOCs by borrower, PAN, loan ID...", color = TextSlateMuted, fontSize = 12.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp)) },
                 trailingIcon = {
                     if (searchQuery.isNotBlank()) {
                         IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSlateMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                 },
@@ -2888,81 +2798,26 @@ private fun NocTab(
                 shape = RoundedCornerShape(10.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color(0xFFF8FAFC),
-                    focusedBorderColor = Color(0xFF2563EB),
-                    unfocusedBorderColor = Color(0xFFCBD5E1),
-                    focusedTextColor = Color(0xFF0F172A),
-                    unfocusedTextColor = Color(0xFF0F172A)
+                    unfocusedContainerColor = CanvasPorcelain,
+                    focusedBorderColor = BrandRoyalBlue,
+                    unfocusedBorderColor = BrandIceBorder,
+                    focusedTextColor = TextNavyDark,
+                    unfocusedTextColor = TextNavyDark
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
-        if (isEligibleMatched) {
-            item {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Emerald500.copy(alpha = 0.15f)
-                        ) {
-                            Text("100% PAID • ZERO DUES", color = Emerald500, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                        }
-                        Text(eligibleLoan.loanId, color = Color(0xFFB45309), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text("Clearance for ${eligibleLoan.borrower} (PAN: ${eligibleLoan.pan})", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("Lender: ${eligibleLoan.lender} • Total Repaid: ₹${eligibleLoan.repaid.toInt()}", color = Color(0xFF64748B), fontSize = 11.sp)
-                    Text("Pledged Collateral: ${eligibleLoan.collateral}", color = Color(0xFF64748B), fontSize = 11.sp)
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Button(
-                        onClick = {
-                            onGenerateNoc(
-                                eligibleLoan.loanId,
-                                eligibleLoan.borrower,
-                                eligibleLoan.pan,
-                                eligibleLoan.lender,
-                                eligibleLoan.amount,
-                                eligibleLoan.repaid,
-                                eligibleLoan.collateral
-                            )
-                            Toast.makeText(context, "Cryptographic NOC issued & collateral released!", Toast.LENGTH_SHORT).show()
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
-                    ) {
-                        Icon(Icons.Default.VerifiedUser, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Attest & Issue Official Legal NOC", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-        }
-
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Digitally Signed NOC Certificates Registry (${filteredNocs.size})", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text("Digitally Signed NOC Certificates Registry (${filteredNocs.size})", color = TextNavyDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
 
         items(filteredNocs) { noc ->
             Card(
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                border = BorderStroke(1.dp, BrandIceBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -2972,13 +2827,17 @@ private fun NocTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(noc.nocId, color = Emerald500, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Surface(shape = RoundedCornerShape(4.dp), color = Emerald500.copy(alpha = 0.15f)) {
-                            Text("LEGAL CLEARANCE", color = Emerald500, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = EmeraldLight,
+                            border = BorderStroke(1.dp, EmeraldBorder)
+                        ) {
+                            Text("LEGAL CLEARANCE", color = Emerald500, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                         }
                     }
-                    Text("Borrower: ${noc.borrowerName} • Loan: ${noc.loanId}", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text("Collateral Released: ${noc.collateralReleasedDesc}", color = Color(0xFF64748B), fontSize = 11.sp)
-                    Text("Digital Signature: ${noc.digitalSignatureHash}", color = Color(0xFF64748B), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Borrower: ${noc.borrowerName} • Loan: ${noc.loanId}", color = TextNavyDark, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Collateral Released: ${noc.collateralReleasedDesc}", color = TextSlateMuted, fontSize = 11.sp)
+                    Text("Digital Signature: ${noc.digitalSignatureHash}", color = TextSlateMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -3014,7 +2873,7 @@ private fun HearingsTab(
             onClick = onScheduleNew,
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
+            colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
         ) {
             Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(6.dp))
@@ -3026,12 +2885,12 @@ private fun HearingsTab(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search hearings by participant, case title...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(18.dp)) },
+            placeholder = { Text("Search hearings by participant, case title...", color = TextSlateMuted, fontSize = 12.sp) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp)) },
             trailingIcon = {
                 if (searchQuery.isNotBlank()) {
                     IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSlateMuted, modifier = Modifier.size(16.dp))
                     }
                 }
             },
@@ -3039,11 +2898,11 @@ private fun HearingsTab(
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color(0xFFF8FAFC),
-                focusedBorderColor = Color(0xFF2563EB),
-                unfocusedBorderColor = Color(0xFFCBD5E1),
-                focusedTextColor = Color(0xFF0F172A),
-                unfocusedTextColor = Color(0xFF0F172A)
+                unfocusedContainerColor = CanvasPorcelain,
+                focusedBorderColor = BrandRoyalBlue,
+                unfocusedBorderColor = BrandIceBorder,
+                focusedTextColor = TextNavyDark,
+                unfocusedTextColor = TextNavyDark
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -3052,7 +2911,7 @@ private fun HearingsTab(
 
         if (filteredMeetings.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No hearings found matching query", color = Color(0xFF64748B), fontSize = 13.sp)
+                Text("No hearings found matching query", color = TextSlateMuted, fontSize = 13.sp)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxSize()) {
@@ -3061,7 +2920,7 @@ private fun HearingsTab(
                     Card(
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, if (isScheduled) Emerald400.copy(alpha = 0.5f) else Color(0xFFE2E8F0)),
+                        border = BorderStroke(1.dp, if (isScheduled) EmeraldBorder else BrandIceBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -3072,23 +2931,24 @@ private fun HearingsTab(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
-                                    color = if (m.meetingType == "GOOGLE_MEET") Emerald500.copy(alpha = 0.15f) else Gold500.copy(alpha = 0.15f)
+                                    color = if (m.meetingType == "GOOGLE_MEET") EmeraldLight else GoldCoinCream,
+                                    border = BorderStroke(1.dp, if (m.meetingType == "GOOGLE_MEET") EmeraldBorder else GoldCoinBorder)
                                 ) {
                                     Text(
-                                        text = if (m.meetingType == "GOOGLE_MEET") "📹 GOOGLE MEET" else "🏢 IN-PERSON VAULT",
-                                        color = if (m.meetingType == "GOOGLE_MEET") Emerald500 else Color(0xFFB45309),
+                                        text = if (m.meetingType == "GOOGLE_MEET") "GOOGLE MEET" else "IN-PERSON VAULT",
+                                        color = if (m.meetingType == "GOOGLE_MEET") Emerald500 else GoldCoinAmber,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                                     )
                                 }
-                                Text(m.scheduledTimeSlotStr, color = Color(0xFFB45309), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Text(m.scheduledTimeSlotStr, color = GoldCoinAmber, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                             }
 
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(m.title, color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            Text("Parties: ${m.borrowerName} & ${m.lenderName}", color = Color(0xFF64748B), fontSize = 11.sp)
-                            Text("Agenda: ${m.agenda}", color = Color(0xFF64748B), fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(m.title, color = TextNavyDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("Parties: ${m.borrowerName} & ${m.lenderName}", color = TextSlateMuted, fontSize = 11.sp)
+                            Text("Agenda: ${m.agenda}", color = TextSlateMuted, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
 
                             if (isScheduled) {
                                 Spacer(modifier = Modifier.height(10.dp))
@@ -3101,7 +2961,7 @@ private fun HearingsTab(
                                             },
                                             shape = RoundedCornerShape(8.dp),
                                             modifier = Modifier.weight(1.3f),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
+                                            colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                                         ) {
                                             Icon(Icons.Default.VideoCall, null, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
@@ -3112,121 +2972,11 @@ private fun HearingsTab(
                                         onClick = { onMarkCompleted(m.meetingId) },
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.weight(1f),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9), contentColor = Color(0xFF0F172A))
+                                        colors = ButtonDefaults.buttonColors(containerColor = CanvasPorcelain, contentColor = TextNavyDark),
+                                        border = BorderStroke(1.dp, BrandIceBorder)
                                     ) {
                                         Text("Mark Concluded", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                     }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// --- MODULE 8: SMS & AUTH INTERCEPTOR TAB ---
-@Composable
-private fun SmsInterceptorTab(
-    verifications: List<VerificationEntity>,
-    manualTokenInput: String,
-    onManualTokenChange: (String) -> Unit,
-    onApprove: (String, String) -> Unit,
-    onManualVerify: (String) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text("Manual Verification Token Overrule", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = manualTokenInput,
-                        onValueChange = onManualTokenChange,
-                        placeholder = { Text("Token or Phone #...", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF0F172A),
-                            unfocusedBorderColor = Color(0xFFCBD5E1),
-                            focusedTextColor = Color(0xFF0F172A),
-                            unfocusedTextColor = Color(0xFF0F172A),
-                            focusedContainerColor = Color(0xFFF8FAFC),
-                            unfocusedContainerColor = Color(0xFFF8FAFC)
-                        )
-                    )
-                    Button(
-                        onClick = {
-                            if (manualTokenInput.isNotBlank()) {
-                                onManualVerify(manualTokenInput)
-                                onManualTokenChange("")
-                            }
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
-                    ) {
-                        Text("Verify", fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false)
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        if (verifications.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No verification tokens received yet", color = Color(0xFF64748B), fontSize = 13.sp)
-            }
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
-                items(verifications) { item ->
-                    val isVerified = item.status == "VERIFIED"
-                    Card(
-                        shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, if (isVerified) Emerald400.copy(alpha = 0.5f) else Color(0xFFE2E8F0)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = if (isVerified) Emerald400.copy(alpha = 0.15f) else Color(0xFFF1F5F9),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        if (item.channel.contains("WHATSAPP", ignoreCase = true)) Icons.AutoMirrored.Filled.Message else Icons.Default.Sms,
-                                        null,
-                                        tint = if (isVerified) Emerald500 else Color(0xFF64748B),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(item.phone, color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(item.status, color = if (isVerified) Emerald500 else Color(0xFFD97706), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Text("Token: ${item.token}", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                            if (!isVerified) {
-                                Button(
-                                    onClick = { onApprove(item.token, item.phone) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White)
-                                ) {
-                                    Text("Approve", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                         }
@@ -3241,13 +2991,13 @@ private fun SmsInterceptorTab(
 private fun FilterChipItem(title: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) Color(0xFF2563EB) else Color.White,
-        border = BorderStroke(1.dp, if (selected) Color(0xFF2563EB) else Color(0xFFCBD5E1)),
+        color = if (selected) BrandRoyalBlue else Color.White,
+        border = BorderStroke(1.dp, if (selected) BrandRoyalBlue else BrandIceBorder),
         modifier = Modifier.clickable { onClick() }
     ) {
         Text(
             text = title,
-            color = if (selected) Color.White else Color(0xFF475569),
+            color = if (selected) Color.White else TextSlateMedium,
             fontSize = 11.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)

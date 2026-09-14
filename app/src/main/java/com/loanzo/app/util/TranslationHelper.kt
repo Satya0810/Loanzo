@@ -24,6 +24,9 @@ class TranslationHelper @Inject constructor() {
 
     companion object {
         private const val TAG = "TranslationHelper"
+        @Volatile
+        var instance: TranslationHelper? = null
+            internal set
     }
 
     // Fast HTTP client with reasonable timeouts and automatic retry
@@ -44,6 +47,7 @@ class TranslationHelper @Inject constructor() {
     val modelDownloadedState: StateFlow<Set<String>> = _modelDownloadedState.asStateFlow()
 
     init {
+        instance = this
         checkDownloadedModelsOnDisk()
     }
 
@@ -281,6 +285,10 @@ class TranslationHelper @Inject constructor() {
     )
 
     fun getOfflineTranslation(text: String, targetLang: String): String? {
+        // 1. Check universal, high-performance AppGlossary across all supported Indian languages
+        AppGlossary.getTranslation(text, targetLang)?.let { return it }
+
+        // 2. Check legacy dictionary fallback
         val trimmed = text.trim().lowercase()
         return when (targetLang.lowercase()) {
             "hi" -> offlineGlossaryHi[trimmed]
@@ -450,10 +458,14 @@ class TranslationHelper @Inject constructor() {
             mutableStateOf(translateSync(text, targetLang))
         }
 
-        LaunchedEffect(text, targetLang, downloadedModels) {
-            val result = translateText(text, targetLang)
-            if (!result.isNullOrBlank() && result != text) {
-                translated = result
+        // Only launch background translation if not already translated by offline glossary/cache
+        val isAlreadyTranslated = translated != text
+        if (!isAlreadyTranslated) {
+            LaunchedEffect(text, targetLang, downloadedModels) {
+                val result = translateText(text, targetLang)
+                if (!result.isNullOrBlank() && result != text) {
+                    translated = result
+                }
             }
         }
 

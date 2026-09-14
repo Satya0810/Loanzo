@@ -37,7 +37,8 @@ class UserRepository @Inject constructor(
     private val repaymentDao: RepaymentDao,
     private val appSyncManager: AppSyncManager,
     @ApplicationContext private val context: Context,
-    private val sessionManager: com.loanzo.app.data.session.BankingSessionManager
+    private val sessionManager: com.loanzo.app.data.session.BankingSessionManager,
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
 ) {
     companion object {
         private val CURRENT_USER_ID = stringPreferencesKey("current_user_id")
@@ -68,6 +69,7 @@ class UserRepository @Inject constructor(
         val QUEST_KYC_CHECKED           = booleanPreferencesKey("quest_kyc_checked")
         val QUEST_DEMO_SEEDED           = booleanPreferencesKey("quest_demo_seeded")
         val QUEST_CARD_DISMISSED        = booleanPreferencesKey("quest_card_dismissed")
+        val FLOATING_CHATBOT_ENABLED    = booleanPreferencesKey("floating_chatbot_enabled")
     }
 
     suspend fun saveBiometricEnrollment(userId: String, enabled: Boolean) {
@@ -136,10 +138,12 @@ class UserRepository @Inject constructor(
         val u = user.username.trim().lowercase().removePrefix("@")
         val uid = user.userId.trim().lowercase().removePrefix("@")
         val isSatyam = u in listOf("satyam0810", "satyam_081", "satyam") ||
-                       uid in listOf("satyam0810", "satyam_081", "satyam", "demo_admin_satyam") ||
+                       uid in listOf("satyam0810", "satyam_081", "satyam") ||
                        user.phone.replace(" ", "").contains("7061559039") ||
                        user.email.lowercase().startsWith("satyam0810")
-        val isAbhisi = u == "abhisi" || uid in listOf("abhisi", "demo_agent_abhisi")
+        val isAbhisi = u == "abhisi" || uid == "abhisi" || user.email.lowercase().startsWith("abhisi")
+        val isKumar = u == "kumar" || uid == "kumar" || user.email.lowercase().startsWith("kumar")
+        val isPrince = u == "prince25" || uid == "prince25" || user.email.lowercase().startsWith("prince25")
 
         return when {
             isAbhisi -> {
@@ -158,6 +162,12 @@ class UserRepository @Inject constructor(
                 }
                 user.copy(role = activeRole)
             }
+            isKumar || isPrince -> {
+                user.copy(
+                    role = "BORROWER",
+                    kycStatus = "VERIFIED"
+                )
+            }
             // satyam0810 is the ONLY admin. Demote any other user with ADMIN role to USER
             user.role.equals("ADMIN", ignoreCase = true) -> {
                 user.copy(
@@ -170,65 +180,11 @@ class UserRepository @Inject constructor(
 
     suspend fun getUserById(userId: String): UserEntity? {
         val cleanId = userId.trim().lowercase().removePrefix("@")
-        if (cleanId == "abhisi" || cleanId == "demo_agent_abhisi") {
-            val existing = userDao.getUserById(userId) ?: userDao.getUserByUsername("abhisi")
-            if (existing != null) return sanitizeUserRole(existing)
-            val abhisiUser = UserEntity(
-                userId = "demo_agent_abhisi",
-                name = "Abhisi (Field Agent)",
-                email = "abhisi@loanzo.app",
-                phone = "+91 98100 12345",
-                username = "abhisi",
-                password = com.loanzo.app.util.hashPassword("password123"),
-                role = "AGENT",
-                kycStatus = "VERIFIED",
-                aadhaarVerified = true,
-                panVerified = true,
-                bankVerified = true,
-                bankAccountNumber = "3094829104821",
-                bankIfsc = "SBIN0001122",
-                panNumber = "BKPVS4521R",
-                aadhaarNumber = "3219 8765 4321",
-                upiId = "abhisi.agent@oksbi",
-                dateOfBirth = "14/03/1996",
-                address = "C-42, Sector 18, Noida, UP 201301",
-                agentStatus = "APPROVED",
-                isOnDuty = true,
-                totalAgentEarnings = 4250.0
-            )
-            userDao.insertUser(abhisiUser)
-            return abhisiUser
-        }
-        if (cleanId in listOf("satyam0810", "satyam_081", "satyam", "demo_admin_satyam")) {
-            val existing = userDao.getUserById(userId) ?: userDao.getUserByUsername("satyam0810")
-            if (existing != null) return sanitizeUserRole(existing)
-            val satyamUser = UserEntity(
-                userId = "demo_admin_satyam",
-                name = "Satyam Kumar",
-                email = "satyam@loanzo.app",
-                phone = "+91 70615 59039",
-                username = "satyam0810",
-                password = com.loanzo.app.util.hashPassword("password123"),
-                role = "ADMIN",
-                kycStatus = "VERIFIED",
-                aadhaarVerified = true,
-                panVerified = true,
-                bankVerified = true,
-                bankAccountNumber = "5010049281928",
-                bankIfsc = "HDFC0001234",
-                panNumber = "ADMKR7892L",
-                aadhaarNumber = "4532 1098 7654",
-                upiId = "satyam0810@okhdfc",
-                dateOfBirth = "08/10/2003",
-                address = "B-204, Prateek Laurel, Sector 120, Noida, UP 201301",
-                agentStatus = "NONE",
-                isOnDuty = false,
-                totalAgentEarnings = 0.0
-            )
-            userDao.insertUser(satyamUser)
-            return satyamUser
-        }
-        val user = userDao.getUserById(userId) ?: return null
+        val user = userDao.getUserById(userId) 
+            ?: userDao.getUserById(cleanId) 
+            ?: userDao.getUserByUsername(cleanId) 
+            ?: userDao.getUserByUsername(userId) 
+            ?: return null
         return sanitizeUserRole(user)
     }
 
@@ -237,75 +193,20 @@ class UserRepository @Inject constructor(
     }
 
     suspend fun getUserByEmail(email: String): UserEntity? {
-        val user = userDao.getUserByEmail(email) ?: return null
-        return sanitizeUserRole(user)
+        val clean = email.trim().lowercase()
+        val user = userDao.getUserByEmail(clean) ?: userDao.getUserByEmail(email)
+        return user?.let { sanitizeUserRole(it) }
     }
 
     suspend fun getUserByPhone(phone: String): UserEntity? {
-        val user = userDao.getUserByPhone(phone) ?: return null
-        return sanitizeUserRole(user)
+        val clean = phone.replace(" ", "").replace("-", "")
+        val user = userDao.getUserByPhone(phone) ?: userDao.getUserByPhone(clean) ?: userDao.getUserByPhone("+91$clean")
+        return user?.let { sanitizeUserRole(it) }
     }
 
     suspend fun getUserByUsername(username: String): UserEntity? {
         val clean = username.trim().lowercase().removePrefix("@")
-        var user = userDao.getUserByUsername(clean)
-        if (user == null) {
-            user = userDao.getUserByUsername(username)
-        }
-        if (user == null && clean == "abhisi") {
-            val abhisiUser = UserEntity(
-                userId = "demo_agent_abhisi",
-                name = "Abhisi (Field Agent)",
-                email = "abhisi@loanzo.app",
-                phone = "+91 98100 12345",
-                username = "abhisi",
-                password = com.loanzo.app.util.hashPassword("password123"),
-                role = "AGENT",
-                kycStatus = "VERIFIED",
-                aadhaarVerified = true,
-                panVerified = true,
-                bankVerified = true,
-                bankAccountNumber = "3094829104821",
-                bankIfsc = "SBIN0001122",
-                panNumber = "BKPVS4521R",
-                aadhaarNumber = "3219 8765 4321",
-                upiId = "abhisi.agent@oksbi",
-                dateOfBirth = "14/03/1996",
-                address = "C-42, Sector 18, Noida, UP 201301",
-                agentStatus = "APPROVED",
-                isOnDuty = true,
-                totalAgentEarnings = 4250.0
-            )
-            userDao.insertUser(abhisiUser)
-            return abhisiUser
-        }
-        if (user == null && clean in listOf("satyam0810", "satyam_081", "satyam")) {
-            val satyamUser = UserEntity(
-                userId = "demo_admin_satyam",
-                name = "Satyam Kumar",
-                email = "satyam@loanzo.app",
-                phone = "+91 70615 59039",
-                username = "satyam0810",
-                password = com.loanzo.app.util.hashPassword("password123"),
-                role = "ADMIN",
-                kycStatus = "VERIFIED",
-                aadhaarVerified = true,
-                panVerified = true,
-                bankVerified = true,
-                bankAccountNumber = "5010049281928",
-                bankIfsc = "HDFC0001234",
-                panNumber = "ADMKR7892L",
-                aadhaarNumber = "4532 1098 7654",
-                upiId = "satyam0810@okhdfc",
-                dateOfBirth = "08/10/2003",
-                address = "B-204, Prateek Laurel, Sector 120, Noida, UP 201301",
-                agentStatus = "NONE",
-                isOnDuty = false,
-                totalAgentEarnings = 0.0
-            )
-            userDao.insertUser(satyamUser)
-            return satyamUser
-        }
+        val user = userDao.getUserByUsername(clean) ?: userDao.getUserByUsername(username)
         return user?.let { sanitizeUserRole(it) }
     }
 
@@ -343,6 +244,20 @@ class UserRepository @Inject constructor(
     suspend fun setAppLanguage(languageCode: String) {
         com.loanzo.app.util.LocaleHelper.applyLocale(context, languageCode)
         context.dataStore.edit { prefs -> prefs[APP_LANGUAGE] = languageCode }
+    }
+
+    // Floating Chatbot preference (defaults to true)
+    fun isFloatingChatbotEnabled(): Flow<Boolean> = context.dataStore.data.map { it[FLOATING_CHATBOT_ENABLED] ?: true }
+
+    suspend fun setFloatingChatbotEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[FLOATING_CHATBOT_ENABLED] = enabled }
+    }
+
+    suspend fun updateTelegramUsername(userId: String, username: String) {
+        val clean = username.trim().removePrefix("@")
+        getUserById(userId)?.let { u ->
+            updateUser(u.copy(telegramUsername = clean))
+        }
     }
 
     // ─── Onboarding & Guided Tour state ────────────────────────────────────────
@@ -431,32 +346,19 @@ class UserRepository @Inject constructor(
             isUserBlocked(userId)
         ) { user, loans, repayments, isBlocked ->
             if (user == null) {
-                val demoName = when (userId) {
-                    "demo_borrower_rahul" -> "Rahul Sharma"
-                    "demo_lender_priya" -> "Priya Patel"
-                    "demo_vikram_malhotra" -> "Vikram Malhotra"
-                    "demo_sneha_roy" -> "Sneha Roy"
-                    "demo_amit_verma" -> "Amit Verma"
-                    "demo_rajesh_gupta" -> "Rajesh Gupta"
-                    "demo_guarantor_nirmala" -> "Nirmala Devi"
-                    "demo_coborrower_rohan" -> "Rohan Mehra"
-                    else -> "Loanzo Member"
-                }
-                val isDemoKnown = demoName != "Loanzo Member"
-                val demoRole = if (userId.contains("lender") || userId.contains("vikram")) "LENDER" else "BORROWER"
                 return@combine UserProfileData(
                     userId = userId,
-                    name = demoName,
-                    username = if (isDemoKnown) demoName.lowercase().replace(" ", "_") else "member_${userId.take(6)}",
-                    role = demoRole,
-                    verificationStatus = if (isDemoKnown) UserVerificationStatus.VERIFIED else UserVerificationStatus.PARTIALLY_VERIFIED,
-                    trustScore = if (isDemoKnown) 94 else 75,
-                    trustScoreTier = if (isDemoKnown) "Tier 1 • Prime Elite" else "Tier 2 • Established",
+                    name = "Loanzo Member",
+                    username = "member_${userId.take(6)}",
+                    role = "BORROWER",
+                    verificationStatus = UserVerificationStatus.PARTIALLY_VERIFIED,
+                    trustScore = 75,
+                    trustScoreTier = "Tier 2 • Established",
                     isBlocked = isBlocked,
                     isOwnProfile = (userId == getCurrentUserIdSync()),
-                    isKycVerified = isDemoKnown,
-                    isDigiLockerVerified = isDemoKnown,
-                    isBankVerified = isDemoKnown
+                    isKycVerified = false,
+                    isDigiLockerVerified = false,
+                    isBankVerified = false
                 )
             }
 
@@ -603,7 +505,8 @@ class UserRepository @Inject constructor(
         // 2. Query Firestore Cloud
         val remoteMatches = mutableListOf<UserEntity>()
         try {
-            val firestore = FirebaseFirestore.getInstance()
+            firebaseManager.ensureFirebaseAuthSession()
+            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
             val usersRef = firestore.collection("users")
 
             // Lookup by exact userId doc
@@ -667,7 +570,8 @@ class UserRepository @Inject constructor(
         if (user != null) return@withContext user
 
         try {
-            val firestore = FirebaseFirestore.getInstance()
+            firebaseManager.ensureFirebaseAuthSession()
+            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
             val doc = firestore.collection("users").document(userId).get().await()
             if (doc.exists()) {
                 val remoteUser = parseUserFromFirestoreDoc(doc.data, doc.id)

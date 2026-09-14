@@ -86,4 +86,13 @@ interface MarketplaceDao {
 
     @Query("DELETE FROM marketplace_bids WHERE bidId = :bidId")
     suspend fun deleteBid(bidId: String)
+
+    @Query("DELETE FROM marketplace_posts WHERE postId LIKE 'demo_%' OR postId LIKE 'post_demo_%' OR postId LIKE 'sample_post_%' OR authorId LIKE 'demo_%'")
+    suspend fun deleteDemoPosts()
+
+    @Query("DELETE FROM marketplace_bids WHERE bidId LIKE 'demo_%' OR bidId LIKE 'bid_demo_%' OR bidId LIKE 'sample_bid_%' OR bidderId LIKE 'demo_%'")
+    suspend fun deleteDemoBids()
+
+    @Query("DELETE FROM marketplace_vouches WHERE voucherUserId LIKE 'demo_%'")
+    suspend fun deleteDemoVouches()
 }

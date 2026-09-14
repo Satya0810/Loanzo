@@ -27,6 +27,8 @@ class AgentRepository @Inject constructor(
     private val appSyncManager: com.loanzo.app.data.sync.AppSyncManager,
     private val gson: com.google.gson.Gson
 ) {
+    private val firestore: FirebaseFirestore
+        get() = com.loanzo.app.data.firebase.FirestoreProvider.get()
 
     // --- Applications ---
 
@@ -44,14 +46,14 @@ class AgentRepository @Inject constructor(
 
         // 1. Push to Firestore for Cloud Sync
         try {
-            val firestore = FirebaseFirestore.getInstance()
+            val firestore = firestore
             firestore.collection("agent_applications")
                 .document(application.applicationId)
-                .set(application)
+                .set(agentApplicationToMap(application), com.google.firebase.firestore.SetOptions.merge())
                 .await()
             firestore.collection("users")
                 .document(application.userId)
-                .update("agentStatus", "PENDING")
+                .set(mapOf("agentStatus" to "PENDING"), com.google.firebase.firestore.SetOptions.merge())
                 .await()
         } catch (e: Exception) {
             android.util.Log.w("AgentRepository", "Direct Firestore write note: ${e.message}")
@@ -80,12 +82,12 @@ class AgentRepository @Inject constructor(
             type = "AGENT_APPLICATION",
             timestamp = System.currentTimeMillis(),
             isRead = false,
-            actionRoute = "app_owner_hub?tab=1"
+            actionRoute = "app_owner_hub?tab=11"
         )
         try {
-            FirebaseFirestore.getInstance().collection("notifications")
+            firestore.collection("notifications")
                 .document(notifId)
-                .set(adminNotif)
+                .set(notificationToMap(adminNotif), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // 3. Insert Applicant Confirmation Receipt locally and in Firestore
@@ -101,9 +103,9 @@ class AgentRepository @Inject constructor(
         )
         try {
             notificationDao.insertNotification(applicantReceiptNotif)
-            FirebaseFirestore.getInstance().collection("notifications")
+            firestore.collection("notifications")
                 .document(applicantReceiptNotif.notificationId)
-                .set(applicantReceiptNotif)
+                .set(notificationToMap(applicantReceiptNotif), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // 4. Fire Instant Telegram Alert to Master Admin (@satyam_081)
@@ -146,7 +148,7 @@ class AgentRepository @Inject constructor(
         var app = agentDao.getApplicationById(applicationId)
         if (app == null) {
             try {
-                val snap = FirebaseFirestore.getInstance().collection("agent_applications")
+                val snap = firestore.collection("agent_applications")
                     .document(applicationId).get().await()
                 app = snap.toAgentApplication()
                 if (app != null) {
@@ -164,9 +166,9 @@ class AgentRepository @Inject constructor(
         agentDao.updateApplication(updatedApp)
 
         try {
-            FirebaseFirestore.getInstance().collection("agent_applications")
+            firestore.collection("agent_applications")
                 .document(applicationId)
-                .set(updatedApp)
+                .set(agentApplicationToMap(updatedApp), com.google.firebase.firestore.SetOptions.merge())
                 .await()
         } catch (_: Exception) {}
 
@@ -181,7 +183,7 @@ class AgentRepository @Inject constructor(
 
         // Elevate user in Firestore directly (guarantees remote applicant gets updated role even if not in admin's local Room)
         try {
-            val userDocRef = FirebaseFirestore.getInstance().collection("users").document(app.userId)
+            val userDocRef = firestore.collection("users").document(app.userId)
             val updates = mapOf<String, Any>(
                 "role" to "AGENT",
                 "agentStatus" to "APPROVED",
@@ -224,21 +226,18 @@ class AgentRepository @Inject constructor(
         )
         try {
             notificationDao.insertNotification(notif)
-            FirebaseFirestore.getInstance().collection("notifications")
+            firestore.collection("notifications")
                 .document(notif.notificationId)
-                .set(notif)
+                .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
                 .await()
         } catch (_: Exception) {}
-
-        // Seed sample visits for this agent and push them to Firestore
-        seedSampleVisitsForAgent(app.userId)
     }
 
     suspend fun rejectApplication(applicationId: String, adminRemarks: String) {
         var app = agentDao.getApplicationById(applicationId)
         if (app == null) {
             try {
-                val snap = FirebaseFirestore.getInstance().collection("agent_applications")
+                val snap = firestore.collection("agent_applications")
                     .document(applicationId).get().await()
                 app = snap.toAgentApplication()
                 if (app != null) {
@@ -256,9 +255,9 @@ class AgentRepository @Inject constructor(
         agentDao.updateApplication(updatedApp)
 
         try {
-            FirebaseFirestore.getInstance().collection("agent_applications")
+            firestore.collection("agent_applications")
                 .document(applicationId)
-                .set(updatedApp)
+                .set(agentApplicationToMap(updatedApp), com.google.firebase.firestore.SetOptions.merge())
                 .await()
         } catch (_: Exception) {}
 
@@ -273,7 +272,7 @@ class AgentRepository @Inject constructor(
 
         // Update user status in Firestore directly
         try {
-            val userDocRef = FirebaseFirestore.getInstance().collection("users").document(app.userId)
+            val userDocRef = firestore.collection("users").document(app.userId)
             userDocRef.update("agentStatus", "REJECTED").addOnFailureListener {
                 userDocRef.set(
                     mapOf("userId" to app.userId, "agentStatus" to "REJECTED"),
@@ -300,9 +299,9 @@ class AgentRepository @Inject constructor(
         )
         try {
             notificationDao.insertNotification(notif)
-            FirebaseFirestore.getInstance().collection("notifications")
+            firestore.collection("notifications")
                 .document(notif.notificationId)
-                .set(notif)
+                .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
     }
 
@@ -341,9 +340,9 @@ class AgentRepository @Inject constructor(
         )
         agentDao.updateVisit(updated)
         try {
-            FirebaseFirestore.getInstance().collection("agent_visits")
+            firestore.collection("agent_visits")
                 .document(visitId)
-                .set(updated)
+                .set(agentVisitToMap(updated), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
     }
 
@@ -357,9 +356,9 @@ class AgentRepository @Inject constructor(
             )
             agentDao.updateVisit(updated)
             try {
-                FirebaseFirestore.getInstance().collection("agent_visits")
+                firestore.collection("agent_visits")
                     .document(visitId)
-                    .set(updated)
+                    .set(agentVisitToMap(updated), com.google.firebase.firestore.SetOptions.merge())
             } catch (_: Exception) {}
             return true
         }
@@ -409,9 +408,9 @@ class AgentRepository @Inject constructor(
         )
         agentDao.insertVisit(visit)
         try {
-            FirebaseFirestore.getInstance().collection("agent_visits")
+            firestore.collection("agent_visits")
                 .document(visitId)
-                .set(visit)
+                .set(agentVisitToMap(visit), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
         return visit
     }
@@ -419,6 +418,10 @@ class AgentRepository @Inject constructor(
     suspend fun setDutyStatus(userId: String, isOnDuty: Boolean) {
         val user = userDao.getUserById(userId) ?: return
         userDao.updateUser(user.copy(isOnDuty = isOnDuty))
+        try {
+            firestore.collection("users").document(userId)
+                .set(mapOf("isOnDuty" to isOnDuty), com.google.firebase.firestore.SetOptions.merge())
+        } catch (_: Exception) {}
     }
 
     suspend fun completeVisit(
@@ -429,7 +432,9 @@ class AgentRepository @Inject constructor(
         isLenderIdentityVerified: Boolean,
         proofPhotoUris: String,
         appraisedValue: Double? = null,
-        officerRecommendation: String? = "RECOMMEND_APPROVAL"
+        officerRecommendation: String? = "RECOMMEND_APPROVAL",
+        agentLatitude: Double? = null,
+        agentLongitude: Double? = null
     ) {
         val visit = agentDao.getVisitById(visitId) ?: return
         val finalAppraisal = appraisedValue ?: visit.appraisedValue ?: visit.collateralEstimatedValue
@@ -444,6 +449,8 @@ class AgentRepository @Inject constructor(
             proofPhotoUris = proofPhotoUris,
             appraisedValue = finalAppraisal,
             officerRecommendation = officerRecommendation,
+            agentLatitude = agentLatitude ?: visit.agentLatitude,
+            agentLongitude = agentLongitude ?: visit.agentLongitude,
             completedAt = System.currentTimeMillis()
         )
 
@@ -465,12 +472,15 @@ class AgentRepository @Inject constructor(
                 )
 
                 // Update counterpart record with matching discrepancy
-                agentDao.updateVisit(
-                    counterpart.copy(
-                        counterpartAppraisedValue = v1,
-                        valuationDiscrepancyPercent = discrepancy
-                    )
+                val updatedCounterpart = counterpart.copy(
+                    counterpartAppraisedValue = v1,
+                    valuationDiscrepancyPercent = discrepancy
                 )
+                agentDao.updateVisit(updatedCounterpart)
+                try {
+                    firestore.collection("agent_visits").document(counterpart.visitId)
+                        .set(agentVisitToMap(updatedCounterpart), com.google.firebase.firestore.SetOptions.merge())
+                } catch (_: Exception) {}
 
                 // If both Stage 1 visits are now completed, automatically trigger Stage 2 Swapped visits
                 if (visit.verificationStage == "STAGE_1_PRIMARY") {
@@ -545,9 +555,10 @@ class AgentRepository @Inject constructor(
 
                         agentDao.insertVisits(listOf(stage2Visit1, stage2Visit2))
                         try {
-                            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                            firestore.collection("agent_visits").document(stage2Visit1.visitId).set(stage2Visit1)
-                            firestore.collection("agent_visits").document(stage2Visit2.visitId).set(stage2Visit2)
+                            firestore.collection("agent_visits").document(stage2Visit1.visitId)
+                                .set(agentVisitToMap(stage2Visit1), com.google.firebase.firestore.SetOptions.merge())
+                            firestore.collection("agent_visits").document(stage2Visit2.visitId)
+                                .set(agentVisitToMap(stage2Visit2), com.google.firebase.firestore.SetOptions.merge())
                         } catch (_: Exception) {}
 
                         // Notify both agents of their stage 2 swapped assignment
@@ -572,9 +583,8 @@ class AgentRepository @Inject constructor(
                             )
                             notificationDao.insertNotification(notif1)
                             notificationDao.insertNotification(notif2)
-                            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                            firestore.collection("notifications").document(notif1.notificationId).set(notif1)
-                            firestore.collection("notifications").document(notif2.notificationId).set(notif2)
+                            firestore.collection("notifications").document(notif1.notificationId).set(notificationToMap(notif1), com.google.firebase.firestore.SetOptions.merge())
+                            firestore.collection("notifications").document(notif2.notificationId).set(notificationToMap(notif2), com.google.firebase.firestore.SetOptions.merge())
                         } catch (_: Exception) {}
                     }
                 }
@@ -582,10 +592,26 @@ class AgentRepository @Inject constructor(
         }
 
         agentDao.updateVisit(completedVisit)
+        try {
+            firestore.collection("agent_visits")
+                .document(visitId)
+                .set(agentVisitToMap(completedVisit), com.google.firebase.firestore.SetOptions.merge())
+        } catch (_: Exception) {}
 
         // Advance loan status from COLLATERAL_VALUATION to CONTRACT_SIGNING
         if (visit.loanId.isNotBlank()) {
-            val loan = loanDao.getLoanById(visit.loanId)
+            var loan = loanDao.getLoanById(visit.loanId)
+            if (loan == null) {
+                try {
+                    val doc = firestore.collection("loans").document(visit.loanId).get().await()
+                    if (doc.exists()) {
+                        loan = doc.toObject(com.loanzo.app.data.entity.LoanEntity::class.java)
+                        if (loan != null) {
+                            loanDao.insertLoan(loan)
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
             if (loan != null && (loan.status == "COLLATERAL_VALUATION" || loan.status == "BID_ACCEPTED" || visit.visitType == "COLLATERAL_VERIFICATION")) {
                 val updatedLoan = loan.copy(
                     status = "CONTRACT_SIGNING",
@@ -593,16 +619,36 @@ class AgentRepository @Inject constructor(
                 )
                 loanDao.updateLoan(updatedLoan)
                 try {
-                    FirebaseFirestore.getInstance().collection("loans")
+                    firestore.collection("loans")
                         .document(loan.loanId)
-                        .set(updatedLoan, com.google.firebase.firestore.SetOptions.merge())
+                        .set(
+                            mapOf(
+                                "status" to "CONTRACT_SIGNING",
+                                "notes" to updatedLoan.notes,
+                                "updatedAt" to System.currentTimeMillis()
+                            ),
+                            com.google.firebase.firestore.SetOptions.merge()
+                        )
                 } catch (_: Exception) {}
 
                 // If borrower identity was verified, mark user KYC verified
                 if (loan.borrowerId.isNotBlank() && isBorrowerIdentityVerified) {
                     val borrower = userDao.getUserById(loan.borrowerId)
                     if (borrower != null && borrower.kycStatus != "VERIFIED") {
-                        userDao.updateUser(borrower.copy(kycStatus = "VERIFIED", aadhaarVerified = true))
+                        val updatedBorrower = borrower.copy(kycStatus = "VERIFIED", aadhaarVerified = true)
+                        userDao.updateUser(updatedBorrower)
+                        try {
+                            firestore.collection("users")
+                                .document(borrower.userId)
+                                .set(
+                                    mapOf(
+                                        "kycStatus" to "VERIFIED",
+                                        "aadhaarVerified" to true,
+                                        "updatedAt" to System.currentTimeMillis()
+                                    ),
+                                    com.google.firebase.firestore.SetOptions.merge()
+                                )
+                        } catch (_: Exception) {}
                     }
                 }
 
@@ -631,6 +677,28 @@ class AgentRepository @Inject constructor(
         if (user != null) {
             val updatedEarnings = user.totalAgentEarnings + visit.payoutAmount
             userDao.updateUser(user.copy(totalAgentEarnings = updatedEarnings))
+            try {
+                firestore.collection("users").document(visit.agentId)
+                    .set(mapOf("totalAgentEarnings" to updatedEarnings), com.google.firebase.firestore.SetOptions.merge())
+            } catch (_: Exception) {}
+        }
+    }
+
+    suspend fun getLoanForVisit(loanId: String): com.loanzo.app.data.entity.LoanEntity? {
+        if (loanId.isBlank()) return null
+        val local = loanDao.getLoanById(loanId)
+        if (local != null) return local
+        return try {
+            val doc = firestore.collection("loans").document(loanId).get().await()
+            if (doc.exists()) {
+                val loan = doc.toObject(com.loanzo.app.data.entity.LoanEntity::class.java)
+                if (loan != null) {
+                    loanDao.insertLoan(loan)
+                    loan
+                } else null
+            } else null
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -721,9 +789,11 @@ class AgentRepository @Inject constructor(
 
         agentDao.insertVisits(listOf(visit1, visit2))
         try {
-            val firestore = FirebaseFirestore.getInstance()
-            firestore.collection("agent_visits").document(visit1Id).set(visit1)
-            firestore.collection("agent_visits").document(visit2Id).set(visit2)
+            val firestore = firestore
+            firestore.collection("agent_visits").document(visit1Id)
+                .set(agentVisitToMap(visit1), com.google.firebase.firestore.SetOptions.merge())
+            firestore.collection("agent_visits").document(visit2Id)
+                .set(agentVisitToMap(visit2), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // Push alert notifications
@@ -748,111 +818,20 @@ class AgentRepository @Inject constructor(
             )
             notificationDao.insertNotification(notif1)
             notificationDao.insertNotification(notif2)
-            val firestore = FirebaseFirestore.getInstance()
-            firestore.collection("notifications").document(notif1.notificationId).set(notif1)
-            firestore.collection("notifications").document(notif2.notificationId).set(notif2)
+            val firestore = firestore
+            firestore.collection("notifications").document(notif1.notificationId).set(notificationToMap(notif1), com.google.firebase.firestore.SetOptions.merge())
+            firestore.collection("notifications").document(notif2.notificationId).set(notificationToMap(notif2), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         return pairId
     }
 
-    suspend fun seedSampleVisits(agentId: String) = seedSampleVisitsForAgent(agentId)
+    suspend fun seedSampleVisits(agentId: String) {
+        // No-op: Demo data seeding disabled completely
+    }
 
     suspend fun seedSampleVisitsForAgent(agentId: String) {
-        val sampleVisits = listOf(
-            AgentVisitEntity(
-                visitId = "VISIT-" + UUID.randomUUID().toString().take(8).uppercase(),
-                agentId = agentId,
-                loanId = "LOAN-84920",
-                visitType = "COLLATERAL_VERIFICATION",
-                title = "Gold Collateral Physical Appraisal & Purity Check",
-                borrowerName = "Vikram Sharma",
-                borrowerPhone = "+919876543210",
-                borrowerAddress = "Flat 402, Golden Heights, Sector 18, Noida",
-                lenderName = "Rajesh Gupta",
-                lenderPhone = "+919811223344",
-                lenderAddress = "B-12, Kailash Colony, Greater Kailash, New Delhi",
-                targetAddress = "Flat 402, Golden Heights, Sector 18, Noida, UP - 201301",
-                targetLatitude = 28.5708,
-                targetLongitude = 77.3271,
-                scheduledDate = "Today",
-                scheduledTimeSlot = "10:30 AM - 11:30 AM",
-                payoutAmount = 850.0,
-                collateralItemName = "22K Hallmark Gold Coins (20g)",
-                collateralEstimatedValue = 150000.0,
-                collateralPledgedValue = 100000.0,
-                status = "SCHEDULED",
-                visitStageStatus = "EN_ROUTE",
-                handshakePin = "4821",
-                distanceKm = 3.4,
-                loanType = "GOLD",
-                assignedAgentName = "Rahul Verma (PCC Verified)"
-            ),
-            AgentVisitEntity(
-                visitId = "VISIT-" + UUID.randomUUID().toString().take(8).uppercase(),
-                agentId = agentId,
-                loanId = "LOAN-77319",
-                visitType = "BORROWER_VERIFICATION",
-                title = "Borrower Residence & Employment Verification",
-                borrowerName = "Pooja Malhotra",
-                borrowerPhone = "+919711556677",
-                borrowerAddress = "House 15, Block C, Green Park Extension, New Delhi",
-                lenderName = "Amitabh Verma",
-                lenderPhone = "+919910998877",
-                lenderAddress = "Tower 3, Apt 901, DLF Phase 5, Gurugram",
-                targetAddress = "House 15, Block C, Green Park Extension, New Delhi - 110016",
-                targetLatitude = 28.5589,
-                targetLongitude = 77.2028,
-                scheduledDate = "Today",
-                scheduledTimeSlot = "02:00 PM - 03:00 PM",
-                payoutAmount = 550.0,
-                collateralItemName = "Personal Guarantee & Salary Proof",
-                collateralEstimatedValue = 0.0,
-                collateralPledgedValue = 50000.0,
-                status = "SCHEDULED",
-                visitStageStatus = "SCHEDULED",
-                handshakePin = "7193",
-                distanceKm = 6.8,
-                loanType = "PERSONAL",
-                assignedAgentName = "Rahul Verma (PCC Verified)"
-            ),
-            AgentVisitEntity(
-                visitId = "VISIT-" + UUID.randomUUID().toString().take(8).uppercase(),
-                agentId = agentId,
-                loanId = "LOAN-91044",
-                visitType = "LENDER_VERIFICATION",
-                title = "High-Value Lender Source & Physical KYC Verification",
-                borrowerName = "Kunal Rawat",
-                borrowerPhone = "+919650112233",
-                borrowerAddress = "Pocket A, Sarita Vihar, New Delhi",
-                lenderName = "Suresh Chand Singhal",
-                lenderPhone = "+919810554433",
-                lenderAddress = "Singhal Jewellers, Main Market, Chandni Chowk, Delhi",
-                targetAddress = "Singhal Jewellers, Main Market, Chandni Chowk, Delhi - 110006",
-                targetLatitude = 28.6506,
-                targetLongitude = 77.2303,
-                scheduledDate = "Today",
-                scheduledTimeSlot = "04:30 PM - 05:30 PM",
-                payoutAmount = 650.0,
-                collateralItemName = "Commercial P2P Escrow Facility",
-                collateralEstimatedValue = 0.0,
-                collateralPledgedValue = 250000.0,
-                status = "SCHEDULED",
-                visitStageStatus = "SCHEDULED",
-                handshakePin = "9204",
-                distanceKm = 11.2,
-                loanType = "BUSINESS",
-                assignedAgentName = "Rahul Verma (PCC Verified)"
-            )
-        )
-        agentDao.insertVisits(sampleVisits)
-        // Push sample visits to Firestore so agent's device gets them in real-time
-        try {
-            val firestore = FirebaseFirestore.getInstance()
-            for (v in sampleVisits) {
-                firestore.collection("agent_visits").document(v.visitId).set(v)
-            }
-        } catch (_: Exception) {}
+        // No-op: Demo data seeding disabled completely
     }
 
     /**
@@ -861,7 +840,7 @@ class AgentRepository @Inject constructor(
      */
     fun listenToUserApplications(userId: String, scope: kotlinx.coroutines.CoroutineScope) {
         if (userId.isBlank()) return
-        val firestore = FirebaseFirestore.getInstance()
+        val firestore = firestore
         try {
             firestore.collection("agent_applications")
                 .whereEqualTo("userId", userId)
@@ -885,7 +864,7 @@ class AgentRepository @Inject constructor(
      */
     fun listenToUserVisits(agentId: String, scope: kotlinx.coroutines.CoroutineScope) {
         if (agentId.isBlank()) return
-        val firestore = FirebaseFirestore.getInstance()
+        val firestore = firestore
         try {
             firestore.collection("agent_visits")
                 .whereEqualTo("agentId", agentId)
@@ -1007,9 +986,109 @@ class AgentRepository @Inject constructor(
         )
         try {
             notificationDao.insertNotification(notif)
-            FirebaseFirestore.getInstance().collection("notifications")
+            val notifMap = hashMapOf(
+                "notificationId" to notif.notificationId,
+                "userId" to notif.userId,
+                "title" to notif.title,
+                "message" to notif.message,
+                "type" to notif.type,
+                "timestamp" to notif.timestamp,
+                "isRead" to notif.isRead,
+                "actionRoute" to notif.actionRoute
+            )
+            firestore.collection("notifications")
                 .document(notif.notificationId)
-                .set(notif)
+                .set(notifMap, com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
+    }
+
+    fun agentVisitToMap(v: AgentVisitEntity): Map<String, Any?> {
+        return hashMapOf(
+            "visitId" to v.visitId,
+            "agentId" to v.agentId,
+            "loanId" to v.loanId,
+            "visitType" to v.visitType,
+            "title" to v.title,
+            "borrowerName" to v.borrowerName,
+            "borrowerPhone" to v.borrowerPhone,
+            "borrowerAddress" to v.borrowerAddress,
+            "lenderName" to v.lenderName,
+            "lenderPhone" to v.lenderPhone,
+            "lenderAddress" to v.lenderAddress,
+            "targetAddress" to v.targetAddress,
+            "targetLatitude" to v.targetLatitude,
+            "targetLongitude" to v.targetLongitude,
+            "scheduledDate" to v.scheduledDate,
+            "scheduledTimeSlot" to v.scheduledTimeSlot,
+            "payoutAmount" to v.payoutAmount,
+            "collateralItemName" to v.collateralItemName,
+            "collateralEstimatedValue" to v.collateralEstimatedValue,
+            "collateralPledgedValue" to v.collateralPledgedValue,
+            "status" to v.status,
+            "agentRemarks" to v.agentRemarks,
+            "isCollateralAuthentic" to v.isCollateralAuthentic,
+            "isBorrowerIdentityVerified" to v.isBorrowerIdentityVerified,
+            "isLenderIdentityVerified" to v.isLenderIdentityVerified,
+            "proofPhotoUris" to v.proofPhotoUris,
+            "completedAt" to v.completedAt,
+            "createdAt" to v.createdAt,
+            "crossVerificationPairId" to v.crossVerificationPairId,
+            "isCrossVerification" to v.isCrossVerification,
+            "counterpartVisitId" to v.counterpartVisitId,
+            "verificationStage" to v.verificationStage,
+            "appraisedValue" to v.appraisedValue,
+            "counterpartAppraisedValue" to v.counterpartAppraisedValue,
+            "valuationDiscrepancyPercent" to v.valuationDiscrepancyPercent,
+            "officerRecommendation" to v.officerRecommendation,
+            "isCounterpartAnonymous" to v.isCounterpartAnonymous,
+            "assignedAgentName" to v.assignedAgentName,
+            "agentPhone" to v.agentPhone,
+            "handshakePin" to v.handshakePin,
+            "isHandshakePinVerified" to v.isHandshakePinVerified,
+            "visitStageStatus" to v.visitStageStatus,
+            "agentLatitude" to v.agentLatitude,
+            "agentLongitude" to v.agentLongitude,
+            "loanType" to v.loanType,
+            "distanceKm" to v.distanceKm
+        )
+    }
+
+    fun agentApplicationToMap(a: AgentApplicationEntity): Map<String, Any?> {
+        return hashMapOf(
+            "applicationId" to a.applicationId,
+            "userId" to a.userId,
+            "applicantName" to a.applicantName,
+            "applicantPhone" to a.applicantPhone,
+            "applicantEmail" to a.applicantEmail,
+            "experienceYears" to a.experienceYears,
+            "priorDomain" to a.priorDomain,
+            "policeVerificationNumber" to a.policeVerificationNumber,
+            "policeStation" to a.policeStation,
+            "policeVerificationDate" to a.policeVerificationDate,
+            "policeDocUri" to a.policeDocUri,
+            "permanentAddress" to a.permanentAddress,
+            "operatingCity" to a.operatingCity,
+            "operatingPincode" to a.operatingPincode,
+            "serviceRadiusKm" to a.serviceRadiusKm,
+            "vehicleType" to a.vehicleType,
+            "drivingLicenseNumber" to a.drivingLicenseNumber,
+            "status" to a.status,
+            "submittedAt" to a.submittedAt,
+            "reviewedAt" to a.reviewedAt,
+            "adminRemarks" to a.adminRemarks
+        )
+    }
+
+    fun notificationToMap(n: NotificationEntity): Map<String, Any?> {
+        return hashMapOf(
+            "notificationId" to n.notificationId,
+            "userId" to n.userId,
+            "title" to n.title,
+            "message" to n.message,
+            "type" to n.type,
+            "timestamp" to n.timestamp,
+            "isRead" to n.isRead,
+            "actionRoute" to n.actionRoute
+        )
     }
 }

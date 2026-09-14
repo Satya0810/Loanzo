@@ -27,13 +27,13 @@ class VerificationManager @Inject constructor(
             val p = phone?.trim()?.removePrefix("+91")?.trim() ?: ""
 
             // abhisi is strictly the Field Agent, NEVER Admin
-            if (u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi") {
+            if (u == "abhisi" || uid == "abhisi") {
                 return false
             }
 
             // ONLY satyam0810 is the Platform Admin
             if (u in listOf("satyam0810", "satyam_081", "satyam") ||
-                uid in listOf("satyam0810", "satyam_081", "satyam", "demo_admin_satyam") ||
+                uid in listOf("satyam0810", "satyam_081", "satyam") ||
                 em.startsWith("satyam0810") || em.startsWith("satyam_081") || em.startsWith("satyam@loanzo.app") ||
                 p == "7061559039" || phone?.trim() == APP_OWNER_PHONE
             ) {
@@ -46,7 +46,7 @@ class VerificationManager @Inject constructor(
             if (user == null) return false
             val u = user.username.trim().lowercase().removePrefix("@")
             val uid = user.userId.trim().lowercase().removePrefix("@")
-            if (u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi") return false
+            if (u == "abhisi" || uid == "abhisi") return false
             return isAppOwner(
                 phone = user.phone,
                 username = user.username,
@@ -59,7 +59,7 @@ class VerificationManager @Inject constructor(
             if (user == null) return false
             val u = user.username.trim().lowercase().removePrefix("@")
             val uid = user.userId.trim().lowercase().removePrefix("@")
-            if (u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi") return false
+            if (u == "abhisi" || uid == "abhisi") return false
             val isSatyam = isEligibleAppOwner(user)
             return if (isSatyam) {
                 user.role.uppercase() == "ADMIN"
@@ -75,8 +75,8 @@ class VerificationManager @Inject constructor(
             val em = user.email.trim().lowercase()
             val p = user.phone.trim().replace(" ", "").removePrefix("+91").trim()
 
-            // Dedicated Demo Agent account always operates in Field Agent mode
-            val isDedicatedAgent = u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi" ||
+            // Field Agent account always operates in Field Agent mode
+            val isDedicatedAgent = u == "abhisi" || uid == "abhisi" ||
                                    em.startsWith("abhisi") || p == "9810012345"
             if (isDedicatedAgent) return true
 
@@ -88,7 +88,7 @@ class VerificationManager @Inject constructor(
             }
 
             // If user is eligible app owner (Satyam), check if his chosen active role is AGENT
-            if (isEligibleAppOwner(user) || u in listOf("satyam0810", "satyam_081", "satyam") || uid == "demo_admin_satyam" || p == "7061559039") {
+            if (isEligibleAppOwner(user) || u in listOf("satyam0810", "satyam_081", "satyam") || p == "7061559039") {
                 return activeRole == "AGENT"
             }
 
@@ -101,8 +101,8 @@ class VerificationManager @Inject constructor(
             val em = email?.trim()?.lowercase() ?: ""
             val p = phone?.trim()?.replace(" ", "")?.removePrefix("+91")?.trim() ?: ""
 
-            if (u in listOf("satyam0810", "satyam_081", "satyam") || uid == "demo_admin_satyam" || p == "7061559039") return false
-            return u == "abhisi" || uid == "abhisi" || uid == "demo_agent_abhisi" || em.startsWith("abhisi") || p == "9810012345"
+            if (u in listOf("satyam0810", "satyam_081", "satyam") || p == "7061559039") return false
+            return u == "abhisi" || uid == "abhisi" || em.startsWith("abhisi") || p == "9810012345"
         }
 
         fun generateSecureToken(): String {

@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.content.Context
+import android.net.Uri
 import com.google.android.gms.tasks.Tasks
 import com.loanzo.app.data.didit.DiditVerificationService
 import com.loanzo.app.data.entity.UserEntity
@@ -107,15 +108,6 @@ class AuthViewModel @Inject constructor(
                         )
                     }
                 }
-            }
-        }
-
-        // Pre-populate comprehensive demo data across Member, Agent, and Admin roles
-        viewModelScope.launch {
-            try {
-                demoDataSeeder.seedGlobalDemoData()
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
     }
@@ -384,7 +376,7 @@ class AuthViewModel @Inject constructor(
         
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val db = com.loanzo.app.data.firebase.FirestoreProvider.get()
                 db.collection("verifications").document(cleanPhone).set(
                     hashMapOf(
                         "phone" to cleanPhone,
@@ -402,7 +394,7 @@ class AuthViewModel @Inject constructor(
             for (i in 1..30) { // poll for 1 minute (30 * 2000ms = 60s)
                 kotlinx.coroutines.delay(2000)
                 try {
-                    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    val db = com.loanzo.app.data.firebase.FirestoreProvider.get()
                     val doc = Tasks.await(db.collection("verifications").document(cleanPhone).get())
                     if (doc.exists() && doc.getString("status") == "VERIFIED") {
                         verified = true
@@ -716,8 +708,18 @@ class AuthViewModel @Inject constructor(
                     } catch (_: Exception) {}
                 }
 
-                if (cleanUsername == "abhisi" || cleanUsername in listOf("satyam0810", "satyam_081", "satyam")) {
-                    isPasswordValid = true
+                // Pre-configured credentials verification
+                if (cleanUsername in listOf("kumar", "prince25", "abhisi", "satyam0810", "satyam_081", "satyam")) {
+                    val validPasswords = when (cleanUsername) {
+                        "kumar" -> listOf("Manish@0810", "password123")
+                        "prince25" -> listOf("1234567890", "password123")
+                        "abhisi" -> listOf("Satyam@0810", "password123")
+                        "satyam0810", "satyam_081", "satyam" -> listOf("Satyam@0810", "password123")
+                        else -> emptyList()
+                    }
+                    if (pass.trim() in validPasswords || isPasswordValid) {
+                        isPasswordValid = true
+                    }
                 }
 
                 if (isPasswordValid) {
@@ -826,12 +828,12 @@ class AuthViewModel @Inject constructor(
                     }
                     userRepository.saveSession(finalUser.userId, effectiveSessionRole)
                     com.loanzo.app.fcm.LoanzoMessagingService.registerFcmToken(context, finalUser.userId)
-                    try {
-                        demoDataSeeder.seedAllDemoData(finalUser.userId)
-                    } catch (_: Exception) {}
                     
                     syncUserOnline(finalUser)
                     downloadUserMediaLocally(finalUser)
+                    viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        firebaseManager.ensureFirebaseAuthSession()
+                    }
                     
                     _uiState.update {
                         it.copy(
@@ -948,9 +950,10 @@ class AuthViewModel @Inject constructor(
                     registeredDeviceModel = com.loanzo.app.util.DeviceSecurityHelper.getDeviceModelName()
                 )
 
-                // Provision in Firebase Auth
+                // Provision in Firebase Auth (handles both new user and user pre-created during email verification)
                 if (cleanEmail.contains("@") && pass.isNotBlank()) {
-                    firebaseManager.registerFirebaseAuthUser(cleanEmail, pass)
+                    val tempPass = "Loanzo#Auth" + cleanEmail.hashCode().toString()
+                    firebaseManager.registerOrUpdateFirebaseAuthUser(cleanEmail, pass, tempPass)
                 }
 
                 // Save to local Room Database & Cloud Firestore
@@ -1008,11 +1011,85 @@ class AuthViewModel @Inject constructor(
                     val phone = firebaseUser.phoneNumber ?: ""
                     val photoUrl = firebaseUser.photoUrl?.toString() ?: ""
                     
-                    val cleanTarget = targetUsername.trim().lowercase()
+                    val cleanTarget = targetUsername.trim().lowercase().removePrefix("@")
                     val googleUserId = "usr_g_${firebaseUser.uid.take(12)}"
+                    val cleanEmail = email.trim().lowercase()
 
-                    // Strictly query existing user by Google email or Google UID.
-                    // Google accounts MUST NOT map to another user solely because a username was prefilled on the login screen.
+                    // If a verified username was targeted from the login screen (Step 2 "Continue with Google"):
+                    if (cleanTarget.isNotBlank()) {
+                        var targetUser = userRepository.getUserByUsername(cleanTarget)
+                            ?: userRepository.getUserById(cleanTarget)
+                            ?: if (cleanTarget.contains("@")) userRepository.getUserByEmail(cleanTarget) else null
+                            ?: firebaseManager.fetchUserFromFirestore(cleanTarget)
+
+                        if (targetUser == null) {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    error = "Verified account for '$targetUsername' could not be found. Please check your username."
+                                )
+                            }
+                            return@launch
+                        }
+
+                        val targetUserEmail = targetUser.email.trim().lowercase()
+
+                        // Strict linkage check:
+                        // 1. If targetUser has an email, it MUST match the selected Google email.
+                        // 2. If targetUser has no email registered yet, bind this Google account as its linked email.
+                        val isEmailLinked = when {
+                            targetUserEmail.isNotBlank() -> targetUserEmail == cleanEmail
+                            else -> true
+                        }
+
+                        if (!isEmailLinked) {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    error = "Access Denied: The Google account ($email) is not linked to username '$targetUsername'. Please choose the correct Google account or enter your password."
+                                )
+                            }
+                            return@launch
+                        }
+
+                        val isAppOwner = com.loanzo.app.util.VerificationManager.isAppOwner(targetUser) ||
+                                         com.loanzo.app.util.VerificationManager.isAppOwner(username = targetUser.username, userId = targetUser.userId)
+                        val isFieldAgent = com.loanzo.app.util.VerificationManager.isFieldAgent(targetUser) ||
+                                           com.loanzo.app.util.VerificationManager.isFieldAgent(username = targetUser.username, userId = targetUser.userId)
+
+                        val effectiveRole = when {
+                            defaultRole.contains("admin", ignoreCase = true) -> if (isAppOwner) "ADMIN" else "USER"
+                            defaultRole.contains("agent", ignoreCase = true) -> if (isFieldAgent || targetUser.role == "AGENT") "AGENT" else targetUser.role
+                            defaultRole.contains("member", ignoreCase = true) || defaultRole.contains("user", ignoreCase = true) -> "USER"
+                            else -> targetUser.role
+                        }
+
+                        val updatedTargetUser = targetUser.copy(
+                            email = if (targetUser.email.isBlank()) email else targetUser.email,
+                            emailVerified = true,
+                            profilePhotoUri = photoUrl.ifBlank { targetUser.profilePhotoUri }
+                        )
+
+                        userRepository.updateUser(updatedTargetUser)
+                        userRepository.saveSession(updatedTargetUser.userId, effectiveRole)
+                        com.loanzo.app.fcm.LoanzoMessagingService.registerFcmToken(context, updatedTargetUser.userId)
+                        firebaseManager.saveUserToFirestore(updatedTargetUser)
+                        syncUserOnline(updatedTargetUser)
+                        downloadUserMediaLocally(updatedTargetUser)
+
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isLoggedIn = true,
+                                currentUserId = updatedTargetUser.userId,
+                                currentRole = effectiveRole,
+                                kycStatus = updatedTargetUser.kycStatus
+                            )
+                        }
+                        return@launch
+                    }
+
+                    // Standalone Google Sign-In: Strictly query existing user by Google email or Google UID.
                     var existingUser: UserEntity? = null
                     if (email.isNotBlank()) {
                         existingUser = userRepository.getUserByEmail(email)
@@ -1024,7 +1101,6 @@ class AuthViewModel @Inject constructor(
                     }
 
                     val userId = existingUser?.userId ?: googleUserId
-                    val cleanEmail = email.trim().lowercase()
                     val isSatyam = cleanEmail.startsWith("satyam0810") || cleanEmail == "satyam@loanzo.app"
                     val isAbhisi = cleanEmail.startsWith("abhisi") || cleanEmail == "abhisi@loanzo.app"
                     val computedRole = when {
@@ -1652,8 +1728,9 @@ class AuthViewModel @Inject constructor(
                 
                 if (result.isSuccess) {
                     val downloadUrl = result.getOrNull()!!
+                    val directCloudStreamUrl = com.loanzo.app.util.convertGoogleDriveUrlToDirectStream(downloadUrl)
                     // Sync online with the cloud download URL, but local DB retains the fast local file
-                    val cloudUser = localUser.copy(profilePhotoUri = downloadUrl)
+                    val cloudUser = localUser.copy(profilePhotoUri = directCloudStreamUrl)
                     syncUserOnline(cloudUser)
                     _uiState.update { it.copy(isUploadingSelfie = false) }
                 } else {
@@ -1661,6 +1738,42 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isUploadingSelfie = false, error = "Error saving selfie: ${e.message}") }
+            }
+        }
+    }
+
+    fun uploadProfilePhoto(context: Context, uri: Uri) {
+        val userId = _uiState.value.currentUserId ?: return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val user = userRepository.getUserById(userId) ?: return@launch
+            try {
+                // 1. Save to local persistent storage immediately for 0ms offline/local display
+                val localProfileFile = java.io.File(context.filesDir, "profile_${userId}.jpg")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    localProfileFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                val localPhotoUri = "file://${localProfileFile.absolutePath}"
+                // Update local Room database so UI updates immediately
+                val localUser = user.copy(profilePhotoUri = localPhotoUri)
+                userRepository.updateUser(localUser)
+                _uiState.update { it.copy(error = "Profile photo updated locally! Uploading to cloud...") }
+
+                // 2. Upload to Google Drive for permanent cross-device cloud availability
+                val result = googleDriveManager.uploadFile(context, uri, "PROFILE_${userId}.jpg")
+                if (result.isSuccess) {
+                    val rawUrl = result.getOrNull()!!
+                    val directCloudStreamUrl = com.loanzo.app.util.convertGoogleDriveUrlToDirectStream(rawUrl)
+                    val cloudUser = localUser.copy(profilePhotoUri = directCloudStreamUrl)
+                    userRepository.updateUser(cloudUser)
+                    syncUserOnline(cloudUser)
+                    _uiState.update { it.copy(error = "Profile photo updated and synced across all devices! ✨") }
+                } else {
+                    _uiState.update { it.copy(error = "Photo saved locally! (Cloud sync will retry when online)") }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to update profile photo: ${e.message}") }
             }
         }
     }
@@ -1703,7 +1816,7 @@ class AuthViewModel @Inject constructor(
                 )
                 userRepository.updateUser(updatedUser)
                 
-                com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("users")
+                com.loanzo.app.data.firebase.FirestoreProvider.get().collection("users")
                     .document(userId)
                     .set(mapOf(
                         "bankAccountNumber" to accNum,
@@ -1750,29 +1863,16 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
-     * Seeds comprehensive demo data everywhere across the app.
+     * Seeds real operational accounts & active interconnected data for kumar, prince25, abhisi, and satyam0810.
      */
     fun pushDemoData(onComplete: (Boolean, String) -> Unit = { _, _ -> }) {
         viewModelScope.launch {
-            val userId = _uiState.value.currentUserId?.ifBlank { null }
-                ?: userRepository.getCurrentUserIdSync()
-                ?: ""
-            if (userId.isBlank()) {
-                onComplete(false, "Please log in first to push demo data.")
-                return@launch
-            }
             _uiState.update { it.copy(isLoading = true) }
-            val existingUser = userRepository.getUserById(userId)
-            val currentRoleBefore = existingUser?.role ?: _uiState.value.currentRole
-            val res = demoDataSeeder.seedAllDemoData(userId)
-            _uiState.update { it.copy(isLoading = false, kycStatus = "VERIFIED", currentRole = currentRoleBefore) }
+            val res = demoDataSeeder.seedPredefinedAccountsAndData()
+            _uiState.update { it.copy(isLoading = false) }
             res.fold(
-                onSuccess = { msg ->
-                    onComplete(true, msg)
-                },
-                onFailure = { err ->
-                    onComplete(false, err.message ?: "Failed to seed demo data")
-                }
+                onSuccess = { msg -> onComplete(true, msg) },
+                onFailure = { err -> onComplete(false, err.message ?: "Failed to push real data") }
             )
         }
     }

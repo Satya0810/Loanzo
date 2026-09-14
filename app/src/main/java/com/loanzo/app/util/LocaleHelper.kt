@@ -27,26 +27,29 @@ object LocaleHelper {
     }
 
     fun applyLocale(context: Context, languageCode: String) {
+        val current = getPersistedLanguage(context)
         val locale = Locale(languageCode)
         Locale.setDefault(locale)
         persistLanguage(context, languageCode)
 
-        // 1. Android 13+ (API 33+) native LocaleManager
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            try {
-                val localeManager = context.getSystemService(android.app.LocaleManager::class.java)
-                localeManager?.applicationLocales = android.os.LocaleList.forLanguageTags(languageCode)
-            } catch (e: Exception) {
-                android.util.Log.w("LocaleHelper", "LocaleManager note: ${e.message}")
-            }
-        } else {
-            // 2. AppCompatDelegate for API < 33
-            try {
-                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
-                    androidx.core.os.LocaleListCompat.forLanguageTags(languageCode)
-                )
-            } catch (e: Exception) {
-                android.util.Log.w("LocaleHelper", "AppCompatDelegate note: ${e.message}")
+        if (current != languageCode) {
+            // 1. Android 13+ (API 33+) native LocaleManager
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                try {
+                    val localeManager = context.getSystemService(android.app.LocaleManager::class.java)
+                    localeManager?.applicationLocales = android.os.LocaleList.forLanguageTags(languageCode)
+                } catch (e: Exception) {
+                    android.util.Log.w("LocaleHelper", "LocaleManager note: ${e.message}")
+                }
+            } else {
+                // 2. AppCompatDelegate for API < 33
+                try {
+                    androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(
+                        androidx.core.os.LocaleListCompat.forLanguageTags(languageCode)
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("LocaleHelper", "AppCompatDelegate note: ${e.message}")
+                }
             }
         }
 

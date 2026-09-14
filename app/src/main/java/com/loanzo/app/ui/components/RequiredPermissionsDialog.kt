@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,174 +65,251 @@ fun RequiredPermissionsDialog(
         }
     }
 
-    val multiplePermissionLauncher = rememberLauncherForActivityResult(
+    val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         permissions = AppPermissionManager.getAppPermissions(context)
-        if (permissions.filter { it.isMandatory }.all { it.isGranted }) {
+    }
+
+    val pendingPermissions = remember(permissions) {
+        permissions.filter { !it.isGranted }
+    }
+
+    var currentStepIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(pendingPermissions.size) {
+        if (pendingPermissions.isEmpty()) {
             onAllGranted()
+        } else if (currentStepIndex >= pendingPermissions.size) {
+            currentStepIndex = (pendingPermissions.size - 1).coerceAtLeast(0)
         }
     }
 
-    ModalBottomSheet(
+    if (pendingPermissions.isEmpty()) {
+        return
+    }
+
+    val safeIndex = currentStepIndex.coerceIn(0, pendingPermissions.size - 1)
+    val currentItem = pendingPermissions[safeIndex]
+    val totalSteps = pendingPermissions.size
+    val progress = (safeIndex + 1).toFloat() / totalSteps.toFloat()
+
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false
+        )
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
         ) {
-            // Header: Shield Badge + Title
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
+                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.35f))
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Gold500.copy(alpha = 0.15f),
-                    modifier = Modifier.size(48.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    // Step Counter & Progress
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Gold500.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, Gold500.copy(alpha = 0.3f))
+                        ) {
+                            Text(
+                                text = "Permission ${safeIndex + 1} of $totalSteps",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Gold500,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp),
+                        color = Gold500,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Prominent Icon Circle
+                    Surface(
+                        shape = CircleShape,
+                        color = Gold500.copy(alpha = 0.15f),
+                        border = BorderStroke(2.dp, Gold500.copy(alpha = 0.4f)),
+                        modifier = Modifier.size(72.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = currentItem.icon,
+                                contentDescription = null,
+                                tint = Gold500,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    }
+
+                    // Title
+                    Text(
+                        text = currentItem.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+
+                    // Purpose explanation
+                    Text(
+                        text = currentItem.purpose,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp,
+                        fontSize = 13.sp
+                    )
+
+                    // Zero-Knowledge / Security Guarantee
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Emerald400,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Bank-grade 256-bit encryption. Zero data sharing under RBI Fair Practices Code.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Primary Button: Allow Permission
+                    Button(
+                        onClick = {
+                            permissionLauncher.launch(currentItem.permissions.toTypedArray())
+                            if (safeIndex < totalSteps - 1) {
+                                currentStepIndex = safeIndex + 1
+                            } else {
+                                permissions = AppPermissionManager.getAppPermissions(context)
+                                if (permissions.filter { it.isMandatory }.all { it.isGranted }) {
+                                    onAllGranted()
+                                } else {
+                                    onDismiss()
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Gold500,
+                            contentColor = Navy900
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
                         Icon(
-                            Icons.Default.Security,
+                            Icons.Default.Check,
                             contentDescription = null,
-                            tint = Gold500,
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Allow ${currentItem.title.substringBefore(" Access")}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
                         )
                     }
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Device Security & Permissions",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "RBI P2P Compliance & Identity Protection",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Gold500,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp
-                    )
-                }
-            }
 
-            Text(
-                text = "Loanzo requests the following permissions to verify your identity, deliver instant repayment updates, and ensure safe peer-to-peer lending.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
-                lineHeight = 16.sp
-            )
-
-            // Permission Items List
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                permissions.forEach { item ->
-                    PermissionRowCard(item = item)
-                }
-            }
-
-            // Zero-Trust Privacy Guarantee Card
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = Emerald400,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Your privacy is guaranteed with 256-bit encryption. Personal conversations, call logs, and sensitive data are never accessed.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 11.sp,
-                        lineHeight = 15.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Action Buttons
-            if (!allEssentialGranted) {
-                Button(
-                    onClick = {
-                        val pending = AppPermissionManager.getPendingPermissionsList(context)
-                        if (pending.isNotEmpty()) {
-                            multiplePermissionLauncher.launch(pending)
-                        } else {
-                            onAllGranted()
+                    // Secondary Button: Skip or Next
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = {
+                                if (safeIndex < totalSteps - 1) {
+                                    currentStepIndex = safeIndex + 1
+                                } else {
+                                    onDismiss()
+                                }
+                            }
+                        ) {
+                            Text(
+                                if (safeIndex < totalSteps - 1) "Skip for Now" else "Decide Later",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Gold500,
-                        contentColor = Navy900
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Grant Required Permissions", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
 
-                OutlinedButton(
-                    onClick = { AppPermissionManager.openAppSettings(context) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(42.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Open System App Settings", fontSize = 12.sp)
-                }
-
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        "Continue with Limited Features",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp
-                    )
-                }
-            } else {
-                Button(
-                    onClick = onAllGranted,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Emerald400,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("All Clear • Continue to Loanzo", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        TextButton(
+                            onClick = { AppPermissionManager.openAppSettings(context) }
+                        ) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Settings",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -18,8 +18,13 @@ Loanzo strictly adheres to the **Model-View-ViewModel (MVVM)** architectural pat
 
 ### Backend & Cloud Services
 - **Database Architecture (Offline-First)**: 
-  - **Local Store**: Android Room Database acts as the single source of truth for UI rendering, ensuring the app works perfectly offline.
-  - **Cloud Syncing**: `SyncWorker` (powered by Android WorkManager) handles bidirectional data syncing with Firebase Firestore in the background. It queues local modifications in a `SyncQueueEntity` table and flushes them to Firestore when network connectivity is restored.
+  - **Local Store**: Android Room SQLite Database (`LoanzoDatabase` v22, 23 entity tables) acts as the single source of truth for UI rendering, ensuring the app works with zero latency and 100% offline durability.
+  - **Cloud Syncing**: `SyncWorker` (powered by Android WorkManager) handles bidirectional data syncing with Firebase Firestore and Google Drive in the background. It queues local modifications in the `SyncQueueEntity` table and flushes them to Firestore with exponential backoff when network connectivity is restored.
+- **Multi-Model AI Copilot Architecture**:
+  - **3-Way Multi-AI Race Engine (`MultiAiRaceEngine.kt`)**: Concurrently races inference queries across **LLM7 (Llama-3.3-70B)**, **SambaNova Systems**, and **Cloudflare Workers AI**, returning whichever endpoint provides the fastest first-token response (typically < 850ms) while cleanly aborting lingering HTTP streams.
+  - **Account-Grounded RAG Context**: Injects live financial metrics (user KYC status, active loan commitments, upcoming EMI dates, and interest rates) directly into the AI system prompt via `UserDao` and `LoanDao`.
+  - **Interactive Action Pills**: Automatically parses actionable financial intents into elevated Compose navigation chips (`[🧮 Open Loan Calculator]`, `[🛡️ Complete KYC]`, `[🛒 Explore Marketplace]`, `[📊 Smart Portfolio]`).
+  - **Deterministic Offline Heuristic Guard**: Provides 100% offline fallback financial advice with actionable navigation routing if cloud endpoints time out.
 - **Authentication**: Firebase Auth (Email, Google), OTPless (WhatsApp/SMS OTP), AndroidX Biometric (Local Auth with password-verified on-demand enrollment fallback via `RegisterBiometricsDialog`).
 - **Storage**:
   - Local App Storage & Media Downloader: User selfies and KYC documents are cached locally at `context.filesDir/profile_{userId}.jpg`, `pan_{userId}.jpg`, `aadhaar_{userId}.jpg`. On fresh installs, `downloadUserMediaLocally()` automatically downloads remote files from Google Drive via direct stream endpoints (`https://drive.google.com/uc?export=view&id=...`), ensuring permanent offline visibility and zero 404 image errors.
@@ -161,8 +166,9 @@ The Social Loan Marketplace provides an open community timeline where individual
 
 ### 4.3 User Interface Components
 1. **`MarketplaceFeedScreen`**:
-   - Segmented capsule mode switcher: `🌐 All Offers` | `💰 Lenders` | `🙋 Borrowers` | `⭐ My Posts`.
-   - Revolut-style embedded live search bar with real-time text matching and category tag scrolling strip (`#Education`, `#Medical`, `#Business`, `#Emergency`).
+   - **Streamlined 50dp Inline Filter & Search Bar**: Integrated horizontal control strip combining an animated category filter pill on the left with a real-time search field on the right.
+   - **180° Bouncy Chevron Flip Animation**: Filter button animates smoothly using `animateFloatAsState` paired with `Spring.DampingRatioMediumBouncy`, revealing an elevated glassmorphic `DropdownMenu` with active indicators for `All Offers`, `Lenders`, `Borrowers`, and `My Posts`.
+   - **Inline Search Input**: Full-width weight-distributed (`weight(1f)`) search field matching titles, descriptions, borrower pitches, and category hashtags with zero layout jitter.
    - Rich `SocialPostCard` with author avatar, `✅ DigiLocker KYC Verified` badge, financial terms capsule, expandable pitch statement, social vouch counter, active bids indicator, and primary call-to-action button.
 2. **`CreateMarketplacePostScreen`**:
    - Interactive role selector (Offer Capital vs Seek Loan).

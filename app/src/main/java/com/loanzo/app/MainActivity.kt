@@ -99,7 +99,7 @@ class MainActivity : FragmentActivity() {
             }
 
             androidx.compose.runtime.LaunchedEffect(appLanguage) {
-                // If language is changed, download on-device word/model files internally
+                // If language is changed, ensure offline glossary/model is ready
                 if (appLanguage != "en") {
                     translationHelper.downloadModelIfNeeded(appLanguage)
                 }
@@ -107,8 +107,6 @@ class MainActivity : FragmentActivity() {
                 if (currentActivityLanguage.isNotBlank() && appLanguage != currentActivityLanguage) {
                     com.loanzo.app.util.LocaleHelper.applyLocale(this@MainActivity, appLanguage)
                     currentActivityLanguage = appLanguage
-                    this@MainActivity.recreate()
-                    return@LaunchedEffect
                 }
             }
 

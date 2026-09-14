@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import kotlinx.coroutines.launch
 fun AgreementSigningScreen(
     loan: LoanEntity,
     onCancel: () -> Unit,
+    onSimplifyClause: (suspend (String) -> com.loanzo.app.data.ai.AiRaceResult)? = null,
     onComplete: (signature: Bitmap, selfie: Bitmap, biometricSuccess: Boolean) -> Unit
 ) {
     var currentStep by remember { androidx.compose.runtime.mutableIntStateOf(1) } // 1: Preview, 2: Signature, 3: Selfie, 4: Biometric
@@ -54,6 +56,10 @@ fun AgreementSigningScreen(
     var kfsAcknowledged by remember { mutableStateOf(false) }
     var showSosDialog by remember { mutableStateOf(false) }
     var isExportingDossier by remember { mutableStateOf(false) }
+
+    var isSimplifying by remember { mutableStateOf(false) }
+    var simplifiedExplanation by remember { mutableStateOf<String?>(null) }
+    var simplificationWinnerBadge by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -258,6 +264,117 @@ fun AgreementSigningScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            }
+
+                            // AI Plain Language Simplifier
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFF1F5F9),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Default.AutoAwesome,
+                                                contentDescription = null,
+                                                tint = BrandRoyalBlue,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                "Plain Language Breakdown",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = Color(0xFF0F172A)
+                                            )
+                                        }
+
+                                        if (simplifiedExplanation == null) {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    if (!isSimplifying) {
+                                                        coroutineScope.launch {
+                                                            isSimplifying = true
+                                                            val clause = "Principal: ₹${loan.sanctionedAmount}, Interest: ${loan.interestRate}% p.a. (${loan.interestModel}), Tenure: ${loan.tenureMonths} Months. Late penalty: ${loan.penaltyRate}% (${loan.penaltyModel}). Enforceable under Section 4 NI Act and IT Act 2000."
+                                                            val res = onSimplifyClause?.invoke(clause)
+                                                            when (res) {
+                                                                is com.loanzo.app.data.ai.AiRaceResult.Success -> {
+                                                                    simplifiedExplanation = res.content
+                                                                    simplificationWinnerBadge = "⚡ ${res.providerName} (${res.latencyMs}ms)"
+                                                                }
+                                                                is com.loanzo.app.data.ai.AiRaceResult.Failure -> {
+                                                                    simplifiedExplanation = res.fallbackContent
+                                                                    simplificationWinnerBadge = "ℹ️ Offline Legal Rulebook"
+                                                                }
+                                                                null -> {
+                                                                    simplifiedExplanation = "• Repayment: Fixed monthly debt service over ${loan.tenureMonths} months.\n• Grace Window: 3-day statutory waiver prior to late penalty assessment.\n• Legal Effect: Unconditional promissory note under Section 4 NI Act."
+                                                                    simplificationWinnerBadge = "⚡ Rulebook Engine"
+                                                                }
+                                                            }
+                                                            isSimplifying = false
+                                                        }
+                                                    }
+                                                },
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = ButtonDefaults.filledTonalButtonColors(
+                                                    containerColor = BrandRoyalBlue.copy(alpha = 0.12f),
+                                                    contentColor = BrandRoyalBlue
+                                                ),
+                                                modifier = Modifier.height(30.dp)
+                                            ) {
+                                                if (isSimplifying) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(12.dp),
+                                                        strokeWidth = 2.dp,
+                                                        color = BrandRoyalBlue
+                                                    )
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text("Simplifying with AI...", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                } else {
+                                                    Text("⚡ Simplify with AI", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        } else {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Emerald500.copy(alpha = 0.15f),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Emerald500.copy(alpha = 0.3f))
+                                            ) {
+                                                Text(
+                                                    text = simplificationWinnerBadge ?: "⚡ 3-Way AI",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Emerald500,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (simplifiedExplanation != null) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = simplifiedExplanation ?: "",
+                                            fontSize = 12.sp,
+                                            lineHeight = 17.sp,
+                                            color = Color(0xFF334155)
+                                        )
+                                    } else if (!isSimplifying) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Tap 'Simplify with AI' to translate legal contract terms into 3 plain-language bullet points.",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF64748B)
+                                        )
+                                    }
+                                }
                             }
 
                             // Compliance Action 1: Review KFS Sheet

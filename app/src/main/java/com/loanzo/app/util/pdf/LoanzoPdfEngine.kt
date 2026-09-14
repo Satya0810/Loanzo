@@ -514,4 +514,54 @@ class LoanzoPdfEngine(private val context: Context) {
 
         return startY + boxHeight + 12f
     }
+
+    /**
+     * Draws an AI Credit & Legal Underwriting callout box generated via Multi-AI racing.
+     */
+    fun drawAiAppraisalBox(
+        canvas: Canvas,
+        startY: Float,
+        title: String,
+        content: String,
+        engineBadge: String = "Multi-AI Verified"
+    ): Float {
+        val boxHeight = 52f
+        val rect = RectF(marginX, startY, marginX + contentWidth, startY + boxHeight)
+
+        val bgPaint = Paint().apply {
+            color = Color.parseColor("#F5F3FF")
+            isAntiAlias = true
+        }
+        canvas.drawRoundRect(rect, 6f, 6f, bgPaint)
+
+        val borderPaint = Paint().apply {
+            color = Color.parseColor("#8B5CF6")
+            strokeWidth = 1f
+            style = Paint.Style.STROKE
+            isAntiAlias = true
+        }
+        canvas.drawRoundRect(rect, 6f, 6f, borderPaint)
+
+        val titlePaint = Paint().apply {
+            color = Color.parseColor("#6D28D9")
+            textSize = 9f
+            isFakeBoldText = true
+            isAntiAlias = true
+        }
+        canvas.drawText("⚡ $title • $engineBadge", marginX + 12f, startY + 16f, titlePaint)
+
+        val textPaint = Paint().apply {
+            color = colorNavyDeep
+            textSize = 7.5f
+            isAntiAlias = true
+        }
+        val line1 = content.take(110)
+        val line2 = if (content.length > 110) content.drop(110).take(110) else ""
+        canvas.drawText(line1, marginX + 12f, startY + 30f, textPaint)
+        if (line2.isNotBlank()) {
+            canvas.drawText(line2, marginX + 12f, startY + 42f, textPaint)
+        }
+
+        return startY + boxHeight + 10f
+    }
 }

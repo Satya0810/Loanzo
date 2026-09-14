@@ -99,7 +99,7 @@ class LoanzoSmsReceiver : BroadcastReceiver() {
 
     private fun updateFirestoreVerification(cleanPhone: String) {
         if (cleanPhone.isEmpty()) return
-        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        com.loanzo.app.data.firebase.FirestoreProvider.get()
             .collection("verifications")
             .document(cleanPhone)
             .set(mapOf("status" to "VERIFIED"), com.google.firebase.firestore.SetOptions.merge())
@@ -128,7 +128,7 @@ class LoanzoSmsReceiver : BroadcastReceiver() {
                         database.userDao().insertUser(updatedUser)
 
                         // Update Firestore to sync the new verified state
-                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        com.loanzo.app.data.firebase.FirestoreProvider.get()
                             .collection("users")
                             .document(user.userId)
                             .set(mapOf("bankVerified" to true), com.google.firebase.firestore.SetOptions.merge())

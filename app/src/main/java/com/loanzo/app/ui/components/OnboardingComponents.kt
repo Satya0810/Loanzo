@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -653,16 +654,16 @@ fun InteractiveGettingStartedQuestCard(
     isCommunityDone: Boolean,
     isCalculatorDone: Boolean,
     isKycDone: Boolean,
-    isDemoDone: Boolean,
+    isDemoDone: Boolean = true,
     onExploreCommunity: () -> Unit,
     onOpenCalculator: () -> Unit,
     onVerifyKyc: () -> Unit,
-    onSeedDemo: () -> Unit,
+    onSeedDemo: () -> Unit = {},
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val completedCount = listOf(isCommunityDone, isCalculatorDone, isKycDone, isDemoDone).count { it }
-    val progress = completedCount / 4f
+    val completedCount = listOf(isCommunityDone, isCalculatorDone, isKycDone).count { it }
+    val progress = completedCount / 3f
     var isExpanded by remember { mutableStateOf(true) }
 
     Surface(
@@ -696,14 +697,14 @@ fun InteractiveGettingStartedQuestCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (completedCount == 4) "🏆" else "⚡",
+                            text = if (completedCount == 3) "🏆" else "⚡",
                             fontSize = 18.sp
                         )
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (completedCount == 4) "Quest Complete! Pioneer Unlocked" else "Get Started with Loanzo",
+                            text = if (completedCount == 3) "Quest Complete! Pioneer Unlocked" else "Get Started with Loanzo",
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             fontSize = 14.5.sp,
@@ -712,7 +713,7 @@ fun InteractiveGettingStartedQuestCard(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "$completedCount of 4 steps completed (${(progress * 100).toInt()}%)",
+                            text = "$completedCount of 3 steps completed (${(progress * 100).toInt()}%)",
                             color = Gray400,
                             fontSize = 12.sp,
                             maxLines = 1,
@@ -775,13 +776,6 @@ fun InteractiveGettingStartedQuestCard(
                         isCompleted = isKycDone,
                         actionLabel = "Verify",
                         onClick = onVerifyKyc
-                    )
-                    QuestStepItem(
-                        title = "Push Demo Playground",
-                        subtitle = "Instantly seed realistic loans, ledger & notifications",
-                        isCompleted = isDemoDone,
-                        actionLabel = "Seed Data",
-                        onClick = onSeedDemo
                     )
                 }
             }

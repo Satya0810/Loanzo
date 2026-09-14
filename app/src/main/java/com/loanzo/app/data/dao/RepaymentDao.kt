@@ -38,4 +38,7 @@ interface RepaymentDao {
 
     @Delete
     suspend fun deleteRepayment(repayment: RepaymentEntity)
+
+    @Query("DELETE FROM repayments WHERE repaymentId LIKE 'demo_%' OR repaymentId LIKE 'repay_demo_%' OR loanId LIKE 'demo_%' OR loanId LIKE 'loan_demo_%'")
+    suspend fun deleteDemoRepayments()
 }

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,7 +87,7 @@ fun CreateLoanScreen(
     val quickTenures = listOf(3, 6, 12, 24, 36)
 
     val allCandidateUsers = remember(registeredUsers) {
-        (registeredUsers + com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS).distinctBy { it.userId }
+        registeredUsers.distinctBy { it.userId }
     }
 
     // Real-time calculations
@@ -118,8 +119,10 @@ fun CreateLoanScreen(
         else -> emi
     }
 
-    LaunchedEffect(loanCreated) {
-        if (loanCreated) onBack()
+    var hasSubmittedLoan by remember { mutableStateOf(false) }
+
+    LaunchedEffect(loanCreated, hasSubmittedLoan) {
+        if (loanCreated && hasSubmittedLoan) onBack()
     }
 
     Scaffold(
@@ -360,7 +363,7 @@ fun CreateLoanScreen(
                         value = counterpartyUserId,
                         onValueChange = { counterpartyUserId = it.trim() },
                         label = { Text(if (isGrantMode) "Direct Borrower ID" else "Direct Lender ID") },
-                        placeholder = { Text("e.g. demo_borrower_rahul or phone") },
+                        placeholder = { Text("e.g. username or phone number") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp)
@@ -955,6 +958,7 @@ fun CreateLoanScreen(
                         if (notes.isNotBlank()) "$tag | $notes" else tag
                     } else notes
 
+                    hasSubmittedLoan = true
                     onCreateLoan(
                         effectiveCounterparty,
                         principalNum,
@@ -2260,6 +2264,13 @@ fun LoanDetailScreen(
                         accentColor = Gold500,
                         onClick = onNavigateToDocument
                     )
+                    DocumentVaultItem(
+                        icon = Icons.Default.Campaign,
+                        title = "Broadcast to Community Wall",
+                        subtitle = "Publish loan to peer marketplace for backers & co-lenders",
+                        accentColor = Gold500,
+                        onClick = onPublishToWall
+                    )
                 }
             }
 
@@ -2350,6 +2361,22 @@ fun LoanDetailScreen(
                         Icon(Icons.Default.Chat, null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(if (isLender) "Chat with Borrower" else "Chat with Lender", maxLines = 1, softWrap = false)
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onPublishToWall,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500)
+                    ) {
+                        Icon(Icons.Default.Campaign, null, modifier = Modifier.size(16.dp), tint = Gold500)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Broadcast Loan to Community Wall ➔", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
                 if (isLender) {

@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -383,7 +384,8 @@ fun ReportActionBottomSheet(
             val quickTransactors = listOf(
                 Triple("satyam0810", "👑 @satyam0810 (Admin)", "ADMIN"),
                 Triple("abhisi", "🕵️ @abhisi (Field Agent)", "AGENT"),
-                Triple("user_demo", "👤 @user_demo (Member)", "USER")
+                Triple("kumar", "👤 @kumar (Member)", "MEMBER"),
+                Triple("prince25", "👤 @prince25 (Member)", "MEMBER")
             )
             androidx.compose.foundation.lazy.LazyRow(
                 modifier = Modifier

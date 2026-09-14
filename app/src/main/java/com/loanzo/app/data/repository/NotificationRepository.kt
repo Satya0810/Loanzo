@@ -26,7 +26,8 @@ class NotificationRepository @Inject constructor(
     private val notificationDao: NotificationDao,
     private val loanDao: LoanDao,
     private val repaymentDao: RepaymentDao,
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
 ) {
     companion object {
         private const val TAG = "NotificationRepo"
@@ -344,12 +345,14 @@ class NotificationRepository @Inject constructor(
      */
     fun listenToCloudNotifications(userId: String, scope: kotlinx.coroutines.CoroutineScope) {
         if (userId.isBlank()) return
-        val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
 
-        // 1. Listen for user-specific notifications
-        try {
-            firestore.collection("notifications")
-                .whereEqualTo("userId", userId)
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            firebaseManager.ensureFirebaseAuthSession()
+            // 1. Listen for user-specific notifications
+            try {
+                firestore.collection("notifications")
+                    .whereEqualTo("userId", userId)
                 .addSnapshotListener { snapshots, error ->
                     if (error != null) {
                         Log.w(TAG, "Cloud notifications listener error: ${error.message}")
@@ -384,8 +387,9 @@ class NotificationRepository @Inject constructor(
                         }
                     }
                 }
-        } catch (e: Exception) {
-            Log.w(TAG, "Firestore not available for cloud notifications: ${e.message}")
+            } catch (e: Exception) {
+                Log.w(TAG, "Firestore not available for cloud notifications: ${e.message}")
+            }
         }
 
         // 2. If user is Admin, ALSO listen for shared "ADMIN" cloud notifications
@@ -395,6 +399,7 @@ class NotificationRepository @Inject constructor(
             val isAdmin = isDirectAdmin || com.loanzo.app.util.VerificationManager.isAppOwner(user) || user?.role?.uppercase() == "ADMIN"
             if (isAdmin) {
                 try {
+                    firebaseManager.ensureFirebaseAuthSession()
                     firestore.collection("notifications")
                         .whereEqualTo("userId", "ADMIN")
                         .addSnapshotListener { snapshots, error ->

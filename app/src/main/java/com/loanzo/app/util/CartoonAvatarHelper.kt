@@ -53,7 +53,9 @@ object CartoonAvatarHelper {
  */
 fun UserEntity?.getEffectiveAvatarUrl(): String {
     if (this == null) return CartoonAvatarHelper.getCartoonAvatarUrl("guest")
-    if (profilePhotoUri.isNotBlank()) return profilePhotoUri
+    if (profilePhotoUri.isNotBlank()) {
+        return convertGoogleDriveUrlToDirectStream(profilePhotoUri)
+    }
     val seed = name.ifBlank { userId }
     return CartoonAvatarHelper.getCartoonAvatarUrl(seed)
 }
@@ -72,7 +74,9 @@ fun UserEntity?.getCartoonAvatarRes(): Int {
  * If the post has an authorAvatarUrl, returns it; otherwise generates a deterministic 2D cartoon avatar URL.
  */
 fun MarketplacePostEntity.getEffectiveAvatarUrl(): String {
-    if (authorAvatarUrl.isNotBlank()) return authorAvatarUrl
+    if (authorAvatarUrl.isNotBlank()) {
+        return convertGoogleDriveUrlToDirectStream(authorAvatarUrl)
+    }
     val seed = authorName.ifBlank { authorId }
     return CartoonAvatarHelper.getCartoonAvatarUrl(seed)
 }

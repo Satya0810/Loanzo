@@ -25,7 +25,7 @@ class TelegramManager @Inject constructor() {
 
     companion object {
         private const val TAG = "TelegramManager"
-        const val BOT_TOKEN = "8911421683:AAEkc1ykoS-VIg_Dnl8deLnakd6nJE88pqc"
+        val BOT_TOKEN: String get() = com.loanzo.app.BuildConfig.TELEGRAM_BOT_TOKEN
         const val BOT_USERNAME = "Loanzo_bot"
         const val BOT_URL = "https://t.me/$BOT_USERNAME"
 
@@ -33,7 +33,7 @@ class TelegramManager @Inject constructor() {
         const val ADMIN_USERNAME = "satyam_081"
         val ADMIN_CHAT_IDS = listOf(8234574147L)
 
-        private const val TELEGRAM_API_URL = "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
+        private val TELEGRAM_API_URL: String get() = "https://api.telegram.org/bot$BOT_TOKEN/sendMessage"
         private const val MAX_TELEGRAM_MESSAGE_LENGTH = 4000
 
         // Shared static client to prevent multiple OkHttpClient thread-pool and socket leaks
@@ -106,9 +106,16 @@ class TelegramManager @Inject constructor() {
      * falling back smoothly to web browser (`https://t.me/Loanzo_bot?start=user_$userId`),
      * and shows a friendly Toast if no suitable app or browser is available.
      */
-    fun openBotForLinking(context: Context, userId: String) {
+    fun openBotForLinking(context: Context, userId: String, telegramUsername: String? = null) {
         val cleanUserId = userId.trim()
-        val startParam = if (cleanUserId.isNotBlank()) "user_$cleanUserId" else "app_launch"
+        val cleanUsername = telegramUsername?.trim()?.removePrefix("@") ?: ""
+        val startParam = if (cleanUsername.isNotBlank()) {
+            "user_${cleanUserId}_$cleanUsername"
+        } else if (cleanUserId.isNotBlank()) {
+            "user_$cleanUserId"
+        } else {
+            "app_launch"
+        }
         val nativeAppUri = Uri.parse("tg://resolve?domain=$BOT_USERNAME&start=$startParam")
         val webUri = Uri.parse("$BOT_URL?start=$startParam")
 

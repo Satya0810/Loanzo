@@ -36,4 +36,7 @@ interface NotificationDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM notifications WHERE notificationId = :notificationId)")
     suspend fun existsNotificationById(notificationId: String): Boolean
+
+    @Query("DELETE FROM notifications WHERE notificationId LIKE 'demo_%' OR notificationId LIKE 'notif_demo_%' OR userId LIKE 'demo_%' OR relatedLoanId LIKE 'loan_demo_%' OR relatedLoanId LIKE 'demo_%'")
+    suspend fun deleteDemoNotifications()
 }

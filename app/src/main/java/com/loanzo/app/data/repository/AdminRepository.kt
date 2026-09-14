@@ -35,10 +35,12 @@ class AdminRepository @Inject constructor(
     private val loanDao: LoanDao,
     private val notificationDao: NotificationDao,
     private val adminRequestDao: AdminRequestDao,
-    private val telegramManager: TelegramManager
+    private val telegramManager: TelegramManager,
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
 ) {
 
-    private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
+    private val firestore: FirebaseFirestore
+        get() = com.loanzo.app.data.firebase.FirestoreProvider.get()
 
     val allComplaints: Flow<List<ComplaintEntity>> = complaintDao.getAllComplaints()
     val allMeetings: Flow<List<MediationMeetingEntity>> = mediationMeetingDao.getAllMeetings()
@@ -74,9 +76,9 @@ class AdminRepository @Inject constructor(
         )
         agentDao.updateVisit(updatedVisit)
         try {
-            FirebaseFirestore.getInstance().collection("agent_visits")
+            firestore.collection("agent_visits")
                 .document(visitId)
-                .set(updatedVisit)
+                .set(agentVisitToMap(updatedVisit), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         sendUserNotification(
@@ -119,9 +121,9 @@ class AdminRepository @Inject constructor(
         try {
             val item = collateralVaultDao.getVaultItemById(vaultItemId)
             if (item != null) {
-                FirebaseFirestore.getInstance().collection("collateral_vault")
+                firestore.collection("collateral_vault")
                     .document(vaultItemId)
-                    .set(item)
+                    .set(collateralVaultToMap(item), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
     }
@@ -135,9 +137,9 @@ class AdminRepository @Inject constructor(
         try {
             val item = collateralVaultDao.getVaultItemByLoanId(loanId)
             if (item != null) {
-                FirebaseFirestore.getInstance().collection("collateral_vault")
+                firestore.collection("collateral_vault")
                     .document(item.vaultItemId)
-                    .set(item)
+                    .set(collateralVaultToMap(item), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
     }
@@ -154,9 +156,9 @@ class AdminRepository @Inject constructor(
         try {
             val comp = complaintDao.getComplaintById(complaintId)
             if (comp != null) {
-                FirebaseFirestore.getInstance().collection("complaints")
+                firestore.collection("complaints")
                     .document(complaintId)
-                    .set(comp)
+                    .set(complaintToMap(comp), com.google.firebase.firestore.SetOptions.merge())
 
                 sendUserNotification(
                     userId = comp.complainantId,
@@ -178,9 +180,9 @@ class AdminRepository @Inject constructor(
         try {
             val comp = complaintDao.getComplaintById(complaintId)
             if (comp != null) {
-                FirebaseFirestore.getInstance().collection("complaints")
+                firestore.collection("complaints")
                     .document(complaintId)
-                    .set(comp)
+                    .set(complaintToMap(comp), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
     }
@@ -188,10 +190,10 @@ class AdminRepository @Inject constructor(
     suspend fun submitComplaint(complaint: ComplaintEntity) {
         complaintDao.insertComplaint(complaint)
         try {
-            FirebaseFirestore.getInstance()
+            firestore
                 .collection("complaints")
                 .document(complaint.complaintId)
-                .set(complaint)
+                .set(complaintToMap(complaint), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // Create In-App Notification for Admin
@@ -208,9 +210,9 @@ class AdminRepository @Inject constructor(
         )
         try {
             notificationDao.insertNotification(notif)
-            FirebaseFirestore.getInstance().collection("notifications")
+            firestore.collection("notifications")
                 .document(notifId)
-                .set(notif)
+                .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
     }
 
@@ -223,9 +225,12 @@ class AdminRepository @Inject constructor(
             )
             userDao.updateUser(updated)
             try {
-                FirebaseFirestore.getInstance().collection("users")
+                firestore.collection("users")
                     .document(user.userId)
-                    .set(updated)
+                    .set(mapOf(
+                        "registeredDeviceId" to newDeviceId,
+                        "registeredDeviceModel" to newDeviceModel
+                    ), com.google.firebase.firestore.SetOptions.merge())
             } catch (_: Exception) {}
         }
         complaintDao.updateComplaintStatus(
@@ -237,9 +242,9 @@ class AdminRepository @Inject constructor(
         try {
             val comp = complaintDao.getComplaintById(complaintId)
             if (comp != null) {
-                FirebaseFirestore.getInstance().collection("complaints")
+                firestore.collection("complaints")
                     .document(complaintId)
-                    .set(comp)
+                    .set(complaintToMap(comp), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
     }
@@ -258,16 +263,16 @@ class AdminRepository @Inject constructor(
             try {
                 val comp = complaintDao.getComplaintById(meeting.complaintId)
                 if (comp != null) {
-                    FirebaseFirestore.getInstance().collection("complaints")
+                    firestore.collection("complaints")
                         .document(meeting.complaintId)
-                        .set(comp)
+                        .set(complaintToMap(comp), com.google.firebase.firestore.SetOptions.merge())
                 }
             } catch (_: Exception) {}
         }
         try {
-            FirebaseFirestore.getInstance().collection("mediation_meetings")
+            firestore.collection("mediation_meetings")
                 .document(meeting.meetingId)
-                .set(meeting)
+                .set(mediationMeetingToMap(meeting), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
     }
 
@@ -276,9 +281,9 @@ class AdminRepository @Inject constructor(
         try {
             val meeting = mediationMeetingDao.getMeetingById(meetingId)
             if (meeting != null) {
-                FirebaseFirestore.getInstance().collection("mediation_meetings")
+                firestore.collection("mediation_meetings")
                     .document(meetingId)
-                    .set(meeting)
+                    .set(mediationMeetingToMap(meeting), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
     }
@@ -323,16 +328,16 @@ class AdminRepository @Inject constructor(
         collateralVaultDao.updateCustodyStatusByLoan(loanId, "READY_FOR_RELEASE", System.currentTimeMillis())
 
         try {
-            val firestore = FirebaseFirestore.getInstance()
+            val firestore = firestore
             firestore.collection("noc_certificates")
                 .document(noc.nocId)
-                .set(noc)
+                .set(nocToMap(noc), com.google.firebase.firestore.SetOptions.merge())
 
             val vaultItem = collateralVaultDao.getVaultItemByLoanId(loanId)
             if (vaultItem != null) {
                 firestore.collection("collateral_vault")
                     .document(vaultItem.vaultItemId)
-                    .set(vaultItem)
+                    .set(collateralVaultToMap(vaultItem), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
 
@@ -353,9 +358,9 @@ class AdminRepository @Inject constructor(
         val updated = user.copy(agentStatus = "SUSPENDED", isOnDuty = false)
         userDao.updateUser(updated)
         try {
-            FirebaseFirestore.getInstance().collection("users")
+            firestore.collection("users")
                 .document(userId)
-                .set(updated)
+                .set(mapOf("agentStatus" to "SUSPENDED", "isOnDuty" to false), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         sendUserNotification(
@@ -371,9 +376,9 @@ class AdminRepository @Inject constructor(
         val updated = user.copy(agentStatus = "APPROVED", isOnDuty = true)
         userDao.updateUser(updated)
         try {
-            FirebaseFirestore.getInstance().collection("users")
+            firestore.collection("users")
                 .document(userId)
-                .set(updated)
+                .set(mapOf("agentStatus" to "APPROVED", "isOnDuty" to true), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         sendUserNotification(
@@ -387,215 +392,7 @@ class AdminRepository @Inject constructor(
     // --- Seed Sample Admin Operations Data ---
 
     suspend fun seedSampleAdminDataIfEmpty() {
-        val currentComplaints = complaintDao.getAllComplaints().firstOrNull()
-        if (currentComplaints.isNullOrEmpty()) {
-            val sampleComplaints = listOf(
-                ComplaintEntity(
-                    complaintId = "CMP-80194",
-                    complainantId = "USER-BRW-491",
-                    complainantName = "Rahul Verma",
-                    complainantRole = "BORROWER",
-                    complainantPhone = "+919876543210",
-                    targetPartyId = "USER-LND-819",
-                    targetPartyName = "Kapil Dev Sharma",
-                    targetPartyRole = "LENDER",
-                    loanId = "LOAN-84920",
-                    category = "COLLATERAL_CUSTODY",
-                    priority = "CRITICAL_LEGAL",
-                    subject = "Delayed Collateral Return Post Repayment",
-                    description = "I have paid all 6 EMIs in full along with interest on Aug 28th. However, my 22K Gold coins collateral is still held in the vault and NOC certificate has not been stamped yet.",
-                    status = "OPEN",
-                    createdAt = System.currentTimeMillis() - 172800000L
-                ),
-                ComplaintEntity(
-                    complaintId = "CMP-81204",
-                    complainantId = "USER-LND-302",
-                    complainantName = "Suresh Singhal",
-                    complainantRole = "LENDER",
-                    complainantPhone = "+919810554433",
-                    targetPartyId = "USER-BRW-991",
-                    targetPartyName = "Deepak Chawla",
-                    targetPartyRole = "BORROWER",
-                    loanId = "LOAN-91044",
-                    category = "DELAYED_PAYMENT",
-                    priority = "HIGH",
-                    subject = "Tranche 2 Overdue by 14 Days",
-                    description = "Borrower Deepak Chawla is unresponsive on calls. Tranche repayment of ₹45,000 was due on 15th August. Requesting physical agent visit and legal recovery notice.",
-                    status = "INVESTIGATING",
-                    createdAt = System.currentTimeMillis() - 86400000L
-                ),
-                ComplaintEntity(
-                    complaintId = "CMP-82551",
-                    complainantId = "AGENT-DEV-101",
-                    complainantName = "Vikram Singh (Field Agent)",
-                    complainantRole = "AGENT",
-                    complainantPhone = "+919811224466",
-                    targetPartyId = "USER-BRW-110",
-                    targetPartyName = "Amitabh Verma",
-                    targetPartyRole = "BORROWER",
-                    loanId = "LOAN-77319",
-                    category = "AGENT_CONDUCT",
-                    priority = "MEDIUM",
-                    subject = "Borrower Refused Physical Property Access",
-                    description = "Visited designated residence in Green Park. Borrower refused to show original property registry papers and behaved aggressively with inspection officer.",
-                    status = "OPEN",
-                    createdAt = System.currentTimeMillis() - 36000000L
-                )
-            )
-            complaintDao.insertComplaints(sampleComplaints)
-        }
-
-        val currentVault = collateralVaultDao.getAllVaultItems().firstOrNull()
-        if (currentVault.isNullOrEmpty()) {
-            val sampleVault = listOf(
-                CollateralVaultEntity(
-                    vaultItemId = "VLT-DELHI-001",
-                    loanId = "LOAN-84920",
-                    borrowerId = "USER-BRW-491",
-                    borrowerName = "Rahul Verma",
-                    borrowerPhone = "+919876543210",
-                    assetDescription = "22K Hallmark Gold Coins (20g total weight)",
-                    assetType = "GOLD",
-                    estimatedValue = 150000.0,
-                    appraisedPurityOrCondition = "91.6% Pure Gold (Tanishq Assay Certified)",
-                    vaultFacilityName = "Loanzo Central Vault - Connaught Place, New Delhi",
-                    lockerNumber = "LOCKER-A14",
-                    barcodeTag = "LNZ-GLD-8829-DEL",
-                    tamperSealNumber = "SEAL-9948201",
-                    custodyStatus = "SECURED_IN_VAULT",
-                    intakeAgentId = "AGENT-DEV-101",
-                    intakeDate = System.currentTimeMillis() - 604800000L
-                ),
-                CollateralVaultEntity(
-                    vaultItemId = "VLT-DELHI-002",
-                    loanId = "LOAN-77319",
-                    borrowerId = "USER-BRW-110",
-                    borrowerName = "Amitabh Verma",
-                    borrowerPhone = "+919711556677",
-                    assetDescription = "Commercial Office Original Property Title Deed",
-                    assetType = "PROPERTY_DEED",
-                    estimatedValue = 8500000.0,
-                    appraisedPurityOrCondition = "Original Deed registered at Sub-Registrar Office, Mehrauli",
-                    vaultFacilityName = "Loanzo Central Vault - Connaught Place, New Delhi",
-                    lockerNumber = "SAFE-COMP-C09",
-                    barcodeTag = "LNZ-PROP-7731-DEL",
-                    tamperSealNumber = "SEAL-8831902",
-                    custodyStatus = "ENCUMBERED",
-                    intakeAgentId = "AGENT-DEV-101",
-                    intakeDate = System.currentTimeMillis() - 1209600000L
-                ),
-                CollateralVaultEntity(
-                    vaultItemId = "VLT-DELHI-003",
-                    loanId = "LOAN-91044",
-                    borrowerId = "USER-BRW-991",
-                    borrowerName = "Deepak Chawla",
-                    borrowerPhone = "+919650112233",
-                    assetDescription = "Hyundai Creta SX 2022 (Original RC & Duplicate Key)",
-                    assetType = "VEHICLE_TITLE",
-                    estimatedValue = 950000.0,
-                    appraisedPurityOrCondition = "Clean RTO record, Hypothecation Endorsed",
-                    vaultFacilityName = "Loanzo Secure Vehicle Yard - Sector 62, Noida",
-                    lockerNumber = "YARD-BAY-44",
-                    barcodeTag = "LNZ-VEH-9104-UP",
-                    tamperSealNumber = "SEAL-7710493",
-                    custodyStatus = "PENDING_INTAKE"
-                )
-            )
-            collateralVaultDao.insertVaultItems(sampleVault)
-        }
-
-        val currentMeetings = mediationMeetingDao.getAllMeetings().firstOrNull()
-        if (currentMeetings.isNullOrEmpty()) {
-            val sampleMeetings = listOf(
-                MediationMeetingEntity(
-                    meetingId = "MEET-99201",
-                    title = "Dispute Arbitration: Collateral Release post EMI Clearance",
-                    agenda = "Review final bank statement of Rahul Verma, confirm zero-due with Kapil Dev Sharma, and approve digital NOC release.",
-                    loanId = "LOAN-84920",
-                    complaintId = "CMP-80194",
-                    borrowerName = "Rahul Verma",
-                    borrowerPhone = "+919876543210",
-                    lenderName = "Kapil Dev Sharma",
-                    lenderPhone = "+919811223344",
-                    meetingType = "GOOGLE_MEET",
-                    meetingLinkOrLocation = "https://meet.google.com/loa-nzo-med",
-                    scheduledDateTime = System.currentTimeMillis() + 18000000L, // 5 hours later
-                    scheduledTimeSlotStr = "Today, 04:30 PM - 05:15 PM",
-                    status = "SCHEDULED"
-                ),
-                MediationMeetingEntity(
-                    meetingId = "MEET-99342",
-                    title = "Physical Vault Inspection & Appraisal Hearing",
-                    agenda = "In-person verification of 22K Gold ornaments and diamond grading before escrow disbursement.",
-                    loanId = "LOAN-77319",
-                    borrowerName = "Amitabh Verma",
-                    borrowerPhone = "+919711556677",
-                    lenderName = "Suresh Singhal",
-                    lenderPhone = "+919810554433",
-                    agentName = "Vikram Singh",
-                    meetingType = "PHYSICAL_VAULT",
-                    meetingLinkOrLocation = "Loanzo Central Vault, Barakhamba Road, Connaught Place, New Delhi",
-                    scheduledDateTime = System.currentTimeMillis() + 86400000L, // Tomorrow
-                    scheduledTimeSlotStr = "Tomorrow, 11:30 AM - 12:30 PM",
-                    status = "SCHEDULED"
-                )
-            )
-            mediationMeetingDao.insertMeetings(sampleMeetings)
-        }
-
-        // Also check if there are unassigned visits to dispatch
-        val currentVisits = agentDao.getAllVisits().firstOrNull()
-        if (currentVisits.isNullOrEmpty() || currentVisits.none { it.agentId == "UNASSIGNED" }) {
-            val unassigned = listOf(
-                AgentVisitEntity(
-                    visitId = "VISIT-UNASSIGNED-1",
-                    agentId = "UNASSIGNED",
-                    loanId = "LOAN-60291",
-                    visitType = "COLLATERAL_VERIFICATION",
-                    title = "Gold Appraisal & Purity Testing (45g 22K Ornaments)",
-                    borrowerName = "Meenakshi Sundaram",
-                    borrowerPhone = "+919840112233",
-                    borrowerAddress = "B-44, Greater Kailash Part 1, New Delhi",
-                    lenderName = "Rakesh Jhunjhunwala Capital",
-                    lenderPhone = "+919820011223",
-                    lenderAddress = "Nariman Point, Mumbai",
-                    targetAddress = "B-44, Greater Kailash Part 1, New Delhi - 110048",
-                    targetLatitude = 28.5482,
-                    targetLongitude = 77.2344,
-                    scheduledDate = "Tomorrow",
-                    scheduledTimeSlot = "11:00 AM - 12:30 PM",
-                    payoutAmount = 950.0,
-                    collateralItemName = "22K Gold Bangles & Necklace (45g)",
-                    collateralEstimatedValue = 310000.0,
-                    collateralPledgedValue = 220000.0,
-                    status = "SCHEDULED"
-                ),
-                AgentVisitEntity(
-                    visitId = "VISIT-UNASSIGNED-2",
-                    agentId = "UNASSIGNED",
-                    loanId = "LOAN-60344",
-                    visitType = "BORROWER_VERIFICATION",
-                    title = "Borrower Residence & Salary Document Verification",
-                    borrowerName = "Anurag Kashyap",
-                    borrowerPhone = "+919910445566",
-                    borrowerAddress = "Flat 1203, Tower 4, Cyber City, Gurugram",
-                    lenderName = "Pawan Munjal",
-                    lenderPhone = "+919811002233",
-                    lenderAddress = "Civil Lines, Delhi",
-                    targetAddress = "Flat 1203, Tower 4, Cyber City, Gurugram, Haryana - 122002",
-                    targetLatitude = 28.4950,
-                    targetLongitude = 77.0895,
-                    scheduledDate = "Tomorrow",
-                    scheduledTimeSlot = "03:00 PM - 04:00 PM",
-                    payoutAmount = 650.0,
-                    collateralItemName = "Income Proof & Employment Letter",
-                    collateralEstimatedValue = 0.0,
-                    collateralPledgedValue = 80000.0,
-                    status = "SCHEDULED"
-                )
-            )
-            agentDao.insertVisits(unassigned)
-        }
+        // No-op: Demo data seeding disabled completely. Only real admin data is shown.
     }
 
     // --- Admin Access Request Engine & Instant Telegram Routing ---
@@ -627,10 +424,10 @@ class AdminRepository @Inject constructor(
 
         // 1. Push to Firestore collection 'admin_requests'
         try {
-            val firestore = FirebaseFirestore.getInstance()
+            val firestore = firestore
             firestore.collection("admin_requests")
                 .document(request.requestId)
-                .set(request)
+                .set(adminRequestToMap(request), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // 2. Insert In-App Notification for Admin in Room and Firestore
@@ -647,9 +444,9 @@ class AdminRepository @Inject constructor(
         )
         try {
             notificationDao.insertNotification(notif)
-            FirebaseFirestore.getInstance().collection("notifications")
+            firestore.collection("notifications")
                 .document(notifId)
-                .set(notif)
+                .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // 3. Send Telegram Alert to Master Admin (@satyam_081)
@@ -684,15 +481,15 @@ class AdminRepository @Inject constructor(
         try {
             val updatedReq = adminRequestDao.getRequestById(requestId)
             if (updatedReq != null) {
-                FirebaseFirestore.getInstance().collection("admin_requests")
+                firestore.collection("admin_requests")
                     .document(requestId)
-                    .set(updatedReq)
+                    .set(adminRequestToMap(updatedReq), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
 
         // Elevate user role to ADMIN in Firestore directly (guarantees remote applicant gets updated role)
         try {
-            val userDocRef = FirebaseFirestore.getInstance().collection("users").document(req.userId)
+            val userDocRef = firestore.collection("users").document(req.userId)
             userDocRef.update("role", req.requestedRole).addOnFailureListener {
                 userDocRef.set(
                     mapOf("userId" to req.userId, "role" to req.requestedRole),
@@ -729,9 +526,9 @@ class AdminRepository @Inject constructor(
         try {
             val updatedReq = adminRequestDao.getRequestById(requestId)
             if (updatedReq != null) {
-                FirebaseFirestore.getInstance().collection("admin_requests")
+                firestore.collection("admin_requests")
                     .document(requestId)
-                    .set(updatedReq)
+                    .set(adminRequestToMap(updatedReq), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
 
@@ -770,10 +567,10 @@ class AdminRepository @Inject constructor(
 
         // 2. Push to Firestore for Cloud Delivery to user device
         try {
-            val firestore = FirebaseFirestore.getInstance()
+            val firestore = firestore
             firestore.collection("notifications")
                 .document(notifId)
-                .set(notif)
+                .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
     }
 
@@ -885,18 +682,18 @@ class AdminRepository @Inject constructor(
                 )
                 agentDao.updateVisit(updatedOriginal)
                 try {
-                    FirebaseFirestore.getInstance().collection("agent_visits")
+                    firestore.collection("agent_visits")
                         .document(originalVisitId)
-                        .set(updatedOriginal)
+                        .set(agentVisitToMap(updatedOriginal), com.google.firebase.firestore.SetOptions.merge())
                 } catch (_: Exception) {}
             }
         }
 
         // Push dispatched visits to Firestore so assigned agents receive them in real-time
         try {
-            val firestore = FirebaseFirestore.getInstance()
-            firestore.collection("agent_visits").document(visit1Id).set(visit1)
-            firestore.collection("agent_visits").document(visit2Id).set(visit2)
+            val firestore = firestore
+            firestore.collection("agent_visits").document(visit1Id).set(agentVisitToMap(visit1), com.google.firebase.firestore.SetOptions.merge())
+            firestore.collection("agent_visits").document(visit2Id).set(agentVisitToMap(visit2), com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // Notify both assigned field verification officers
@@ -980,11 +777,12 @@ class AdminRepository @Inject constructor(
      * in-app notifications and status bar alerts for Master Admin.
      */
     fun startRealtimeAdminCloudSync(scope: kotlinx.coroutines.CoroutineScope) {
-        val firestore = FirebaseFirestore.getInstance()
+        val firestore = firestore
 
         // 0. Startup Reconciliation: Pull directly from Cloud Firestore & backfill notifications
         scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
+                firebaseManager.ensureFirebaseAuthSession()
                 // Directly pull pending agent applications from Firestore
                 try {
                     val cloudApps = firestore.collection("agent_applications").get().await()
@@ -1045,6 +843,58 @@ class AdminRepository @Inject constructor(
                     android.util.Log.w("AdminRepo", "Direct cloud users pull error: ${e.message}")
                 }
 
+                // Directly pull agent visits from Firestore
+                try {
+                    val cloudVisits = firestore.collection("agent_visits").get().await()
+                    for (doc in cloudVisits.documents) {
+                        val visit = doc.toAgentVisit()
+                        if (visit != null && visit.visitId.isNotBlank()) {
+                            agentDao.insertVisit(visit)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("AdminRepo", "Direct cloud visits pull error: ${e.message}")
+                }
+
+                // Directly pull collateral vault from Firestore
+                try {
+                    val cloudVault = firestore.collection("collateral_vault").get().await()
+                    for (doc in cloudVault.documents) {
+                        val item = doc.toCollateralVaultEntity()
+                        if (item != null && item.vaultItemId.isNotBlank()) {
+                            collateralVaultDao.insertVaultItem(item)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("AdminRepo", "Direct cloud vault pull error: ${e.message}")
+                }
+
+                // Directly pull mediation meetings from Firestore
+                try {
+                    val cloudMeetings = firestore.collection("mediation_meetings").get().await()
+                    for (doc in cloudMeetings.documents) {
+                        val meeting = doc.toMediationMeetingEntity()
+                        if (meeting != null && meeting.meetingId.isNotBlank()) {
+                            mediationMeetingDao.insertMeeting(meeting)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("AdminRepo", "Direct cloud meetings pull error: ${e.message}")
+                }
+
+                // Directly pull noc certificates from Firestore
+                try {
+                    val cloudNocs = firestore.collection("noc_certificates").get().await()
+                    for (doc in cloudNocs.documents) {
+                        val noc = doc.toNocCertificateEntity()
+                        if (noc != null && noc.nocId.isNotBlank()) {
+                            nocCertificateDao.insertNoc(noc)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("AdminRepo", "Direct cloud nocs pull error: ${e.message}")
+                }
+
                 // Reconcile pending agent applications (e.g. Ishita's AGENT-APP-3477EDDF)
                 val pendingApps = agentDao.getPendingApplicationsSync()
                 for (app in pendingApps) {
@@ -1058,7 +908,7 @@ class AdminRepository @Inject constructor(
                             type = "AGENT_APPLICATION",
                             timestamp = app.submittedAt,
                             isRead = false,
-                            actionRoute = "app_owner_hub?tab=1"
+                            actionRoute = "app_owner_hub?tab=11"
                         )
                         notificationDao.insertNotification(notif)
                         postAdminSystemNotification(notif.title, notif.message, notif.actionRoute)
@@ -1108,9 +958,11 @@ class AdminRepository @Inject constructor(
             }
         }
 
-        // 1. Listen to Admin Requests
-        try {
-            firestore.collection("admin_requests")
+        // 1. Listen to Admin Requests & Agent Empanelment
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            firebaseManager.ensureFirebaseAuthSession()
+            try {
+                firestore.collection("admin_requests")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null || snapshot == null) return@addSnapshotListener
                     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -1162,7 +1014,7 @@ class AdminRepository @Inject constructor(
                                             type = "AGENT_APPLICATION",
                                             timestamp = app.submittedAt,
                                             isRead = false,
-                                            actionRoute = "app_owner_hub?tab=1"
+                                            actionRoute = "app_owner_hub?tab=11"
                                         )
                                         notificationDao.insertNotification(notif)
                                         postAdminSystemNotification(notif.title, notif.message, notif.actionRoute)
@@ -1208,7 +1060,7 @@ class AdminRepository @Inject constructor(
                     if (error != null || snapshot == null) return@addSnapshotListener
                     scope.launch(kotlinx.coroutines.Dispatchers.IO) {
                         for (doc in snapshot.documents) {
-                            val visit = doc.toObject(AgentVisitEntity::class.java)
+                            val visit = doc.toAgentVisit()
                             if (visit != null && visit.visitId.isNotBlank()) {
                                 agentDao.insertVisit(visit)
                             }
@@ -1249,6 +1101,55 @@ class AdminRepository @Inject constructor(
                     }
                 }
         } catch (_: Exception) {}
+
+        // 6. Listen to Collateral Vault
+        try {
+            firestore.collection("collateral_vault")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null) return@addSnapshotListener
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        for (doc in snapshot.documents) {
+                            val item = doc.toCollateralVaultEntity()
+                            if (item != null && item.vaultItemId.isNotBlank()) {
+                                collateralVaultDao.insertVaultItem(item)
+                            }
+                        }
+                    }
+                }
+        } catch (_: Exception) {}
+
+        // 7. Listen to Mediation Meetings
+        try {
+            firestore.collection("mediation_meetings")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null) return@addSnapshotListener
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        for (doc in snapshot.documents) {
+                            val meeting = doc.toMediationMeetingEntity()
+                            if (meeting != null && meeting.meetingId.isNotBlank()) {
+                                mediationMeetingDao.insertMeeting(meeting)
+                            }
+                        }
+                    }
+                }
+        } catch (_: Exception) {}
+
+        // 8. Listen to NOC Certificates
+        try {
+            firestore.collection("noc_certificates")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null) return@addSnapshotListener
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        for (doc in snapshot.documents) {
+                            val noc = doc.toNocCertificateEntity()
+                            if (noc != null && noc.nocId.isNotBlank()) {
+                                nocCertificateDao.insertNoc(noc)
+                            }
+                        }
+                    }
+                }
+        } catch (_: Exception) {}
+        }
     }
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toAgentApplication(): AgentApplicationEntity? {
@@ -1426,5 +1327,327 @@ class AdminRepository @Inject constructor(
             android.util.Log.w("AdminRepository", "refreshUsersFromCloud error: ${e.message}")
         }
         list
+    }
+
+    fun agentVisitToMap(v: AgentVisitEntity): Map<String, Any?> {
+        return hashMapOf(
+            "visitId" to v.visitId,
+            "agentId" to v.agentId,
+            "loanId" to v.loanId,
+            "visitType" to v.visitType,
+            "title" to v.title,
+            "borrowerName" to v.borrowerName,
+            "borrowerPhone" to v.borrowerPhone,
+            "borrowerAddress" to v.borrowerAddress,
+            "lenderName" to v.lenderName,
+            "lenderPhone" to v.lenderPhone,
+            "lenderAddress" to v.lenderAddress,
+            "targetAddress" to v.targetAddress,
+            "targetLatitude" to v.targetLatitude,
+            "targetLongitude" to v.targetLongitude,
+            "scheduledDate" to v.scheduledDate,
+            "scheduledTimeSlot" to v.scheduledTimeSlot,
+            "payoutAmount" to v.payoutAmount,
+            "collateralItemName" to v.collateralItemName,
+            "collateralEstimatedValue" to v.collateralEstimatedValue,
+            "collateralPledgedValue" to v.collateralPledgedValue,
+            "status" to v.status,
+            "agentRemarks" to v.agentRemarks,
+            "isCollateralAuthentic" to v.isCollateralAuthentic,
+            "isBorrowerIdentityVerified" to v.isBorrowerIdentityVerified,
+            "isLenderIdentityVerified" to v.isLenderIdentityVerified,
+            "proofPhotoUris" to v.proofPhotoUris,
+            "completedAt" to v.completedAt,
+            "createdAt" to v.createdAt,
+            "crossVerificationPairId" to v.crossVerificationPairId,
+            "isCrossVerification" to v.isCrossVerification,
+            "counterpartVisitId" to v.counterpartVisitId,
+            "verificationStage" to v.verificationStage,
+            "appraisedValue" to v.appraisedValue,
+            "counterpartAppraisedValue" to v.counterpartAppraisedValue,
+            "valuationDiscrepancyPercent" to v.valuationDiscrepancyPercent,
+            "officerRecommendation" to v.officerRecommendation,
+            "isCounterpartAnonymous" to v.isCounterpartAnonymous,
+            "assignedAgentName" to v.assignedAgentName,
+            "agentPhone" to v.agentPhone,
+            "handshakePin" to v.handshakePin,
+            "isHandshakePinVerified" to v.isHandshakePinVerified,
+            "visitStageStatus" to v.visitStageStatus,
+            "agentLatitude" to v.agentLatitude,
+            "agentLongitude" to v.agentLongitude,
+            "loanType" to v.loanType,
+            "distanceKm" to v.distanceKm
+        )
+    }
+
+    fun collateralVaultToMap(item: CollateralVaultEntity): Map<String, Any?> {
+        return hashMapOf(
+            "vaultItemId" to item.vaultItemId,
+            "loanId" to item.loanId,
+            "borrowerId" to item.borrowerId,
+            "borrowerName" to item.borrowerName,
+            "borrowerPhone" to item.borrowerPhone,
+            "assetDescription" to item.assetDescription,
+            "assetType" to item.assetType,
+            "estimatedValue" to item.estimatedValue,
+            "appraisedPurityOrCondition" to item.appraisedPurityOrCondition,
+            "vaultFacilityName" to item.vaultFacilityName,
+            "lockerNumber" to item.lockerNumber,
+            "barcodeTag" to item.barcodeTag,
+            "tamperSealNumber" to item.tamperSealNumber,
+            "custodyStatus" to item.custodyStatus,
+            "photoUri" to item.photoUri,
+            "intakeAgentId" to item.intakeAgentId,
+            "intakeDate" to item.intakeDate,
+            "releaseDate" to item.releaseDate,
+            "createdAt" to item.createdAt
+        )
+    }
+
+    fun complaintToMap(c: ComplaintEntity): Map<String, Any?> {
+        return hashMapOf(
+            "complaintId" to c.complaintId,
+            "complainantId" to c.complainantId,
+            "complainantName" to c.complainantName,
+            "complainantRole" to c.complainantRole,
+            "complainantPhone" to c.complainantPhone,
+            "targetPartyId" to c.targetPartyId,
+            "targetPartyName" to c.targetPartyName,
+            "targetPartyRole" to c.targetPartyRole,
+            "loanId" to c.loanId,
+            "category" to c.category,
+            "priority" to c.priority,
+            "subject" to c.subject,
+            "description" to c.description,
+            "evidenceUris" to c.evidenceUris,
+            "status" to c.status,
+            "resolutionNotes" to c.resolutionNotes,
+            "resolvedAt" to c.resolvedAt,
+            "createdAt" to c.createdAt
+        )
+    }
+
+    fun mediationMeetingToMap(m: MediationMeetingEntity): Map<String, Any?> {
+        return hashMapOf(
+            "meetingId" to m.meetingId,
+            "title" to m.title,
+            "agenda" to m.agenda,
+            "loanId" to m.loanId,
+            "complaintId" to m.complaintId,
+            "borrowerId" to m.borrowerId,
+            "borrowerName" to m.borrowerName,
+            "borrowerPhone" to m.borrowerPhone,
+            "lenderId" to m.lenderId,
+            "lenderName" to m.lenderName,
+            "lenderPhone" to m.lenderPhone,
+            "agentId" to m.agentId,
+            "agentName" to m.agentName,
+            "meetingType" to m.meetingType,
+            "meetingLinkOrLocation" to m.meetingLinkOrLocation,
+            "scheduledDateTime" to m.scheduledDateTime,
+            "scheduledTimeSlotStr" to m.scheduledTimeSlotStr,
+            "status" to m.status,
+            "adminNotes" to m.adminNotes,
+            "createdAt" to m.createdAt
+        )
+    }
+
+    fun nocToMap(noc: NocCertificateEntity): Map<String, Any?> {
+        return hashMapOf(
+            "nocId" to noc.nocId,
+            "loanId" to noc.loanId,
+            "borrowerId" to noc.borrowerId,
+            "borrowerName" to noc.borrowerName,
+            "borrowerPan" to noc.borrowerPan,
+            "lenderId" to noc.lenderId,
+            "lenderName" to noc.lenderName,
+            "principalAmount" to noc.principalAmount,
+            "totalRepaidAmount" to noc.totalRepaidAmount,
+            "collateralReleasedDesc" to noc.collateralReleasedDesc,
+            "digitalSignatureHash" to noc.digitalSignatureHash,
+            "issuedAt" to noc.issuedAt,
+            "issuedByAdminId" to noc.issuedByAdminId,
+            "status" to noc.status
+        )
+    }
+
+    fun adminRequestToMap(r: AdminRequestEntity): Map<String, Any?> {
+        return hashMapOf(
+            "requestId" to r.requestId,
+            "userId" to r.userId,
+            "userName" to r.userName,
+            "userPhone" to r.userPhone,
+            "userEmail" to r.userEmail,
+            "currentRole" to r.currentRole,
+            "requestedRole" to r.requestedRole,
+            "reason" to r.reason,
+            "status" to r.status,
+            "requestedAt" to r.requestedAt,
+            "reviewedAt" to r.reviewedAt,
+            "reviewedBy" to r.reviewedBy,
+            "adminNotes" to r.adminNotes
+        )
+    }
+
+    fun notificationToMap(n: NotificationEntity): Map<String, Any?> {
+        return hashMapOf(
+            "notificationId" to n.notificationId,
+            "userId" to n.userId,
+            "title" to n.title,
+            "message" to n.message,
+            "type" to n.type,
+            "relatedLoanId" to n.relatedLoanId,
+            "actionRoute" to n.actionRoute,
+            "dayKey" to n.dayKey,
+            "timestamp" to n.timestamp,
+            "isRead" to n.isRead
+        )
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toAgentVisit(): AgentVisitEntity? {
+        val d = this.data ?: return null
+        return try {
+            this.toObject(AgentVisitEntity::class.java)
+        } catch (_: Exception) {
+            null
+        } ?: run {
+            AgentVisitEntity(
+                visitId = (d["visitId"] as? String) ?: this.id,
+                agentId = (d["agentId"] as? String) ?: "",
+                loanId = (d["loanId"] as? String) ?: "",
+                visitType = (d["visitType"] as? String) ?: "BORROWER_VERIFICATION",
+                title = (d["title"] as? String) ?: "",
+                borrowerName = (d["borrowerName"] as? String) ?: "",
+                borrowerPhone = (d["borrowerPhone"] as? String) ?: "",
+                borrowerAddress = (d["borrowerAddress"] as? String) ?: "",
+                lenderName = (d["lenderName"] as? String) ?: "",
+                lenderPhone = (d["lenderPhone"] as? String) ?: "",
+                lenderAddress = (d["lenderAddress"] as? String) ?: "",
+                targetAddress = (d["targetAddress"] as? String) ?: "",
+                targetLatitude = (d["targetLatitude"] as? Number)?.toDouble() ?: 0.0,
+                targetLongitude = (d["targetLongitude"] as? Number)?.toDouble() ?: 0.0,
+                scheduledDate = (d["scheduledDate"] as? String) ?: "Today",
+                scheduledTimeSlot = (d["scheduledTimeSlot"] as? String) ?: "",
+                payoutAmount = (d["payoutAmount"] as? Number)?.toDouble() ?: 0.0,
+                collateralItemName = d["collateralItemName"] as? String,
+                collateralEstimatedValue = (d["collateralEstimatedValue"] as? Number)?.toDouble(),
+                collateralPledgedValue = (d["collateralPledgedValue"] as? Number)?.toDouble(),
+                status = (d["status"] as? String) ?: "SCHEDULED",
+                agentRemarks = (d["agentRemarks"] as? String) ?: "",
+                isCollateralAuthentic = (d["isCollateralAuthentic"] as? Boolean) ?: false,
+                isBorrowerIdentityVerified = (d["isBorrowerIdentityVerified"] as? Boolean) ?: false,
+                isLenderIdentityVerified = (d["isLenderIdentityVerified"] as? Boolean) ?: false,
+                proofPhotoUris = (d["proofPhotoUris"] as? String) ?: "",
+                completedAt = (d["completedAt"] as? Number)?.toLong(),
+                createdAt = ((d["createdAt"] as? Number)?.toLong()) ?: System.currentTimeMillis(),
+                crossVerificationPairId = d["crossVerificationPairId"] as? String,
+                isCrossVerification = (d["isCrossVerification"] as? Boolean) ?: false,
+                counterpartVisitId = d["counterpartVisitId"] as? String,
+                verificationStage = (d["verificationStage"] as? String) ?: "STAGE_1_PRIMARY",
+                appraisedValue = (d["appraisedValue"] as? Number)?.toDouble(),
+                counterpartAppraisedValue = (d["counterpartAppraisedValue"] as? Number)?.toDouble(),
+                valuationDiscrepancyPercent = (d["valuationDiscrepancyPercent"] as? Number)?.toDouble(),
+                officerRecommendation = d["officerRecommendation"] as? String,
+                isCounterpartAnonymous = (d["isCounterpartAnonymous"] as? Boolean) ?: true,
+                assignedAgentName = d["assignedAgentName"] as? String,
+                agentPhone = (d["agentPhone"] as? String) ?: "",
+                handshakePin = (d["handshakePin"] as? String) ?: "",
+                isHandshakePinVerified = (d["isHandshakePinVerified"] as? Boolean) ?: false,
+                visitStageStatus = (d["visitStageStatus"] as? String) ?: "SCHEDULED",
+                agentLatitude = (d["agentLatitude"] as? Number)?.toDouble(),
+                agentLongitude = (d["agentLongitude"] as? Number)?.toDouble(),
+                loanType = (d["loanType"] as? String) ?: "PERSONAL",
+                distanceKm = (d["distanceKm"] as? Number)?.toDouble()
+            )
+        }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toCollateralVaultEntity(): CollateralVaultEntity? {
+        val d = this.data ?: return null
+        return try {
+            this.toObject(CollateralVaultEntity::class.java)
+        } catch (_: Exception) {
+            null
+        } ?: run {
+            CollateralVaultEntity(
+                vaultItemId = (d["vaultItemId"] as? String) ?: this.id,
+                loanId = (d["loanId"] as? String) ?: "",
+                borrowerId = (d["borrowerId"] as? String) ?: "",
+                borrowerName = (d["borrowerName"] as? String) ?: "",
+                borrowerPhone = (d["borrowerPhone"] as? String) ?: "",
+                assetDescription = (d["assetDescription"] as? String) ?: "",
+                assetType = (d["assetType"] as? String) ?: "OTHER",
+                estimatedValue = (d["estimatedValue"] as? Number)?.toDouble() ?: 0.0,
+                appraisedPurityOrCondition = (d["appraisedPurityOrCondition"] as? String) ?: "",
+                vaultFacilityName = (d["vaultFacilityName"] as? String) ?: "Loanzo Central Vault - Delhi NCR",
+                lockerNumber = (d["lockerNumber"] as? String) ?: "PENDING_ALLOCATION",
+                barcodeTag = (d["barcodeTag"] as? String) ?: "",
+                tamperSealNumber = (d["tamperSealNumber"] as? String) ?: "",
+                custodyStatus = (d["custodyStatus"] as? String) ?: "PENDING_INTAKE",
+                photoUri = (d["photoUri"] as? String) ?: "",
+                intakeAgentId = d["intakeAgentId"] as? String,
+                intakeDate = (d["intakeDate"] as? Number)?.toLong(),
+                releaseDate = (d["releaseDate"] as? Number)?.toLong(),
+                createdAt = ((d["createdAt"] as? Number)?.toLong()) ?: System.currentTimeMillis()
+            )
+        }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toMediationMeetingEntity(): MediationMeetingEntity? {
+        val d = this.data ?: return null
+        return try {
+            this.toObject(MediationMeetingEntity::class.java)
+        } catch (_: Exception) {
+            null
+        } ?: run {
+            MediationMeetingEntity(
+                meetingId = (d["meetingId"] as? String) ?: this.id,
+                title = (d["title"] as? String) ?: "",
+                agenda = (d["agenda"] as? String) ?: "",
+                loanId = d["loanId"] as? String,
+                complaintId = d["complaintId"] as? String,
+                borrowerId = d["borrowerId"] as? String,
+                borrowerName = d["borrowerName"] as? String,
+                borrowerPhone = d["borrowerPhone"] as? String,
+                lenderId = d["lenderId"] as? String,
+                lenderName = d["lenderName"] as? String,
+                lenderPhone = d["lenderPhone"] as? String,
+                agentId = d["agentId"] as? String,
+                agentName = d["agentName"] as? String,
+                meetingType = (d["meetingType"] as? String) ?: "GOOGLE_MEET",
+                meetingLinkOrLocation = (d["meetingLinkOrLocation"] as? String) ?: "",
+                scheduledDateTime = (d["scheduledDateTime"] as? Number)?.toLong() ?: System.currentTimeMillis(),
+                scheduledTimeSlotStr = (d["scheduledTimeSlotStr"] as? String) ?: "",
+                status = (d["status"] as? String) ?: "SCHEDULED",
+                adminNotes = d["adminNotes"] as? String,
+                createdAt = ((d["createdAt"] as? Number)?.toLong()) ?: System.currentTimeMillis()
+            )
+        }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toNocCertificateEntity(): NocCertificateEntity? {
+        val d = this.data ?: return null
+        return try {
+            this.toObject(NocCertificateEntity::class.java)
+        } catch (_: Exception) {
+            null
+        } ?: run {
+            NocCertificateEntity(
+                nocId = (d["nocId"] as? String) ?: this.id,
+                loanId = (d["loanId"] as? String) ?: "",
+                borrowerId = (d["borrowerId"] as? String) ?: "",
+                borrowerName = (d["borrowerName"] as? String) ?: "",
+                borrowerPan = (d["borrowerPan"] as? String) ?: "",
+                lenderId = (d["lenderId"] as? String) ?: "",
+                lenderName = (d["lenderName"] as? String) ?: "",
+                principalAmount = (d["principalAmount"] as? Number)?.toDouble() ?: 0.0,
+                totalRepaidAmount = (d["totalRepaidAmount"] as? Number)?.toDouble() ?: 0.0,
+                collateralReleasedDesc = (d["collateralReleasedDesc"] as? String) ?: "",
+                digitalSignatureHash = (d["digitalSignatureHash"] as? String) ?: "",
+                issuedAt = (d["issuedAt"] as? Number)?.toLong() ?: System.currentTimeMillis(),
+                issuedByAdminId = (d["issuedByAdminId"] as? String) ?: "ADMIN-SATYAM-0810",
+                status = (d["status"] as? String) ?: "ACTIVE_CLEARANCE"
+            )
+        }
     }
 }

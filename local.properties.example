@@ -1,0 +1,18 @@
+# Template for local.properties.
+# Copy this file to local.properties and fill in your actual developer keys.
+# NEVER commit local.properties to version control.
+
+sdk.dir=C\:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk
+
+# Telegram Bot Integration
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+
+# Google Drive Apps Script Proxy
+DRIVE_WEB_APP_URL=https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
+DRIVE_API_KEY=your_drive_api_key_here
+
+# AI Model Providers (Multi-Model AI Racing)
+CLOUDFLARE_TOKEN=your_cloudflare_api_token_here
+CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id_here
+SAMBANOVA_API_KEY=your_sambanova_api_key_here
+LLM7_API_KEY=your_llm7_api_key_here

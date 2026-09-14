@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.loanzo.app.data.dao.LoanDao
 import com.loanzo.app.data.dao.UserDao
 import com.loanzo.app.data.entity.LoanEntity
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 data class FirestoreChatMessage(
@@ -77,1001 +79,7 @@ data class ChatUiState(
 
 object DemoChatMessages {
     fun getDemoMessagesForChannel(channelId: String, currentUserId: String, counterpartyName: String): List<FirestoreChatMessage> {
-        val now = System.currentTimeMillis()
-        val oneHourMs = 3600_000L
-        val oneDayMs = 86400_000L
-        val lowerCh = channelId.lowercase()
-        val lowerCp = counterpartyName.lowercase()
-
-        return when {
-            // =========================================================================
-            // 1. LOAN DEALS
-            // =========================================================================
-            lowerCh.contains("demo_loan_lent_1") || lowerCh.contains("lent") || lowerCh.contains("50k") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "demo_msg_lent_1",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "LENDER",
-                    recipientId = "demo_borrower_rahul",
-                    text = "Hello Rahul, I have reviewed your loan application of ₹50,000 for retail inventory expansion. Can you share shop photos and GST registration?",
-                    timestamp = now - (30 * oneDayMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_lent_2",
-                    channelId = channelId,
-                    senderId = "demo_borrower_rahul",
-                    senderName = "Rahul Sharma",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Hello sir! Yes, GSTIN 07AAAAA0000A1Z5 is verified. Gold collateral (48.5g bangles & necklace, 24K) is also ready for appraisal by your field agent.",
-                    timestamp = now - (30 * oneDayMs) + (2 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_lent_3",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "LENDER",
-                    recipientId = "demo_borrower_rahul",
-                    text = "Sanction Approved: ₹50,000 at 12% p.a. for 6 months. Monthly EMI: ₹8,834. Field Agent Abhisi has completed physical inspection.",
-                    timestamp = now - (29 * oneDayMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "PROPOSAL",
-                    metaPayload = "LOAN_PROPOSAL|50000|12.0|6|8834"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_lent_4",
-                    channelId = channelId,
-                    senderId = "demo_borrower_rahul",
-                    senderName = "Rahul Sharma",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Proposal accepted! I have eSigned the tripartite agreement using Aadhaar OTP. Gold collateral sealed in central vault with tag #DEL-VAULT-042.",
-                    timestamp = now - (28 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_lent_5",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "LENDER",
-                    recipientId = "demo_borrower_rahul",
-                    text = "Disbursement confirmed! ₹50,000 sent via IMPS to your HDFC Bank account (Ref: IMPS/2026/09/882194). First EMI due on 5th.",
-                    timestamp = now - (28 * oneDayMs) + (1 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_lent_6",
-                    channelId = channelId,
-                    senderId = "demo_borrower_rahul",
-                    senderName = "Rahul Sharma",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Received full amount! EMI #1 of ₹8,834 paid via UPI (Ref: UPI/329481928491). Attached receipt.",
-                    timestamp = now - (25 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "RECEIPT",
-                    metaPayload = "PAYMENT_RECEIPT|8834|UPI/329481928491|PAID"
-                )
-            )
-            lowerCh.contains("demo_loan_borrowed_1") || lowerCh.contains("borrowed") || lowerCh.contains("25k") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "demo_msg_borr_1",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_lender_priya",
-                    text = "Hi Priya, requesting ₹25,000 education loan for professional certification. 12 months tenure at 10.5% p.a.",
-                    timestamp = now - (60 * oneDayMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_borr_2",
-                    channelId = channelId,
-                    senderId = "demo_lender_priya",
-                    senderName = "Priya Patel",
-                    senderRole = "LENDER",
-                    recipientId = currentUserId,
-                    text = "Reviewed your profile and credit score (780). Happy to fund this. Please upload guarantor details to finalize.",
-                    timestamp = now - (60 * oneDayMs) + (3 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_borr_3",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_lender_priya",
-                    text = "Guarantor Nirmala Devi (Mother) consent form attached along with 3 months salary slips. Digital signature completed.",
-                    timestamp = now - (59 * oneDayMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_borr_4",
-                    channelId = channelId,
-                    senderId = "demo_lender_priya",
-                    senderName = "Priya Patel",
-                    senderRole = "LENDER",
-                    recipientId = currentUserId,
-                    text = "Approved and eSigned! ₹25,000 transferred to your ICICI account. Best wishes for your course!",
-                    timestamp = now - (59 * oneDayMs) + (2 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("support_loanzo_assistant") || lowerCh.contains("support") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "demo_msg_supp_1",
-                    channelId = channelId,
-                    senderId = "LOANZO_BOT",
-                    senderName = "Loanzo AI Assistant",
-                    senderRole = "OFFICIAL_BOT",
-                    recipientId = currentUserId,
-                    text = "Welcome to Loanzo Smart Legal Escrow & P2P Finance Assistant! I'm here 24/7 to assist with deals, repayments, vault documents, and dispute mediation.",
-                    timestamp = now - (10 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_supp_2",
-                    channelId = channelId,
-                    senderId = "LOANZO_BOT",
-                    senderName = "Loanzo AI Assistant",
-                    senderRole = "OFFICIAL_BOT",
-                    recipientId = currentUserId,
-                    text = "Portfolio summary: You have 1 active loan lent (₹50,000 to Rahul Sharma, next EMI in 5 days), 1 loan borrowed (₹25,000 from Priya Patel), and 1 closed loan with issued NOC certificate. All legal contracts are encrypted in your Vault.",
-                    timestamp = now - (2 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_supp_3",
-                    channelId = channelId,
-                    senderId = "LOANZO_BOT",
-                    senderName = "Loanzo AI Assistant",
-                    senderRole = "OFFICIAL_BOT",
-                    recipientId = currentUserId,
-                    text = "How can I help you today? You can ask me to generate a Financial Dossier, calculate EMI amortization, or request field agent verification.",
-                    timestamp = now - (5 * 60_000L),
-                    isMe = false,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("demo_loan_closed_1") || lowerCh.contains("closed") || lowerCh.contains("15k") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "demo_msg_closed_1",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "LENDER",
-                    recipientId = "demo_borrower_rahul",
-                    text = "Rahul, confirming that your Medical Emergency loan has been fully settled ahead of schedule. Total repaid: ₹15,440.",
-                    timestamp = now - (120 * oneDayMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_closed_2",
-                    channelId = channelId,
-                    senderId = "demo_borrower_rahul",
-                    senderName = "Rahul Sharma",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Thank you so much! I have downloaded the official NOC & Lien Release Certificate from my Vault. Collateral received in pristine condition.",
-                    timestamp = now - (120 * oneDayMs) + (2 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("demo_loan_platform_1") || lowerCh.contains("biz") || lowerCh.contains("150k") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p1_1",
-                    channelId = channelId,
-                    senderId = "demo_vikram_malhotra",
-                    senderName = "Vikram Malhotra",
-                    senderRole = "LENDER",
-                    recipientId = "demo_amit_verma",
-                    text = "Proposal for CNC Machinery Expansion (₹1,50,000, 12 Months at 11.5%). Approved upon site inspection.",
-                    timestamp = now - (45 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "PROPOSAL",
-                    metaPayload = "LOAN_PROPOSAL|150000|11.5|12|13295"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p1_2",
-                    channelId = channelId,
-                    senderId = "demo_amit_verma",
-                    senderName = "Amit Verma",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_vikram_malhotra",
-                    text = "Field Agent Abhisi has verified machinery serial numbers and property deeds. eSign completed via Aadhaar.",
-                    timestamp = now - (44 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p1_3",
-                    channelId = channelId,
-                    senderId = "demo_vikram_malhotra",
-                    senderName = "Vikram Malhotra",
-                    senderRole = "LENDER",
-                    recipientId = "demo_amit_verma",
-                    text = "₹1,50,000 disbursed to payee account. Amortization schedule active in Loanzo app.",
-                    timestamp = now - (44 * oneDayMs) + (3 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("demo_loan_platform_2") || lowerCh.contains("gadget") || lowerCh.contains("80k") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p2_1",
-                    channelId = channelId,
-                    senderId = "demo_rajesh_gupta",
-                    senderName = "Rajesh Gupta",
-                    senderRole = "LENDER",
-                    recipientId = "demo_sneha_roy",
-                    text = "Reviewed equipment financing proposal: ₹80,000 at 12% p.a. for 8 months for Studio Workstation & Audio Gear.",
-                    timestamp = now - (90 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "PROPOSAL",
-                    metaPayload = "LOAN_PROPOSAL|80000|12.0|8|10458"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p2_2",
-                    channelId = channelId,
-                    senderId = "demo_sneha_roy",
-                    senderName = "Sneha Roy",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_rajesh_gupta",
-                    text = "Hardware encumbered in platform collateral registry. MacBook Pro M2 Max serial tagged by Field Agent Abhisi.",
-                    timestamp = now - (89 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p2_3",
-                    channelId = channelId,
-                    senderId = "demo_rajesh_gupta",
-                    senderName = "Rajesh Gupta",
-                    senderRole = "LENDER",
-                    recipientId = "demo_sneha_roy",
-                    text = "Funds disbursed directly to Apple Authorized Reseller invoice escrow. All documents secured in Vault.",
-                    timestamp = now - (89 * oneDayMs) + (2 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("demo_loan_platform_3") || lowerCh.contains("super") || lowerCh.contains("200k") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p3_1",
-                    channelId = channelId,
-                    senderId = "demo_rajesh_gupta",
-                    senderName = "Rajesh Gupta",
-                    senderRole = "LENDER",
-                    recipientId = "demo_borrower_rahul",
-                    text = "Commercial warehouse lease expansion facility of ₹2,00,000 for 24 months sanctioned. Commercial lease deed registered.",
-                    timestamp = now - (150 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p3_2",
-                    channelId = channelId,
-                    senderId = "demo_borrower_rahul",
-                    senderName = "Rahul Sharma",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_rajesh_gupta",
-                    text = "Aadhaar eSign tripartite contract completed. Security deposit of 3 months escrowed.",
-                    timestamp = now - (149 * oneDayMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_p3_3",
-                    channelId = channelId,
-                    senderId = "demo_rajesh_gupta",
-                    senderName = "Rajesh Gupta",
-                    senderRole = "LENDER",
-                    recipientId = "demo_borrower_rahul",
-                    text = "Escrow release complete. Monthly automated NACH debit active.",
-                    timestamp = now - (149 * oneDayMs) + (4 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-
-            // =========================================================================
-            // 2. DIRECT CONVERSATIONS WITH REGISTERED PERSONAS
-            // =========================================================================
-            lowerCh.contains("priya") || lowerCp.contains("priya") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_priya_1",
-                    channelId = channelId,
-                    senderId = "demo_lender_priya",
-                    senderName = "Priya Patel",
-                    senderRole = "LENDER",
-                    recipientId = currentUserId,
-                    text = "Hello! I noticed your excellent repayment history on Loanzo. I have ₹3 Lakhs in liquid capital allocated for verified community loans.",
-                    timestamp = now - (35 * 60_000L),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_priya_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_lender_priya",
-                    text = "Thank you Priya! Yes, I keep all KYC and income statements updated via DigiLocker and Account Aggregator.",
-                    timestamp = now - (25 * 60_000L),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_priya_3",
-                    channelId = channelId,
-                    senderId = "demo_lender_priya",
-                    senderName = "Priya Patel",
-                    senderRole = "LENDER",
-                    recipientId = currentUserId,
-                    text = "If you or your network ever need co-financing for equipment or working capital, please share terms directly on the app.",
-                    timestamp = now - (10 * 60_000L),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_priya_4",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_lender_priya",
-                    text = "Will do! The legal escrow and automated EMI mandate on Loanzo make deals completely stress-free.",
-                    timestamp = now - (2 * 60_000L),
-                    isMe = true,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("vikram") || lowerCp.contains("vikram") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_vikram_1",
-                    channelId = channelId,
-                    senderId = "demo_vikram_malhotra",
-                    senderName = "Vikram Malhotra",
-                    senderRole = "LENDER",
-                    recipientId = currentUserId,
-                    text = "Greetings! Field Agent Abhisi just submitted the geo-tagged inspection report for the CNC lathe shop. Everything checked out 100% compliant with our collateral guidelines.",
-                    timestamp = now - (3 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_vikram_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_vikram_malhotra",
-                    text = "That's reassuring Vikram. Fast turnaround on physical verification is exactly why Loanzo's hybrid model works so well.",
-                    timestamp = now - (2 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_vikram_3",
-                    channelId = channelId,
-                    senderId = "demo_vikram_malhotra",
-                    senderName = "Vikram Malhotra",
-                    senderRole = "LENDER",
-                    recipientId = currentUserId,
-                    text = "Agreed. Once the borrower eSigns with Aadhaar OTP, I'll authorize immediate RTGS transfer from escrow. Happy to co-lend on similar high-ticket MSME tickets.",
-                    timestamp = now - (1 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_vikram_4",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_vikram_malhotra",
-                    text = "Understood. The legal contract PDF will be encrypted in the Vault for both parties.",
-                    timestamp = now - (15 * 60_000L),
-                    isMe = true,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("rajesh") || lowerCp.contains("rajesh") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_rajesh_1",
-                    channelId = channelId,
-                    senderId = "demo_rajesh_gupta",
-                    senderName = "Rajesh Gupta",
-                    senderRole = "LENDER",
-                    recipientId = currentUserId,
-                    text = "Namaste! Confirming that Rahul's medical emergency loan has been completely liquidated with zero penalty. I've signed the digital NOC.",
-                    timestamp = now - (6 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rajesh_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_rajesh_gupta",
-                    text = "Thank you Rajesh ji! The lien on his collateral has been formally released in the app registry. He downloaded the digitally signed discharge certificate.",
-                    timestamp = now - (5 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rajesh_3",
-                    channelId = channelId,
-                    senderId = "demo_rajesh_gupta",
-                    senderName = "Rajesh Gupta",
-                    senderRole = "LENDER",
-                    recipientId = currentUserId,
-                    text = "Excellent escrow governance. Looking forward to deploying further capital in secured equipment and retail inventory loans this quarter.",
-                    timestamp = now - (4 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rajesh_4",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_rajesh_gupta",
-                    text = "Will notify you as soon as verified borrowers post on the Community Wall!",
-                    timestamp = now - (2 * oneHourMs),
-                    isMe = true,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("rahul") || lowerCp.contains("rahul") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_rahul_1",
-                    channelId = channelId,
-                    senderId = "demo_borrower_rahul",
-                    senderName = "Rahul Sharma",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Namaste bhaiya! Festive shopping has kicked off and footfall in my shop has doubled. The ₹50,000 inventory loan arrived right on time.",
-                    timestamp = now - (24 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rahul_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "LENDER",
-                    recipientId = "demo_borrower_rahul",
-                    text = "Glad to hear that, Rahul! Keep your sales records up to date. Remember, your next EMI of ₹8,834 is due on the 5th.",
-                    timestamp = now - (23 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rahul_3",
-                    channelId = channelId,
-                    senderId = "demo_borrower_rahul",
-                    senderName = "Rahul Sharma",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Yes bhaiya, UPI auto-mandate is set up through SBI. Receipt will automatically sync to our deal chat.",
-                    timestamp = now - (22 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rahul_4",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "LENDER",
-                    recipientId = "demo_borrower_rahul",
-                    text = "Perfect. Keep building that pristine repayment score!",
-                    timestamp = now - (20 * oneHourMs),
-                    isMe = true,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("sneha") || lowerCp.contains("sneha") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_sneha_1",
-                    channelId = channelId,
-                    senderId = "demo_sneha_roy",
-                    senderName = "Sneha Roy",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Hi! Just wanted to share that the Apple M2 Max workstation and Neumann studio mics were delivered today. Serial numbers match the mortgage schedule.",
-                    timestamp = now - (48 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_sneha_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_sneha_roy",
-                    text = "Awesome Sneha! Has the platform collateral lien been registered in your Vault?",
-                    timestamp = now - (47 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_sneha_3",
-                    channelId = channelId,
-                    senderId = "demo_sneha_roy",
-                    senderName = "Sneha Roy",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Yes! Digilocker verification and equipment pledge agreement are both signed. This upgrade will help me deliver 3 animation client projects this month!",
-                    timestamp = now - (46 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_sneha_4",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_sneha_roy",
-                    text = "Proud of your progress. Let me know if you need any assistance with EMI schedules.",
-                    timestamp = now - (40 * oneHourMs),
-                    isMe = true,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("rohan") || lowerCp.contains("rohan") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_rohan_1",
-                    channelId = channelId,
-                    senderId = "demo_coborrower_rohan",
-                    senderName = "Dr. Rohan Patil",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Hello Satyam, as co-borrower for the clinic diagnostics equipment, I have reviewed the joint liability clauses in the contract.",
-                    timestamp = now - (72 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rohan_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_coborrower_rohan",
-                    text = "Thank you Dr. Rohan. Your co-signature significantly strengthened the underwriting score for the sanction.",
-                    timestamp = now - (71 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rohan_3",
-                    channelId = channelId,
-                    senderId = "demo_coborrower_rohan",
-                    senderName = "Dr. Rohan Patil",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Happy to support. Healthcare infrastructure upgrades save lives. I've completed Aadhaar OTP authentication on my end.",
-                    timestamp = now - (70 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_rohan_4",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_coborrower_rohan",
-                    text = "Acknowledged doctor. The tripartite agreement is now legally enforceable under Section 65B of the Indian Evidence Act.",
-                    timestamp = now - (68 * oneHourMs),
-                    isMe = true,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("nirmala") || lowerCp.contains("nirmala") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_nirmala_1",
-                    channelId = channelId,
-                    senderId = "demo_guarantor_nirmala",
-                    senderName = "Nirmala Devi",
-                    senderRole = "USER",
-                    recipientId = currentUserId,
-                    text = "Beta Satyam, I received the SMS regarding guarantor consent for the education loan. I clicked the secure link and verified with my Aadhaar OTP.",
-                    timestamp = now - (96 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_nirmala_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_guarantor_nirmala",
-                    text = "Thank you so much Nirmala ji! Your parental guarantee was approved by the lender immediately.",
-                    timestamp = now - (95 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_nirmala_3",
-                    channelId = channelId,
-                    senderId = "demo_guarantor_nirmala",
-                    senderName = "Nirmala Devi",
-                    senderRole = "USER",
-                    recipientId = currentUserId,
-                    text = "Blessings beta. Education is the best investment. Please make sure EMIs are paid punctually each month.",
-                    timestamp = now - (94 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_nirmala_4",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "BORROWER",
-                    recipientId = "demo_guarantor_nirmala",
-                    text = "Promise Nirmala ji, auto-debit is active and tracked on the app dashboard.",
-                    timestamp = now - (90 * oneHourMs),
-                    isMe = true,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("amit") || lowerCp.contains("amit") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_amit_1",
-                    channelId = channelId,
-                    senderId = "demo_amit_verma",
-                    senderName = "Amit Verma",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Satyam ji, our CNC lathe machine is now fully installed and running double shifts for the precision railway engineering contract.",
-                    timestamp = now - (50 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_amit_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_amit_verma",
-                    text = "Congratulations Amit! That machinery loan from Vikram Malhotra really scaled your production capacity.",
-                    timestamp = now - (49 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_amit_3",
-                    channelId = channelId,
-                    senderId = "demo_amit_verma",
-                    senderName = "Amit Verma",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Indeed. Having Agent Abhisi do on-site verification gave Vikram sir confidence. Our first month's invoice will cover the upcoming EMI comfortably.",
-                    timestamp = now - (48 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("meera") || lowerCp.contains("meera") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_meera_1",
-                    channelId = channelId,
-                    senderId = "demo_meera_sen",
-                    senderName = "Meera Sen",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Hello! I am setting up my handloom boutique profile on Loanzo. I submitted my trade license and GST certificate for verification.",
-                    timestamp = now - (12 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_meera_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_meera_sen",
-                    text = "Welcome Meera! Our field team reviews artisan applications within 24 hours. Are you seeking working capital for raw silk procurement?",
-                    timestamp = now - (10 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_meera_3",
-                    channelId = channelId,
-                    senderId = "demo_meera_sen",
-                    senderName = "Meera Sen",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Yes, ₹60,000 for 6 months. Many backer lenders on Loanzo support women-led micro-enterprises, which gives me great hope.",
-                    timestamp = now - (8 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("kunal") || lowerCp.contains("kunal") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_kunal_1",
-                    channelId = channelId,
-                    senderId = "demo_kunal_rawat",
-                    senderName = "Kunal Rawat",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Bhai, I uploaded my commercial vehicle RC and fitness certificate for the fleet maintenance loan request.",
-                    timestamp = now - (16 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_kunal_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_kunal_rawat",
-                    text = "Checked Kunal. The documents look in order. Did you complete the re-KYC video verification?",
-                    timestamp = now - (14 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_kunal_3",
-                    channelId = channelId,
-                    senderId = "demo_kunal_rawat",
-                    senderName = "Kunal Rawat",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Done this morning! Route earnings from Mumbai-Pune logistics are consistent. Need ₹75,000 for tyre replacement and engine overhaul.",
-                    timestamp = now - (12 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("alok") || lowerCp.contains("alok") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_alok_1",
-                    channelId = channelId,
-                    senderId = "demo_alok_trivedi",
-                    senderName = "Alok Trivedi",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Hello team, bidding for a state electricity board electrical contract. We require an EMD backing facility of ₹1,20,000.",
-                    timestamp = now - (28 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_alok_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "demo_alok_trivedi",
-                    text = "Understood Alok. State contractor tenders are eligible under our Escrow Working Capital window with purchase order hypothecation.",
-                    timestamp = now - (26 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_alok_3",
-                    channelId = channelId,
-                    senderId = "demo_alok_trivedi",
-                    senderName = "Alok Trivedi",
-                    senderRole = "BORROWER",
-                    recipientId = currentUserId,
-                    text = "Attached work order draft and 3-year audited balance sheets. Looking forward to closing this with an institutional or angel backer.",
-                    timestamp = now - (24 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                )
-            )
-            lowerCh.contains("agent") || lowerCh.contains("abhisi") || lowerCp.contains("abhisi") || lowerCh.contains("vikas") -> listOf(
-                FirestoreChatMessage(
-                    messageId = "dir_agent_1",
-                    channelId = channelId,
-                    senderId = "demo_agent_abhisi",
-                    senderName = "Abhisi (Field Agent)",
-                    senderRole = "AGENT",
-                    recipientId = currentUserId,
-                    text = "Field Officer Abhisi reporting: Completed 3 on-site verifications in Noida Sector 62 and Greater Noida today.",
-                    timestamp = now - (120 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_agent_2",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "ADMIN",
-                    recipientId = "demo_agent_abhisi",
-                    text = "Great job Abhisi. Did you capture the physical GPS coordinates and borrower biometric confirmations?",
-                    timestamp = now - (119 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_agent_3",
-                    channelId = channelId,
-                    senderId = "demo_agent_abhisi",
-                    senderName = "Abhisi (Field Agent)",
-                    senderRole = "AGENT",
-                    recipientId = currentUserId,
-                    text = "Yes sir, all photos with geo-stamps and collateral serial numbers are uploaded to the secure audit trail. Ready for underwriter sign-off.",
-                    timestamp = now - (118 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "dir_agent_4",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "ADMIN",
-                    recipientId = "demo_agent_abhisi",
-                    text = "Approved. Agent incentive fee credited to your Loanzo agent earnings wallet.",
-                    timestamp = now - (115 * oneHourMs),
-                    isMe = true,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-            else -> listOf(
-                FirestoreChatMessage(
-                    messageId = "demo_msg_dyn_1",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "",
-                    text = "Hello $counterpartyName! Glad to connect with you on the Loanzo P2P financial network.",
-                    timestamp = now - (2 * oneHourMs),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_dyn_2",
-                    channelId = channelId,
-                    senderId = "peer_contact",
-                    senderName = counterpartyName,
-                    senderRole = "MEMBER",
-                    recipientId = currentUserId,
-                    text = "Hi there! I'm active on Loanzo for secure, transparent peer loans. What terms are you looking to discuss?",
-                    timestamp = now - (1 * oneHourMs),
-                    isMe = false,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_dyn_3",
-                    channelId = channelId,
-                    senderId = currentUserId,
-                    senderName = "You",
-                    senderRole = "MEMBER",
-                    recipientId = "",
-                    text = "I'm interested in competitive interest rates with full escrow protection and legally binding digital contracts.",
-                    timestamp = now - (30 * 60_000L),
-                    isMe = true,
-                    status = "READ",
-                    messageType = "TEXT"
-                ),
-                FirestoreChatMessage(
-                    messageId = "demo_msg_dyn_4",
-                    channelId = channelId,
-                    senderId = "peer_contact",
-                    senderName = counterpartyName,
-                    senderRole = "MEMBER",
-                    recipientId = currentUserId,
-                    text = "Sounds great! We can draft a proposal anytime with Aadhaar eSign and automated EMI scheduling.",
-                    timestamp = now - (5 * 60_000L),
-                    isMe = false,
-                    status = "DELIVERED",
-                    messageType = "TEXT"
-                )
-            )
-        }
+        return emptyList()
     }
 }
 
@@ -1080,7 +88,10 @@ class ChatViewModel @Inject constructor(
     private val userDao: UserDao,
     private val loanDao: LoanDao,
     private val userRepository: com.loanzo.app.data.repository.UserRepository,
-    private val translationHelper: com.loanzo.app.util.TranslationHelper
+    private val translationHelper: com.loanzo.app.util.TranslationHelper,
+    val multiAiRaceEngine: com.loanzo.app.data.ai.MultiAiRaceEngine,
+    val aiConfigManager: com.loanzo.app.data.ai.AiConfigManager,
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
 ) : ViewModel() {
 
     companion object {
@@ -1096,9 +107,8 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private val firestore: FirebaseFirestore by lazy {
-        FirebaseFirestore.getInstance()
-    }
+    private val firestore: FirebaseFirestore
+        get() = com.loanzo.app.data.firebase.FirestoreProvider.get()
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
@@ -1201,43 +211,6 @@ class ChatViewModel @Inject constructor(
                 )
             }
 
-            // Pre-seed unique, rich direct conversations with real personas
-            val now = System.currentTimeMillis()
-            val directDemoSeeds = listOf(
-                Triple("demo_lender_priya", "Priya Patel", "Priya: I have ₹3L liquid capital ready for verified community loans.") to Pair("LENDER", 35 * 60_000L),
-                Triple("demo_vikram_malhotra", "Vikram Malhotra", "Vikram: Field verification for MSME lathe was approved by Agent Abhisi. Ready to fund.") to Pair("LENDER", 3 * 3600_000L),
-                Triple("demo_rajesh_gupta", "Rajesh Gupta", "Rajesh: Settlement received for the medical loan. DigiLocker NOC certificate uploaded to vault.") to Pair("LENDER", 6 * 3600_000L),
-                Triple("demo_borrower_rahul", "Rahul Sharma", "Rahul: Paid EMI #1 of ₹8,834 via UPI. Festive inventory procurement is complete!") to Pair("BORROWER", 24 * 3600_000L),
-                Triple("demo_sneha_roy", "Sneha Roy", "Sneha: Studio workstation setup is complete and collateral registry lien is active.") to Pair("BORROWER", 48 * 3600_000L),
-                Triple("demo_coborrower_rohan", "Dr. Rohan Patil", "Dr. Rohan: Countersigned clinic diagnostics co-borrower agreement via Aadhaar OTP.") to Pair("BORROWER", 72 * 3600_000L),
-                Triple("demo_guarantor_nirmala", "Nirmala Devi", "Nirmala: Digital guarantor consent form completed. All the best with the education program.") to Pair("USER", 96 * 3600_000L),
-                Triple("demo_agent_abhisi", "Abhisi (Field Agent)", "Agent Abhisi: Completed geo-tagged physical collateral appraisal for today's assigned borrowers.") to Pair("AGENT", 120 * 3600_000L)
-            )
-
-            for ((partner, meta) in directDemoSeeds) {
-                val (partnerId, partnerName, lastMsg) = partner
-                val (partnerRole, timeOffset) = meta
-                if (partnerId != userId) {
-                    val partnerUser = userDao.getUserById(partnerId)
-                    val chId = getDirectChannelId(userId, partnerId)
-                    list.add(
-                        ChatConversationSummary(
-                            channelId = chId,
-                            channelType = "DIRECT",
-                            targetUserId = partnerId,
-                            targetUserName = partnerUser?.name ?: partnerName,
-                            targetUserRole = partnerUser?.role ?: partnerRole,
-                            targetUserPhone = partnerUser?.phone ?: "",
-                            targetUserKycStatus = partnerUser?.kycStatus ?: "VERIFIED",
-                            lastMessage = lastMsg,
-                            lastTimestamp = now - timeOffset,
-                            unreadCount = 0,
-                            isOnline = true
-                        )
-                    )
-                }
-            }
-
             _uiState.update { state ->
                 val updated = list.distinctBy { it.channelId }.sortedByDescending { it.lastTimestamp }
                 state.copy(
@@ -1254,6 +227,11 @@ class ChatViewModel @Inject constructor(
 
     private fun syncConversationsMetadata(userId: String) {
         conversationsListener?.remove()
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                firebaseManager.ensureFirebaseAuthSession()
+            } catch (_: Exception) {}
+        }
         try {
             conversationsListener = firestore.collection("channels")
                 .whereArrayContains("participants", userId)
@@ -1375,16 +353,7 @@ class ChatViewModel @Inject constructor(
             val onlineAndLocalUsers = userRepository.searchUsersOnline(cleanQuery)
             val me = _uiState.value.currentUserId
 
-            // Also search DEFAULT_DEMO_CANDIDATE_USERS so any search matches immediately
-            val demoMatches = com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS.filter { user ->
-                user.name.lowercase().contains(cleanQuery) ||
-                user.username.lowercase().contains(cleanQuery) ||
-                user.phone.lowercase().contains(cleanQuery) ||
-                user.role.lowercase().contains(cleanQuery) ||
-                user.email.lowercase().contains(cleanQuery)
-            }
-
-            val merged = (onlineAndLocalUsers + demoMatches)
+            val merged = onlineAndLocalUsers
                 .distinctBy { it.userId }
                 .filter { it.userId != me }
 
@@ -1399,11 +368,10 @@ class ChatViewModel @Inject constructor(
         val currentUser = FirebaseAuth.getInstance().currentUser
         val initialUserId = _uiState.value.currentUserId.ifBlank { currentUser?.uid ?: "" }
         val initialUserName = _uiState.value.currentUserName.ifBlank { currentUser?.displayName ?: "You" }
-        val userId = initialUserId
 
         _uiState.update {
             it.copy(
-                isLoading = true,
+                isLoading = it.messages.isEmpty() && it.activeChannelId != channelId,
                 activeChannelId = channelId,
                 currentUserId = initialUserId,
                 currentUserName = initialUserName
@@ -1414,6 +382,9 @@ class ChatViewModel @Inject constructor(
 
         // Load contextual entities in background
         viewModelScope.launch(Dispatchers.IO) {
+            try {
+                firebaseManager.ensureFirebaseAuthSession()
+            } catch (_: Exception) {}
             val resolvedUserId = initialUserId.ifBlank {
                 userRepository.getCurrentUserIdSync()
                     ?: FirebaseAuth.getInstance().currentUser?.uid
@@ -1451,10 +422,6 @@ class ChatViewModel @Inject constructor(
             }
         }
 
-        val isDemoChannel = channelId.contains("demo", ignoreCase = true) ||
-                channelId.contains("mock", ignoreCase = true) ||
-                channelId == "general" || channelId == "support"
-
         // Connect real-time Firestore listener to canonical channels/{channelId}/messages
         val collectionRef = firestore.collection("channels").document(channelId).collection("messages")
 
@@ -1463,16 +430,17 @@ class ChatViewModel @Inject constructor(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "Chat listener error (channel: $channelId)", error)
-                    if (isDemoChannel) {
-                        val fallback = DemoChatMessages.getDemoMessagesForChannel(channelId, userId, _uiState.value.activeCounterparty?.name ?: "Member")
-                        _uiState.update { it.copy(isLoading = false, messages = fallback) }
-                    } else {
-                        _uiState.update { it.copy(isLoading = false) }
-                    }
+                    _uiState.update { it.copy(isLoading = false) }
                     return@addSnapshotListener
                 }
 
-                val messages = snapshot?.documents?.mapNotNull { doc ->
+                val currentUid = _uiState.value.currentUserId.ifBlank {
+                    FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                }
+
+                val isSupportChannel = channelId == "support_loanzo_assistant" || channelId.contains("support") || targetUserId == "LOANZO_BOT"
+
+                val remoteMessages = snapshot?.documents?.mapNotNull { doc ->
                     val senderId = doc.getString("senderId") ?: return@mapNotNull null
                     val text = doc.getString("text") ?: ""
                     val senderName = doc.getString("senderName") ?: "User"
@@ -1483,6 +451,11 @@ class ChatViewModel @Inject constructor(
                     val messageType = doc.getString("messageType") ?: "TEXT"
                     val metaPayload = doc.getString("metaPayload")
 
+                    val fbAuthUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                    val isMe = (currentUid.isNotBlank() && senderId == currentUid) ||
+                            (fbAuthUid.isNotBlank() && senderId == fbAuthUid) ||
+                            (isSupportChannel && senderId != "LOANZO_BOT" && senderRole != "OFFICIAL_BOT")
+
                     FirestoreChatMessage(
                         messageId = doc.id,
                         channelId = channelId,
@@ -1492,20 +465,26 @@ class ChatViewModel @Inject constructor(
                         recipientId = recipientId,
                         text = text,
                         timestamp = timestamp,
-                        isMe = senderId == userId,
+                        isMe = isMe,
                         status = status,
                         messageType = messageType,
                         metaPayload = metaPayload
                     )
                 } ?: emptyList()
 
-                val finalMessages = if (messages.isEmpty() && isDemoChannel) {
-                    DemoChatMessages.getDemoMessagesForChannel(channelId, userId, _uiState.value.activeCounterparty?.name ?: "Member")
-                } else {
-                    messages
-                }
+                _uiState.update { currState ->
+                    // Preserve in-flight local messages (such as thinking indicators or pending AI responses)
+                    val pendingLocal = currState.messages.filter { localMsg ->
+                        localMsg.messageId.startsWith("ai_thinking_") ||
+                        (localMsg.messageId.startsWith("local_") && remoteMessages.none { rm -> rm.text == localMsg.text }) ||
+                        (localMsg.messageId.startsWith("ai_resp_") && remoteMessages.none { rm -> rm.messageId == localMsg.messageId || (rm.senderId == "LOANZO_BOT" && rm.text == localMsg.text) })
+                    }
+                    val allMessages = (remoteMessages + pendingLocal)
+                        .distinctBy { it.messageId }
+                        .sortedBy { it.timestamp }
 
-                _uiState.update { it.copy(messages = finalMessages, isLoading = false) }
+                    currState.copy(messages = allMessages, isLoading = false)
+                }
             }
     }
 
@@ -1528,69 +507,113 @@ class ChatViewModel @Inject constructor(
             var userId = currentUid.ifBlank {
                 userRepository.getCurrentUserIdSync()
                     ?: FirebaseAuth.getInstance().currentUser?.uid
-                    ?: ""
+                    ?: "user_member"
             }
+            if (userId.isBlank()) userId = "user_member"
             var userName = currentUName.ifBlank { "Member" }
             var role = currentRole.ifBlank { "MEMBER" }
 
-            try {
-                val localUser = if (userId.isNotBlank()) userDao.getUserById(userId) else null
-                if (localUser != null) {
-                    if (userName == "Member" || userName.isBlank()) userName = localUser.name.ifBlank { localUser.username }
-                    if (role == "MEMBER") role = localUser.role
-                }
-
-                // Resolve other participant ID
-                val otherId = state.activeCounterparty?.userId?.takeIf { it.isNotBlank() }
-                    ?: if (channelId.startsWith("direct_")) {
-                        val parts = channelId.removePrefix("direct_").split("_")
-                        parts.firstOrNull { it != userId } ?: parts.lastOrNull() ?: ""
+            // Resolve other participant ID
+            val otherId = state.activeCounterparty?.userId?.takeIf { it.isNotBlank() }
+                ?: state.activeLoan?.let { loan ->
+                    if (loan.lenderId == userId) loan.borrowerId else loan.lenderId
+                }?.takeIf { it.isNotBlank() }
+                ?: if (channelId == "support_loanzo_assistant" || channelId.contains("support")) {
+                    "LOANZO_BOT"
+                } else if (channelId.startsWith("direct_")) {
+                    val parts = channelId.removePrefix("direct_").split("_")
+                    parts.firstOrNull { it != userId } ?: parts.lastOrNull() ?: ""
+                } else if (channelId.startsWith("loan_")) {
+                    val lId = channelId.removePrefix("loan_")
+                    val l = loanDao.getLoanById(lId)
+                    if (l != null) {
+                        if (l.lenderId == userId) l.borrowerId else l.lenderId
                     } else ""
+                } else ""
 
-                val messageData = hashMapOf(
-                    "channelId" to channelId,
-                    "senderId" to userId,
-                    "senderName" to userName,
-                    "senderRole" to role,
-                    "recipientId" to otherId,
-                    "text" to text.trim(),
-                    "timestamp" to System.currentTimeMillis(),
-                    "status" to "SENT",
-                    "messageType" to messageType,
-                    "metaPayload" to metaPayload
-                )
+            val localUser = if (userId.isNotBlank()) userDao.getUserById(userId) else null
+            if (localUser != null) {
+                if (userName == "Member" || userName.isBlank()) userName = localUser.name.ifBlank { localUser.username }
+                if (role == "MEMBER") role = localUser.role
+            }
 
-                // Write message to canonical channels collection
-                firestore.collection("channels").document(channelId).collection("messages").add(messageData).await()
+            // Optimistically insert user's message immediately into UI state
+            val localNow = System.currentTimeMillis()
+            val localMsgId = "local_" + java.util.UUID.randomUUID().toString().take(8)
+            val optimisticMsg = FirestoreChatMessage(
+                messageId = localMsgId,
+                channelId = channelId,
+                senderId = userId,
+                senderName = userName,
+                senderRole = role,
+                recipientId = otherId,
+                text = text.trim(),
+                timestamp = localNow,
+                isMe = true,
+                status = "SENT",
+                messageType = messageType,
+                metaPayload = metaPayload
+            )
+            _uiState.update { currState ->
+                currState.copy(messages = (currState.messages + optimisticMsg).distinctBy { it.messageId })
+            }
 
-                // If active loan exists, mirror to loans/{loanId}/chat for backwards compatibility
-                if (state.activeLoan != null) {
-                    try {
-                        firestore.collection("loans").document(state.activeLoan.loanId).collection("chat").add(messageData).await()
-                    } catch (mirrorErr: Exception) {
-                        Log.d(TAG, "Loan mirror chat note: ${mirrorErr.message}")
+            // If messaging LOANZO_BOT or support channel, dispatch 3-way Multi-AI race immediately
+            if (channelId == "support_loanzo_assistant" || otherId == "LOANZO_BOT" || channelId.contains("support")) {
+                dispatchAiAssistantResponse(channelId, userId, text.trim())
+            }
+
+            try {
+                firebaseManager.ensureFirebaseAuthSession()
+                withTimeoutOrNull(8000L) {
+                    val messageData = hashMapOf(
+                        "channelId" to channelId,
+                        "senderId" to userId,
+                        "senderName" to userName,
+                        "senderRole" to role,
+                        "recipientId" to otherId,
+                        "text" to text.trim(),
+                        "timestamp" to localNow,
+                        "status" to "SENT",
+                        "messageType" to messageType,
+                        "metaPayload" to metaPayload
+                    )
+
+                    // Write message to canonical channels collection
+                    firestore.collection("channels").document(channelId).collection("messages").add(messageData).await()
+
+                    // If active loan exists, mirror to loans/{loanId}/chat for backwards compatibility
+                    if (state.activeLoan != null) {
+                        try {
+                            firestore.collection("loans").document(state.activeLoan.loanId).collection("chat").add(messageData).await()
+                        } catch (mirrorErr: Exception) {
+                            Log.d(TAG, "Loan mirror chat note: ${mirrorErr.message}")
+                        }
                     }
+
+                    // Update channel metadata with both participants guaranteed
+                    val allParticipants = buildList {
+                        if (userId.isNotBlank()) add(userId)
+                        if (otherId.isNotBlank()) add(otherId)
+                        if (channelId == "support_loanzo_assistant" || channelId.contains("support")) {
+                            add("LOANZO_BOT")
+                        }
+                    }.distinct()
+
+                    val channelDoc = hashMapOf(
+                        "channelId" to channelId,
+                        "channelType" to (if (channelId.startsWith("direct_")) "DIRECT" else if (channelId.contains("support")) "SUPPORT" else "LOAN"),
+                        "loanId" to (state.activeLoan?.loanId ?: (if (channelId.startsWith("loan_")) channelId.removePrefix("loan_") else null)),
+                        "lastMessage" to (if (messageType == "PROPOSAL") "Loan Proposal Sent" else text.trim()),
+                        "lastTimestamp" to localNow,
+                        "lastSenderId" to userId,
+                        "participants" to allParticipants
+                    )
+                    firestore.collection("channels").document(channelId).set(channelDoc, SetOptions.merge()).await()
+                    Log.d(TAG, "Message sent successfully to channel $channelId with participants $allParticipants")
                 }
-
-                // Update channel metadata with both participants guaranteed
-                val allParticipants = buildList {
-                    if (userId.isNotBlank()) add(userId)
-                    if (otherId.isNotBlank()) add(otherId)
-                }.distinct()
-
-                val channelDoc = hashMapOf(
-                    "channelId" to channelId,
-                    "channelType" to (if (channelId.startsWith("direct_")) "DIRECT" else "LOAN"),
-                    "loanId" to (state.activeLoan?.loanId ?: (if (channelId.startsWith("loan_")) channelId.removePrefix("loan_") else null)),
-                    "lastMessage" to (if (messageType == "PROPOSAL") "Loan Proposal Sent" else text.trim()),
-                    "lastTimestamp" to System.currentTimeMillis(),
-                    "lastSenderId" to userId,
-                    "participants" to allParticipants
-                )
-                firestore.collection("channels").document(channelId).set(channelDoc).await()
 
                 // Immediately update local conversation summary so ChatHub reflects the new message without latency
-                val now = System.currentTimeMillis()
                 val lastPreview = if (messageType == "PROPOSAL") "Loan Proposal Sent" else text.trim()
                 _uiState.update { currState ->
                     val currentList = currState.conversations.toMutableList()
@@ -1599,7 +622,7 @@ class ChatViewModel @Inject constructor(
                         val existing = currentList[idx]
                         currentList[idx] = existing.copy(
                             lastMessage = lastPreview,
-                            lastTimestamp = now
+                            lastTimestamp = localNow
                         )
                     } else {
                         val cParty = currState.activeCounterparty
@@ -1616,7 +639,7 @@ class ChatViewModel @Inject constructor(
                                 loanTitle = currState.activeLoan?.let { "Loan INR ${it.sanctionedAmount.toInt()} (${it.status})" },
                                 loanPrincipal = currState.activeLoan?.sanctionedAmount ?: 0.0,
                                 lastMessage = lastPreview,
-                                lastTimestamp = now,
+                                lastTimestamp = localNow,
                                 unreadCount = 0,
                                 isOnline = true
                             )
@@ -1628,43 +651,168 @@ class ChatViewModel @Inject constructor(
                         filteredConversations = applyFilterAndSearch(sorted, currState.selectedFilter, currState.searchQuery)
                     )
                 }
-
-                Log.d(TAG, "Message sent successfully to channel $channelId with participants $allParticipants")
             } catch (e: Exception) {
-                Log.w(TAG, "Cloud send message failed (applying local instant delivery): ${e.message}")
-                val localNow = System.currentTimeMillis()
-                val localPreview = if (messageType == "PROPOSAL") "Loan Proposal Sent" else text.trim()
-                val localMsg = FirestoreChatMessage(
-                    messageId = "local_" + java.util.UUID.randomUUID().toString().take(8),
-                    channelId = channelId,
-                    senderId = userId,
-                    senderName = userName,
-                    senderRole = role,
-                    recipientId = (state.activeCounterparty?.userId ?: ""),
-                    text = text.trim(),
-                    timestamp = localNow,
-                    isMe = true,
-                    status = "SENT",
-                    messageType = messageType,
-                    metaPayload = metaPayload
-                )
+                Log.w(TAG, "Cloud send message notice (applying local instant delivery): ${e.message}")
+                val lastPreview = if (messageType == "PROPOSAL") "Loan Proposal Sent" else text.trim()
                 _uiState.update { currState ->
                     val currentList = currState.conversations.toMutableList()
                     val idx = currentList.indexOfFirst { it.channelId == channelId }
                     if (idx != -1) {
                         val existing = currentList[idx]
                         currentList[idx] = existing.copy(
-                            lastMessage = localPreview,
+                            lastMessage = lastPreview,
                             lastTimestamp = localNow
                         )
                     }
                     val sorted = currentList.sortedByDescending { it.lastTimestamp }
                     currState.copy(
-                        messages = currState.messages + localMsg,
                         conversations = sorted,
                         filteredConversations = applyFilterAndSearch(sorted, currState.selectedFilter, currState.searchQuery)
                     )
                 }
+            }
+        }
+    }
+
+    private fun dispatchAiAssistantResponse(channelId: String, userId: String, prompt: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val thinkingMsgId = "ai_thinking_" + System.currentTimeMillis()
+            val thinkingMsg = FirestoreChatMessage(
+                messageId = thinkingMsgId,
+                channelId = channelId,
+                senderId = "LOANZO_BOT",
+                senderName = "Loanzo AI Assistant",
+                senderRole = "OFFICIAL_BOT",
+                recipientId = userId,
+                text = "Loanzo AI Assistant is thinking...",
+                timestamp = System.currentTimeMillis(),
+                isMe = false,
+                status = "SENDING",
+                messageType = "TEXT"
+            )
+            _uiState.update { it.copy(messages = (it.messages + thinkingMsg).distinctBy { m -> m.messageId }) }
+
+            // 1. Gather User Account Grounding Context
+            val user = if (userId.isNotBlank()) userDao.getUserById(userId) else null
+            val loans = if (userId.isNotBlank()) {
+                withTimeoutOrNull(1500) { loanDao.getAllLoansForUser(userId).firstOrNull() } ?: emptyList()
+            } else {
+                emptyList()
+            }
+
+            val userName = user?.name?.ifBlank { user.username } ?: "Member"
+            val userRole = user?.role ?: "MEMBER"
+            val kycStatus = user?.kycStatus ?: "PENDING"
+            val activeLoans = loans.filter {
+                it.status == "ACTIVE" || it.status == "ACTIVE_SERVICING" || it.status == "TRANCHE_DISBURSEMENT" || it.status == "RESTRUCTURED"
+            }
+
+            val contextBuilder = StringBuilder()
+            contextBuilder.append("User Name: $userName | Role: $userRole\n")
+            contextBuilder.append("KYC Status: $kycStatus\n")
+            contextBuilder.append("Total Loans on File: ${loans.size} (${activeLoans.size} currently active)\n")
+            if (activeLoans.isNotEmpty()) {
+                contextBuilder.append("Active Loans Summary:\n")
+                activeLoans.take(3).forEach { loan ->
+                    val userSide = if (loan.borrowerId == userId) "Borrower" else "Lender"
+                    contextBuilder.append("• Loan #${loan.loanId.takeLast(6)} as $userSide: Principal ₹${loan.sanctionedAmount.toInt()}, Outstanding ₹${loan.outstandingAmount.toInt()}, Rate: ${loan.interestRate}% p.a., Tenure: ${loan.tenureMonths} mos, Status: ${loan.status}, Purpose: ${loan.purpose}\n")
+                }
+            } else {
+                contextBuilder.append("Active Loans: None currently active. User has 0 outstanding debt.\n")
+            }
+            val userContext = contextBuilder.toString()
+
+            // 2. Extract Recent Conversation History (up to 6 messages)
+            val history = _uiState.value.messages
+                .filter { !it.messageId.startsWith("ai_thinking_") && it.text.isNotBlank() }
+                .takeLast(6)
+                .map { msg ->
+                    val role = if (msg.senderId == "LOANZO_BOT" || msg.senderRole == "OFFICIAL_BOT") "assistant" else "user"
+                    com.loanzo.app.data.ai.AiMessage(role = role, content = msg.text)
+                }
+
+            // 3. Dispatch to Multi-AI Engine with user context & history
+            val raceResult = multiAiRaceEngine.generateChatResponse(
+                userPrompt = prompt,
+                userContext = userContext,
+                conversationHistory = history
+            )
+            val answer = when (raceResult) {
+                is com.loanzo.app.data.ai.AiRaceResult.Success -> raceResult.content
+                is com.loanzo.app.data.ai.AiRaceResult.Failure -> raceResult.fallbackContent
+            }
+
+            // Allocate a deterministic Firestore document reference ID so doc.id matches finalAiMsg.messageId
+            val botDocRef = firestore.collection("channels").document(channelId).collection("messages").document()
+            val finalAiMsgId = botDocRef.id
+            val finalTimestamp = System.currentTimeMillis()
+
+            val finalAiMsg = FirestoreChatMessage(
+                messageId = finalAiMsgId,
+                channelId = channelId,
+                senderId = "LOANZO_BOT",
+                senderName = "Loanzo AI Assistant",
+                senderRole = "OFFICIAL_BOT",
+                recipientId = userId,
+                text = answer,
+                timestamp = finalTimestamp,
+                isMe = false,
+                status = "DELIVERED",
+                messageType = "TEXT",
+                metaPayload = null
+            )
+
+            // Immediately update UI with zero network latency
+            _uiState.update { state ->
+                val newMessages = state.messages.filter { !it.messageId.startsWith("ai_thinking_") } + finalAiMsg
+                val currentList = state.conversations.toMutableList()
+                val idx = currentList.indexOfFirst { it.channelId == channelId }
+                if (idx != -1) {
+                    val existing = currentList[idx]
+                    currentList[idx] = existing.copy(
+                        lastMessage = answer,
+                        lastTimestamp = finalTimestamp,
+                        unreadCount = 0
+                    )
+                }
+                val sorted = currentList.sortedByDescending { it.lastTimestamp }
+                state.copy(
+                    messages = newMessages.distinctBy { it.messageId },
+                    conversations = sorted,
+                    filteredConversations = applyFilterAndSearch(sorted, state.selectedFilter, state.searchQuery)
+                )
+            }
+
+            // Persist bot response into Cloud Firestore asynchronously without blocking local delivery
+            val botMessageData = hashMapOf(
+                "channelId" to channelId,
+                "senderId" to "LOANZO_BOT",
+                "senderName" to "Loanzo AI Assistant",
+                "senderRole" to "OFFICIAL_BOT",
+                "recipientId" to userId,
+                "text" to answer,
+                "timestamp" to finalTimestamp,
+                "status" to "DELIVERED",
+                "messageType" to "TEXT",
+                "metaPayload" to null
+            )
+
+            try {
+                botDocRef.set(botMessageData).await()
+                firestore.collection("channels").document(channelId).set(
+                    mapOf(
+                        "channelId" to channelId,
+                        "channelType" to "SUPPORT",
+                        "lastMessage" to answer,
+                        "lastTimestamp" to finalTimestamp,
+                        "lastSenderId" to "LOANZO_BOT",
+                        "participants" to listOf(userId, "LOANZO_BOT").filter { it.isNotBlank() }.distinct()
+                    ),
+                    SetOptions.merge()
+                ).await()
+                Log.d(TAG, "Successfully persisted AI assistant response to Cloud Firestore for channel $channelId (doc: $finalAiMsgId)")
+            } catch (fbErr: Exception) {
+                Log.w(TAG, "Notice saving bot response to Cloud Firestore: ${fbErr.message}")
             }
         }
     }
@@ -1713,54 +861,8 @@ class ChatViewModel @Inject constructor(
     }
 
     
-    /**
-     * Seeds realistic Firestore demo conversations for all demo loan channels.
-     */
     fun seedDemoConversations(currentUserId: String = "") {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val userId = currentUserId.ifBlank { _uiState.value.currentUserId }
-                val channels = listOf(
-                    "loan_demo_loan_lent_1",
-                    "loan_demo_loan_borrowed_1",
-                    "loan_demo_loan_closed_1",
-                    "loan_demo_loan_platform_1",
-                    "support_loanzo_assistant"
-                )
-                for (chId in channels) {
-                    val msgs = DemoChatMessages.getDemoMessagesForChannel(chId, userId, "Member")
-                    val batch = firestore.batch()
-                    for (m in msgs) {
-                        val docRef = firestore.collection("channels").document(chId).collection("messages").document(m.messageId)
-                        val data = hashMapOf(
-                            "channelId" to m.channelId,
-                            "senderId" to m.senderId,
-                            "senderName" to m.senderName,
-                            "senderRole" to m.senderRole,
-                            "recipientId" to m.recipientId,
-                            "text" to m.text,
-                            "timestamp" to m.timestamp,
-                            "status" to m.status,
-                            "messageType" to m.messageType,
-                            "metaPayload" to m.metaPayload
-                        )
-                        batch.set(docRef, data)
-                    }
-                    val chMetaRef = firestore.collection("channels").document(chId)
-                    val last = msgs.lastOrNull()
-                    batch.set(chMetaRef, hashMapOf(
-                        "channelId" to chId,
-                        "lastMessage" to (last?.text ?: "Demo Conversation"),
-                        "lastTimestamp" to (last?.timestamp ?: System.currentTimeMillis()),
-                        "participants" to listOfNotNull(userId, last?.senderId, last?.recipientId).distinct()
-                    ))
-                    batch.commit().await()
-                }
-                Log.d(TAG, "Demo conversations seeded to Firestore successfully")
-            } catch (e: Exception) {
-                Log.w(TAG, "Firestore demo conversation seeding skipped (offline mode): ${e.message}")
-            }
-        }
+        // No-op: Demo chat seeding disabled completely.
     }
 
     override fun onCleared() {

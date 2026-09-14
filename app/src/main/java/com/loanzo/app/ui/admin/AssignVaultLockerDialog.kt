@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,13 +49,13 @@ fun AssignVaultLockerDialog(
                 .wrapContentHeight()
                 .clip(RoundedCornerShape(20.dp)),
             color = Color.White,
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, BrandIceBorder),
             shadowElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp)
+                    .padding(20.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 // Header
@@ -67,23 +68,24 @@ fun AssignVaultLockerDialog(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = Gold500.copy(alpha = 0.15f)
+                                color = GoldCoinCream,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, GoldCoinBorder)
                             ) {
                                 Text(
                                     text = "SAFE VAULT CUSTODY",
-                                    color = Color(0xFFB45309),
+                                    color = GoldCoinAmber,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(item.vaultItemId, color = Color(0xFF64748B), fontSize = 11.sp)
+                            Text(item.vaultItemId, color = TextSlateMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "Assign Locker & Tamper Seal",
-                            color = Color(0xFF0F172A),
+                            color = TextNavyDark,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -94,9 +96,9 @@ fun AssignVaultLockerDialog(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF1F5F9))
+                            .background(BrandIceBlue)
                     ) {
-                        Icon(Icons.Default.Close, null, tint = Color(0xFF475569), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Close, null, tint = TextSlateMedium, modifier = Modifier.size(18.dp))
                     }
                 }
 
@@ -105,14 +107,14 @@ fun AssignVaultLockerDialog(
                 // Asset Summary
                 Card(
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    colors = CardDefaults.cardColors(containerColor = CanvasPorcelain),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BrandIceBorder),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(item.assetDescription, color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text("Borrower: ${item.borrowerName} • Est: ₹${item.estimatedValue.toInt()}", color = Color(0xFFB45309), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Appraisal: ${item.appraisedPurityOrCondition}", color = Color(0xFF64748B), fontSize = 11.sp)
+                        Text(item.assetDescription, color = TextNavyDark, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Borrower: ${item.borrowerName} • Est: ₹${item.estimatedValue.toInt()}", color = GoldCoinAmber, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Appraisal: ${item.appraisedPurityOrCondition}", color = TextSlateMuted, fontSize = 11.sp)
                     }
                 }
 
@@ -121,15 +123,16 @@ fun AssignVaultLockerDialog(
                 OutlinedTextField(
                     value = facilityName,
                     onValueChange = { facilityName = it },
-                    label = { Text("Vault Facility", color = Color(0xFF64748B), fontSize = 12.sp) },
+                    label = { Text("Vault Facility", color = TextSlateMuted, fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Gold500,
-                        unfocusedBorderColor = Color(0xFFCBD5E1),
-                        focusedTextColor = Color(0xFF0F172A),
-                        unfocusedTextColor = Color(0xFF0F172A),
-                        focusedContainerColor = Color(0xFFF8FAFC),
-                        unfocusedContainerColor = Color(0xFFF8FAFC)
+                        focusedBorderColor = BrandCobalt,
+                        unfocusedBorderColor = BrandIceBorder,
+                        focusedTextColor = TextNavyDark,
+                        unfocusedTextColor = TextNavyDark,
+                        focusedContainerColor = CanvasPorcelain,
+                        unfocusedContainerColor = CanvasPorcelain
                     )
                 )
 
@@ -138,16 +141,17 @@ fun AssignVaultLockerDialog(
                 OutlinedTextField(
                     value = lockerNumber,
                     onValueChange = { lockerNumber = it },
-                    label = { Text("Locker / Safe Bay Number", color = Color(0xFFB45309), fontSize = 12.sp) },
-                    leadingIcon = { Icon(Icons.Default.VpnKey, null, tint = Color(0xFFB45309)) },
+                    label = { Text("Locker / Safe Bay Number", color = GoldCoinAmber, fontSize = 12.sp) },
+                    leadingIcon = { Icon(Icons.Default.VpnKey, null, tint = GoldCoinAmber) },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Gold500,
-                        unfocusedBorderColor = Color(0xFFCBD5E1),
-                        focusedTextColor = Color(0xFF0F172A),
-                        unfocusedTextColor = Color(0xFF0F172A),
-                        focusedContainerColor = Color(0xFFF8FAFC),
-                        unfocusedContainerColor = Color(0xFFF8FAFC)
+                        focusedBorderColor = GoldCoinRich,
+                        unfocusedBorderColor = BrandIceBorder,
+                        focusedTextColor = TextNavyDark,
+                        unfocusedTextColor = TextNavyDark,
+                        focusedContainerColor = CanvasPorcelain,
+                        unfocusedContainerColor = CanvasPorcelain
                     )
                 )
 
@@ -156,16 +160,17 @@ fun AssignVaultLockerDialog(
                 OutlinedTextField(
                     value = barcodeTag,
                     onValueChange = { barcodeTag = it },
-                    label = { Text("Asset Barcode / QR Tag ID", color = Color(0xFF047857), fontSize = 12.sp) },
+                    label = { Text("Asset Barcode / QR Tag ID", color = Emerald500, fontSize = 12.sp) },
                     leadingIcon = { Icon(Icons.Default.QrCode, null, tint = Emerald500) },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Emerald500,
-                        unfocusedBorderColor = Color(0xFFCBD5E1),
-                        focusedTextColor = Color(0xFF0F172A),
-                        unfocusedTextColor = Color(0xFF0F172A),
-                        focusedContainerColor = Color(0xFFF8FAFC),
-                        unfocusedContainerColor = Color(0xFFF8FAFC)
+                        unfocusedBorderColor = BrandIceBorder,
+                        focusedTextColor = TextNavyDark,
+                        unfocusedTextColor = TextNavyDark,
+                        focusedContainerColor = CanvasPorcelain,
+                        unfocusedContainerColor = CanvasPorcelain
                     )
                 )
 
@@ -174,16 +179,17 @@ fun AssignVaultLockerDialog(
                 OutlinedTextField(
                     value = sealNumber,
                     onValueChange = { sealNumber = it },
-                    label = { Text("Tamper-Evident Security Seal #", color = Color(0xFFC2410C), fontSize = 12.sp) },
-                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = Color(0xFFC2410C)) },
+                    label = { Text("Tamper-Evident Security Seal #", color = BrandSolarOrange, fontSize = 12.sp) },
+                    leadingIcon = { Icon(Icons.Default.Lock, null, tint = BrandSolarOrange) },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFF97316),
-                        unfocusedBorderColor = Color(0xFFCBD5E1),
-                        focusedTextColor = Color(0xFF0F172A),
-                        unfocusedTextColor = Color(0xFF0F172A),
-                        focusedContainerColor = Color(0xFFF8FAFC),
-                        unfocusedContainerColor = Color(0xFFF8FAFC)
+                        focusedBorderColor = BrandSolarOrange,
+                        unfocusedBorderColor = BrandIceBorder,
+                        focusedTextColor = TextNavyDark,
+                        unfocusedTextColor = TextNavyDark,
+                        focusedContainerColor = CanvasPorcelain,
+                        unfocusedContainerColor = CanvasPorcelain
                     )
                 )
 
@@ -197,7 +203,7 @@ fun AssignVaultLockerDialog(
                     },
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Navy900)
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
                 ) {
                     Icon(Icons.Default.Shield, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))

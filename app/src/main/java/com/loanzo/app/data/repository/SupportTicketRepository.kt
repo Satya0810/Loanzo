@@ -20,6 +20,8 @@ class SupportTicketRepository @Inject constructor(
     private val telegramManager: TelegramManager
 ) {
 
+    private val firestore get() = com.loanzo.app.data.firebase.FirestoreProvider.get()
+
     // --- Flows ---
 
     val allTickets: Flow<List<SupportTicketEntity>> = supportTicketDao.getAllTickets()
@@ -78,11 +80,34 @@ class SupportTicketRepository @Inject constructor(
 
         // 1. Push to Firestore for Cloud Admin Delivery
         try {
-            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val ticketPayload = hashMapOf(
+                "ticketId" to ticket.ticketId,
+                "userId" to ticket.userId,
+                "userName" to ticket.userName,
+                "userPhone" to ticket.userPhone,
+                "userEmail" to ticket.userEmail,
+                "category" to ticket.category,
+                "priority" to ticket.priority,
+                "subject" to ticket.subject,
+                "description" to ticket.description,
+                "relatedLoanId" to ticket.relatedLoanId,
+                "attachmentUris" to ticket.attachmentUris,
+                "status" to ticket.status,
+                "resolutionNotes" to ticket.resolutionNotes,
+                "createdAt" to ticket.createdAt,
+                "resolvedAt" to ticket.resolvedAt,
+                "adminNotes" to ticket.adminNotes,
+                "preferredCallbackAt" to ticket.preferredCallbackAt,
+                "feedbackRating" to ticket.feedbackRating,
+                "feedbackComment" to ticket.feedbackComment
+            )
+            firestore
                 .collection("support_tickets")
                 .document(ticket.ticketId)
-                .set(ticket)
-        } catch (_: Exception) {}
+                .set(ticketPayload, com.google.firebase.firestore.SetOptions.merge())
+        } catch (e: Exception) {
+            android.util.Log.e("SupportTicketRepo", "Failed to push ticket to Firestore: ${e.message}", e)
+        }
 
         // 2. Notify user of successful submission (Room + Firestore)
         val userNotif = NotificationEntity(
@@ -97,10 +122,21 @@ class SupportTicketRepository @Inject constructor(
         )
         notificationDao.insertNotification(userNotif)
         try {
-            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val userNotifPayload = hashMapOf(
+                "notificationId" to userNotif.notificationId,
+                "userId" to userNotif.userId,
+                "title" to userNotif.title,
+                "message" to userNotif.message,
+                "type" to userNotif.type,
+                "actionRoute" to userNotif.actionRoute,
+                "dayKey" to userNotif.dayKey,
+                "timestamp" to userNotif.timestamp,
+                "isRead" to userNotif.isRead
+            )
+            firestore
                 .collection("notifications")
                 .document(userNotif.notificationId)
-                .set(userNotif)
+                .set(userNotifPayload, com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // 2b. Notify Admin in Cloud of incoming ticket
@@ -110,15 +146,26 @@ class SupportTicketRepository @Inject constructor(
             title = "🎫 New Support Ticket: $ticketId",
             message = "${user.name} (@${user.username}) raised a $priority priority ticket: ${ticket.subject}",
             type = "COMPLAINT",
-            actionRoute = "app_owner_hub?tab=2",
+            actionRoute = "app_owner_hub?tab=9",
             dayKey = "${datePart}_ADMIN_TKT_${ticket.ticketId}",
             timestamp = System.currentTimeMillis()
         )
         try {
-            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val adminNotifPayload = hashMapOf(
+                "notificationId" to adminNotif.notificationId,
+                "userId" to adminNotif.userId,
+                "title" to adminNotif.title,
+                "message" to adminNotif.message,
+                "type" to adminNotif.type,
+                "actionRoute" to adminNotif.actionRoute,
+                "dayKey" to adminNotif.dayKey,
+                "timestamp" to adminNotif.timestamp,
+                "isRead" to adminNotif.isRead
+            )
+            firestore
                 .collection("notifications")
                 .document(adminNotif.notificationId)
-                .set(adminNotif)
+                .set(adminNotifPayload, com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
         // 3. Send Telegram alert to Admin
@@ -166,7 +213,7 @@ class SupportTicketRepository @Inject constructor(
     suspend fun scheduleCallback(ticketId: String, callbackAt: Long, adminNotes: String? = null) {
         supportTicketDao.scheduleCallback(ticketId, callbackAt, adminNotes)
         try {
-            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
             firestore.collection("support_tickets").document(ticketId).update(
                 mapOf(
                     "status" to "CALLBACK_SCHEDULED",
@@ -189,7 +236,7 @@ class SupportTicketRepository @Inject constructor(
     suspend fun resolveTicket(ticketId: String, resolutionNotes: String) {
         supportTicketDao.resolveTicket(ticketId, resolutionNotes)
         try {
-            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
             firestore.collection("support_tickets").document(ticketId).update(
                 mapOf(
                     "status" to "RESOLVED",
@@ -219,7 +266,7 @@ class SupportTicketRepository @Inject constructor(
     suspend fun submitFeedback(ticketId: String, rating: Int, comment: String?) {
         supportTicketDao.submitFeedback(ticketId, rating, comment)
         try {
-            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
             firestore.collection("support_tickets").document(ticketId).update(
                 mapOf(
                     "feedbackRating" to rating,
@@ -233,7 +280,7 @@ class SupportTicketRepository @Inject constructor(
 
     private fun syncTicketToCloud(ticketId: String, status: String, adminNotes: String? = null) {
         try {
-            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
             val updates = mutableMapOf<String, Any>(
                 "status" to status,
                 "updatedAt" to System.currentTimeMillis()
@@ -249,7 +296,7 @@ class SupportTicketRepository @Inject constructor(
      */
     fun listenToCloudTickets(scope: kotlinx.coroutines.CoroutineScope) {
         try {
-            val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
             firestore.collection("support_tickets")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null || snapshot == null) return@addSnapshotListener
@@ -283,10 +330,21 @@ class SupportTicketRepository @Inject constructor(
         )
         notificationDao.insertNotification(notif)
         try {
-            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val notifMap = hashMapOf(
+                "notificationId" to notif.notificationId,
+                "userId" to notif.userId,
+                "title" to notif.title,
+                "message" to notif.message,
+                "type" to notif.type,
+                "actionRoute" to notif.actionRoute,
+                "dayKey" to notif.dayKey,
+                "timestamp" to notif.timestamp,
+                "isRead" to notif.isRead
+            )
+            firestore
                 .collection("notifications")
                 .document(notif.notificationId)
-                .set(notif)
+                .set(notifMap, com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
     }
 

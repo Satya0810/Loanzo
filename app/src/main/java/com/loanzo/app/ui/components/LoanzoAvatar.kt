@@ -12,7 +12,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +62,28 @@ fun LoanzoAvatar(
     onEditClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val effectivePhoto = avatarModel ?: user.getEffectiveAvatarUrl()
+    val effectivePhoto: Any? = androidx.compose.runtime.remember(avatarModel, user?.userId, user?.profilePhotoUri) {
+        if (avatarModel != null) {
+            if (avatarModel is String && avatarModel.contains("drive.google.com")) {
+                com.loanzo.app.util.convertGoogleDriveUrlToDirectStream(avatarModel)
+            } else {
+                avatarModel
+            }
+        } else if (user != null) {
+            val localFile = java.io.File(context.filesDir, "profile_${user.userId}.jpg")
+            if (localFile.exists() && localFile.length() > 0) {
+                localFile
+            } else if (user.profilePhotoUri.startsWith("file:") || user.profilePhotoUri.startsWith("/")) {
+                val path = user.profilePhotoUri.removePrefix("file://")
+                val f = java.io.File(path)
+                if (f.exists() && f.length() > 0) f else user.getEffectiveAvatarUrl()
+            } else {
+                user.getEffectiveAvatarUrl()
+            }
+        } else {
+            CartoonAvatarHelper.getCartoonAvatarUrl("guest")
+        }
+    }
     val cartoonRes = user?.getCartoonAvatarRes() ?: CartoonAvatarHelper.getCartoonAvatarDrawableRes(avatarModel?.toString() ?: "guest")
     val isKycVerified = user?.kycStatus == "VERIFIED"
 

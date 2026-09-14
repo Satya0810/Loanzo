@@ -43,8 +43,25 @@ class MarketplaceViewModel @Inject constructor(
     private val marketplaceRepository: MarketplaceRepository,
     private val userRepository: UserRepository,
     private val loanRepository: com.loanzo.app.data.repository.LoanRepository,
-    private val agentDao: com.loanzo.app.data.dao.AgentDao
+    private val agentDao: com.loanzo.app.data.dao.AgentDao,
+    private val multiAiRaceEngine: com.loanzo.app.data.ai.MultiAiRaceEngine? = null
 ) : ViewModel() {
+
+    suspend fun enhancePitchDirect(
+        rawDraft: String,
+        category: String,
+        amount: Double,
+        tenureMonths: Int
+    ): com.loanzo.app.data.ai.AiRaceResult {
+        return multiAiRaceEngine?.enhanceMarketplacePitchResult(rawDraft, category, amount, tenureMonths)
+            ?: com.loanzo.app.data.ai.AiRaceResult.Success(
+                providerName = "Offline Heuristic Guard",
+                providerType = "OFFLINE",
+                content = "Seeking ₹${amount.toInt()} loan for $category over $tenureMonths months. Full repayment transparency with prompt bank transfers.",
+                latencyMs = 0L,
+                modelUsed = "offline-fallback"
+            )
+    }
 
     fun getBidsForPostFlow(postId: String): Flow<List<MarketplaceBidEntity>> =
         marketplaceRepository.getBidsForPost(postId)
@@ -57,7 +74,7 @@ class MarketplaceViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val currentUserId = _uiState.value.currentUserId.ifBlank {
-                userRepository.getCurrentUserIdSync() ?: "usr_demo_consumer"
+                userRepository.getCurrentUserIdSync() ?: ""
             }
 
             // Determine lender and borrower based on post type:
@@ -326,7 +343,7 @@ class MarketplaceViewModel @Inject constructor(
                 userRepository.getCurrentUserIdSync() ?: ""
             }
             val localUser = if (currentUserId.isNotBlank()) userRepository.getUserById(currentUserId) else null
-            val effectiveAuthorId = currentUserId.ifBlank { "usr_demo_consumer" }
+            val effectiveAuthorId = currentUserId
             val effectiveAuthorName = localUser?.name ?: _uiState.value.currentUserName.ifBlank {
                 if (postType == "OFFER_TO_LEND") "Verified Lender" else "Verified Borrower"
             }

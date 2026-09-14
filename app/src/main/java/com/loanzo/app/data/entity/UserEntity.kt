@@ -37,5 +37,6 @@ data class UserEntity(
     val totalAgentEarnings: Double = 0.0,
     val registeredDeviceId: String = "",
     val registeredDeviceModel: String = "",
+    val telegramUsername: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )

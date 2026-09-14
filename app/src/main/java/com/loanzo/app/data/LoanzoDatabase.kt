@@ -31,7 +31,7 @@ import com.loanzo.app.data.entity.*
         SupportTicketEntity::class,
         AdminRequestEntity::class
     ],
-    version = 22,
+    version = 23,
     exportSchema = false
 )
 abstract class LoanzoDatabase : RoomDatabase() {

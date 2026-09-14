@@ -128,7 +128,7 @@ class LoanzoNotificationListener : NotificationListenerService() {
 
     private fun updateFirestoreVerification(cleanPhone: String) {
         if (cleanPhone.isEmpty()) return
-        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        com.loanzo.app.data.firebase.FirestoreProvider.get()
             .collection("verifications")
             .document(cleanPhone)
             .set(mapOf("status" to "VERIFIED"), com.google.firebase.firestore.SetOptions.merge())

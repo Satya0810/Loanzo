@@ -91,6 +91,6 @@ interface AgentDao {
     @Query("DELETE FROM agent_applications WHERE applicationId LIKE 'app_agent_demo_%'")
     suspend fun deleteDemoApplications()
 
-    @Query("DELETE FROM agent_visits WHERE visitId LIKE 'visit_demo_%' OR visitId LIKE 'cross_pair_%' OR crossVerificationPairId LIKE 'cross_pair_demo_%'")
+    @Query("DELETE FROM agent_visits WHERE visitId LIKE 'visit_demo_%' OR visitId LIKE 'VISIT-UNASSIGNED-%' OR visitId LIKE 'cross_pair_%' OR crossVerificationPairId LIKE 'cross_pair_demo_%' OR agentId LIKE 'demo_%' OR loanId IN ('LOAN-84920', 'LOAN-77319', 'LOAN-91044', 'LOAN-60291', 'LOAN-60344')")
     suspend fun deleteDemoVisits()
 }

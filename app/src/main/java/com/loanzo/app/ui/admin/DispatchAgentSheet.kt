@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,23 +68,24 @@ fun DispatchAgentSheet(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = Gold500.copy(alpha = 0.15f)
+                            color = GoldCoinCream,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GoldCoinBorder)
                         ) {
                             Text(
                                 text = "FIELD DISPATCH ENGINE",
-                                color = Color(0xFFB45309),
+                                color = GoldCoinAmber,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(visit.visitId, color = Color(0xFF64748B), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(visit.visitId, color = TextSlateMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (isDualProtocol) "Dispatch Blind Dual-Agent Pair" else "Map Inspection to Certified Agent",
-                        color = Color(0xFF0F172A),
+                        color = TextNavyDark,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -94,9 +96,9 @@ fun DispatchAgentSheet(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF1F5F9))
+                        .background(BrandIceBlue)
                 ) {
-                    Icon(Icons.Default.Close, null, tint = Color(0xFF475569), modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Close, null, tint = TextSlateMedium, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -105,8 +107,8 @@ fun DispatchAgentSheet(
             // Protocol Switcher Banner
             Card(
                 shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = if (isDualProtocol) Gold500.copy(alpha = 0.12f) else Color(0xFFF8FAFC)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, if (isDualProtocol) Gold500 else Color(0xFFE2E8F0)),
+                colors = CardDefaults.cardColors(containerColor = if (isDualProtocol) GoldCoinCream else CanvasPorcelain),
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (isDualProtocol) GoldCoinBorder else BrandIceBorder),
                 modifier = Modifier.fillMaxWidth().clickable {
                     if (onDispatchDual != null && availableAgents.size >= 2) {
                         isDualProtocol = !isDualProtocol
@@ -120,20 +122,20 @@ fun DispatchAgentSheet(
                     Icon(
                         if (isDualProtocol) Icons.Default.Security else Icons.Default.Person,
                         null,
-                        tint = if (isDualProtocol) Gold500 else Emerald500,
+                        tint = if (isDualProtocol) GoldCoinAmber else BrandCobalt,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = if (isDualProtocol) "🛡️ Blind Dual-Agent Swapped Protocol (Active)" else "Standard Single-Officer Verification",
-                            color = Color(0xFF0F172A),
+                            color = TextNavyDark,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = if (isDualProtocol) "2 independent officers verify Borrower & Lender separately, then swap. Anonymized to eliminate collusion." else "Tap to switch to 2-Officer Anti-Collusion Cross-Verification.",
-                            color = Color(0xFF64748B),
+                            color = TextSlateMuted,
                             fontSize = 10.sp
                         )
                     }
@@ -144,7 +146,7 @@ fun DispatchAgentSheet(
                                 isDualProtocol = it
                             }
                         },
-                        colors = SwitchDefaults.colors(checkedThumbColor = Gold500, checkedTrackColor = Gold500.copy(alpha = 0.3f))
+                        colors = SwitchDefaults.colors(checkedThumbColor = GoldCoinRich, checkedTrackColor = GoldCoinBorder)
                     )
                 }
             }
@@ -154,8 +156,8 @@ fun DispatchAgentSheet(
             // Visit Overview Card
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                colors = CardDefaults.cardColors(containerColor = CanvasPorcelain),
+                border = androidx.compose.foundation.BorderStroke(1.dp, BrandIceBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -164,18 +166,18 @@ fun DispatchAgentSheet(
                 ) {
                     Text(
                         text = visit.title,
-                        color = Color(0xFF0F172A),
+                        color = TextNavyDark,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, null, tint = Emerald500, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.LocationOn, null, tint = BrandCobalt, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = visit.targetAddress,
-                            color = Color(0xFF64748B),
+                            color = TextSlateMuted,
                             fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -185,15 +187,15 @@ fun DispatchAgentSheet(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Slot: ${visit.scheduledTimeSlot}", color = Color(0xFFB45309), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Counterparty: ${visit.borrowerName}", color = Color(0xFF64748B), fontSize = 11.sp)
+                        Text("Slot: ${visit.scheduledTimeSlot}", color = GoldCoinAmber, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Counterparty: ${visit.borrowerName}", color = TextSlateMuted, fontSize = 11.sp)
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Handshake PIN: ${visit.handshakePin.ifBlank { "Auto-assigned on dispatch" }}", color = Color(0xFF047857), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text("Stage: ${visit.visitStageStatus}", color = Color(0xFFB45309), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Handshake PIN: ${visit.handshakePin.ifBlank { "Auto-assigned on dispatch" }}", color = Emerald500, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Stage: ${visit.visitStageStatus}", color = GoldCoinAmber, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -203,7 +205,7 @@ fun DispatchAgentSheet(
             // Payout Configurator
             Text(
                 text = "Field Inspection Bounty / Payout (₹)",
-                color = Color(0xFF0F172A),
+                color = TextNavyDark,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -216,8 +218,8 @@ fun DispatchAgentSheet(
                     val isSelected = payoutAmount == amount
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected) Color(0xFF0F172A) else Color(0xFFF8FAFC),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0)),
+                        color = if (isSelected) BrandRoyalBlue else CanvasPorcelain,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) BrandRoyalBlue else BrandIceBorder),
                         modifier = Modifier
                             .weight(1f)
                             .clickable { payoutAmount = amount }
@@ -228,7 +230,7 @@ fun DispatchAgentSheet(
                         ) {
                             Text(
                                 text = "₹${amount.toInt()}",
-                                color = if (isSelected) Color.White else Color(0xFF334155),
+                                color = if (isSelected) Color.White else TextSlateMedium,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -242,7 +244,7 @@ fun DispatchAgentSheet(
             // Available Agents Roster
             Text(
                 text = "Select Active Certified Agent",
-                color = Color(0xFF0F172A),
+                color = TextNavyDark,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -254,11 +256,11 @@ fun DispatchAgentSheet(
                         .fillMaxWidth()
                         .height(100.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFF8FAFC))
-                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(10.dp)),
+                        .background(CanvasPorcelain)
+                        .border(1.dp, BrandIceBorder, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No empaneled agents currently registered", color = Color(0xFF64748B), fontSize = 12.sp)
+                    Text("No empaneled agents currently registered", color = TextSlateMuted, fontSize = 12.sp)
                 }
             } else {
                 LazyColumn(
@@ -274,8 +276,8 @@ fun DispatchAgentSheet(
 
                         Card(
                             shape = RoundedCornerShape(10.dp),
-                            colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFF0F172A) else Color(0xFFF8FAFC)),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) Color(0xFF0F172A) else Color(0xFFE2E8F0)),
+                            colors = CardDefaults.cardColors(containerColor = if (isSelected) BrandIceBlue else CanvasPorcelain),
+                            border = androidx.compose.foundation.BorderStroke(if (isSelected) 1.5.dp else 1.dp, if (isSelected) BrandRoyalBlue else BrandIceBorder),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { selectedAgentId = agent.userId }
@@ -286,14 +288,14 @@ fun DispatchAgentSheet(
                             ) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = if (isSelected) Emerald400.copy(alpha = 0.2f) else Color(0xFFE2E8F0),
+                                    color = if (isSelected) BrandRoyalBlue.copy(alpha = 0.12f) else Gray200,
                                     modifier = Modifier.size(36.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             Icons.Default.DirectionsBike,
                                             null,
-                                            tint = if (isSelected) Emerald400 else Color(0xFF475569),
+                                            tint = if (isSelected) BrandRoyalBlue else TextSlateMedium,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -303,7 +305,7 @@ fun DispatchAgentSheet(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = agent.applicantName.ifBlank { "Certified Field Officer" },
-                                            color = if (isSelected) Color.White else Color(0xFF0F172A),
+                                            color = TextNavyDark,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -311,11 +313,12 @@ fun DispatchAgentSheet(
                                         if (isProximityMatch) {
                                             Surface(
                                                 shape = RoundedCornerShape(4.dp),
-                                                color = Emerald500.copy(alpha = 0.15f)
+                                                color = EmeraldLight,
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Emerald400.copy(alpha = 0.5f))
                                             ) {
                                                 Text(
                                                     text = "🎯 Territory Match",
-                                                    color = Color(0xFF047857),
+                                                    color = Emerald600,
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -324,11 +327,12 @@ fun DispatchAgentSheet(
                                         } else {
                                             Surface(
                                                 shape = RoundedCornerShape(4.dp),
-                                                color = Color(0xFFE2E8F0)
+                                                color = BrandIceBlue,
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, BrandIceBorder)
                                             ) {
                                                 Text(
                                                     text = "🟢 Active",
-                                                    color = Color(0xFF475569),
+                                                    color = BrandCobalt,
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -338,13 +342,13 @@ fun DispatchAgentSheet(
                                     }
                                     Text(
                                         text = "${agent.operatingCity} (${agent.operatingPincode}) • Radius: ${agent.serviceRadiusKm} km • ${agent.vehicleType} • PCC Verified",
-                                        color = if (isSelected) Color(0xFF94A3B8) else Color(0xFF64748B),
+                                        color = if (isSelected) BrandCobalt else TextSlateMuted,
                                         fontSize = 10.sp
                                     )
                                 }
 
                                 if (isSelected) {
-                                    Icon(Icons.Default.CheckCircle, null, tint = Emerald400, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.CheckCircle, null, tint = BrandRoyalBlue, modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
@@ -365,7 +369,7 @@ fun DispatchAgentSheet(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth(),
                 enabled = selectedAgentId.isNotBlank() && (!isDualProtocol || selectedAgent2Id.isNotBlank()),
-                colors = ButtonDefaults.buttonColors(containerColor = if (isDualProtocol) Gold500 else Emerald500, contentColor = Navy900)
+                colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue, contentColor = Color.White)
             ) {
                 Icon(if (isDualProtocol) Icons.Default.Security else Icons.Default.Send, null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))

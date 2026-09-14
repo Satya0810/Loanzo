@@ -1,8 +1,9 @@
 package com.loanzo.app.ui.notification
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -17,16 +19,20 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,56 +55,52 @@ fun NotificationScreen(
     onRefresh: () -> Unit,
     onNavigateToLoan: (String) -> Unit,
     onNavigateToActionRoute: (String) -> Unit = {},
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    showBackButton: Boolean = true
 ) {
     var isDateMenuExpanded by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+
+    // Intercept hardware and gesture back navigation
+    BackHandler {
+        if (state.searchQuery.isNotEmpty()) {
+            onSearchQueryChange("")
+        } else {
+            onBack()
+        }
+    }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 },
                 title = {
-                    Column {
-                        Text(
-                            text = "Activity & Alerts",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        if (state.unreadCount > 0) {
-                            Text(
-                                text = "${state.unreadCount} unread • ${state.notifications.size} shown",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Gold500,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        } else {
-                            Text(
-                                text = "${state.notifications.size} updates",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Gray400
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Alerts & Notifications",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 },
                 actions = {
-                    if (state.unreadCount > 0) {
-                        TextButton(onClick = onMarkAllAsRead) {
-                            Text("Read All", color = Gold500, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        }
-                    }
                     IconButton(onClick = onRefresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Gray400)
-                    }
-                    if (state.notifications.isNotEmpty()) {
-                        IconButton(onClick = onClearAll) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear All", tint = Gray400)
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = Gray400
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -112,77 +114,102 @@ fun NotificationScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // 1. EMBEDDED SEARCH BAR (Revolut & Linear style)
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = onSearchQueryChange,
-                placeholder = {
-                    Text(
-                        text = "Search alerts, person, loan ID...",
-                        color = Gray400,
-                        fontSize = 13.5.sp
-                    )
-                },
-                leadingIcon = {
+
+            // ─── 2. DEDICATED SEARCH BAR CARD (BELOW HEADER, NOT INLINE) ───
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = if (state.searchQuery.isNotBlank()) Gold500 else Gray400,
-                        modifier = Modifier.size(20.dp)
+                        tint = Gray400,
+                        modifier = Modifier.size(18.dp)
                     )
-                },
-                trailingIcon = {
-                    if (state.searchQuery.isNotBlank()) {
-                        IconButton(onClick = { onSearchQueryChange("") }) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    BasicTextField(
+                        value = state.searchQuery,
+                        onValueChange = onSearchQueryChange,
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.sp
+                        ),
+                        cursorBrush = SolidColor(Gold500),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (state.searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Search alerts, loan ID, #tag...",
+                                        color = Gray400,
+                                        fontSize = 13.5.sp
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        }
+                    )
+                    if (state.searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { onSearchQueryChange("") },
+                            modifier = Modifier.size(24.dp)
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Clear search",
                                 tint = Gray400,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                ),
+                }
+            }
+            // ULTRA-COMPACT SMART TRIAGE RIBBON (~36dp height)
+            LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-
-            // 2. MULTI-DIMENSIONAL FILTER STRIP (Date, Tags, Status)
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(vertical = 4.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Clear all filters if active
+                // Reset Button (visible if any filter is active)
                 if (state.activeFilterCount > 0) {
                     item {
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = Red400.copy(alpha = 0.15f),
-                            border = CardDefaults.outlinedCardBorder().copy(brush = Brush.horizontalGradient(listOf(Red400, Red400))),
-                            modifier = Modifier.clickable { onClearAllFilters() }
+                            shape = RoundedCornerShape(10.dp),
+                            color = Red400.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, Red400.copy(alpha = 0.35f)),
+                            modifier = Modifier.clickable {
+                                onClearAllFilters()
+                            }
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Clear (${state.activeFilterCount}) ✕",
+                                    text = "Reset ✕",
                                     color = Red400,
-                                    fontSize = 12.sp,
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -190,26 +217,222 @@ fun NotificationScreen(
                     }
                 }
 
-                // Date Dropdown Filter
+                // 1. All Filter Pill
+                item {
+                    val isAllSelected = state.selectedFilter == NotificationFilter.ALL && state.selectedCategoryTag == null
+                    FilterChip(
+                        selected = isAllSelected,
+                        onClick = {
+                            onFilterChange(NotificationFilter.ALL)
+                            onCategoryTagChange(null)
+                        },
+                        label = {
+                            Text(
+                                text = if (state.rawNotifications.isNotEmpty() && isAllSelected) "All (${state.rawNotifications.size})" else "All",
+                                fontSize = 11.5.sp,
+                                fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Gold500.copy(alpha = 0.18f),
+                            selectedLabelColor = Gold500,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isAllSelected,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                            selectedBorderColor = Gold500.copy(alpha = 0.5f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(32.dp)
+                    )
+                }
+
+                // 2. Unread Filter Pill
+                item {
+                    val isUnreadSelected = state.selectedFilter == NotificationFilter.UNREAD
+                    FilterChip(
+                        selected = isUnreadSelected,
+                        onClick = {
+                            onFilterChange(if (isUnreadSelected) NotificationFilter.ALL else NotificationFilter.UNREAD)
+                        },
+                        leadingIcon = {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(if (state.unreadCount > 0) Gold500 else Gray400)
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = if (state.unreadCount > 0) "Unread (${state.unreadCount})" else "Unread",
+                                fontSize = 11.5.sp,
+                                fontWeight = if (isUnreadSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Gold500.copy(alpha = 0.18f),
+                            selectedLabelColor = Gold500,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isUnreadSelected,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                            selectedBorderColor = Gold500.copy(alpha = 0.5f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(32.dp)
+                    )
+                }
+
+                // 3. Actions Filter Pill
+                item {
+                    val isActionSelected = state.selectedCategoryTag == "ACTIONS"
+                    FilterChip(
+                        selected = isActionSelected,
+                        onClick = {
+                            onCategoryTagChange(if (isActionSelected) null else "ACTIONS")
+                        },
+                        label = {
+                            Text(
+                                text = "⚡ Actions",
+                                fontSize = 11.5.sp,
+                                fontWeight = if (isActionSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Red400.copy(alpha = 0.18f),
+                            selectedLabelColor = Red400,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isActionSelected,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                            selectedBorderColor = Red400.copy(alpha = 0.5f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(32.dp)
+                    )
+                }
+
+                // 4. Financial / Payments Filter Pill
+                item {
+                    val isPaymentsSelected = state.selectedCategoryTag == "PAYMENTS"
+                    FilterChip(
+                        selected = isPaymentsSelected,
+                        onClick = {
+                            onCategoryTagChange(if (isPaymentsSelected) null else "PAYMENTS")
+                        },
+                        label = {
+                            Text(
+                                text = "💰 Financial",
+                                fontSize = 11.5.sp,
+                                fontWeight = if (isPaymentsSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Emerald400.copy(alpha = 0.18f),
+                            selectedLabelColor = Emerald400,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isPaymentsSelected,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                            selectedBorderColor = Emerald400.copy(alpha = 0.5f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(32.dp)
+                    )
+                }
+
+                // 5. Legal & Agreements Filter Pill
+                item {
+                    val isAgreementsSelected = state.selectedCategoryTag == "AGREEMENTS"
+                    FilterChip(
+                        selected = isAgreementsSelected,
+                        onClick = {
+                            onCategoryTagChange(if (isAgreementsSelected) null else "AGREEMENTS")
+                        },
+                        label = {
+                            Text(
+                                text = "📜 Legal",
+                                fontSize = 11.5.sp,
+                                fontWeight = if (isAgreementsSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Blue400.copy(alpha = 0.18f),
+                            selectedLabelColor = Blue400,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isAgreementsSelected,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                            selectedBorderColor = Blue400.copy(alpha = 0.5f),
+                            borderWidth = 1.dp,
+                            selectedBorderWidth = 1.dp
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(32.dp)
+                    )
+                }
+
+                // 6. Date Range Dropdown Filter Pill
                 item {
                     Box {
                         val dateLabel = when (state.selectedDateFilter) {
-                            DateRangeFilter.ALL_TIME -> "📅 All Time ▾"
+                            DateRangeFilter.ALL_TIME -> "📅 Date ▾"
                             DateRangeFilter.TODAY -> "📅 Today ▾"
-                            DateRangeFilter.THIS_WEEK -> "📅 This Week ▾"
-                            DateRangeFilter.THIS_MONTH -> "📅 This Month ▾"
+                            DateRangeFilter.THIS_WEEK -> "📅 Week ▾"
+                            DateRangeFilter.THIS_MONTH -> "📅 Month ▾"
                         }
                         val isDateActive = state.selectedDateFilter != DateRangeFilter.ALL_TIME
 
                         FilterChip(
                             selected = isDateActive,
                             onClick = { isDateMenuExpanded = true },
-                            label = { Text(dateLabel, fontSize = 12.sp, fontWeight = if (isDateActive) FontWeight.Bold else FontWeight.Normal) },
+                            label = {
+                                Text(
+                                    text = dateLabel,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = if (isDateActive) FontWeight.Bold else FontWeight.Medium
+                                )
+                            },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Gold500.copy(alpha = 0.2f),
-                                selectedLabelColor = Gold500
+                                selectedContainerColor = Gold500.copy(alpha = 0.18f),
+                                selectedLabelColor = Gold500,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                             ),
-                            shape = RoundedCornerShape(16.dp)
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isDateActive,
+                                borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                selectedBorderColor = Gold500.copy(alpha = 0.5f),
+                                borderWidth = 1.dp,
+                                selectedBorderWidth = 1.dp
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(32.dp)
                         )
 
                         DropdownMenu(
@@ -251,90 +474,11 @@ fun NotificationScreen(
                         }
                     }
                 }
-
-                // Action Required Tag
-                item {
-                    val isActionActive = state.selectedCategoryTag == "ACTIONS"
-                    FilterChip(
-                        selected = isActionActive,
-                        onClick = { onCategoryTagChange("ACTIONS") },
-                        label = { Text("⚡ Actions", fontSize = 12.sp, fontWeight = if (isActionActive) FontWeight.Bold else FontWeight.Normal) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Red400.copy(alpha = 0.2f),
-                            selectedLabelColor = Red400
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                }
-
-                // Payments Tag
-                item {
-                    val isPaymentsActive = state.selectedCategoryTag == "PAYMENTS"
-                    FilterChip(
-                        selected = isPaymentsActive,
-                        onClick = { onCategoryTagChange("PAYMENTS") },
-                        label = { Text("💰 Payments", fontSize = 12.sp, fontWeight = if (isPaymentsActive) FontWeight.Bold else FontWeight.Normal) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Emerald400.copy(alpha = 0.2f),
-                            selectedLabelColor = Emerald400
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                }
-
-                // Deadlines Tag
-                item {
-                    val isDeadlinesActive = state.selectedFilter == NotificationFilter.DEADLINES
-                    FilterChip(
-                        selected = isDeadlinesActive,
-                        onClick = {
-                            onFilterChange(if (isDeadlinesActive) NotificationFilter.ALL else NotificationFilter.DEADLINES)
-                        },
-                        label = { Text("⏰ Deadlines", fontSize = 12.sp, fontWeight = if (isDeadlinesActive) FontWeight.Bold else FontWeight.Normal) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Gold500.copy(alpha = 0.2f),
-                            selectedLabelColor = Gold500
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                }
-
-                // Agreements Tag
-                item {
-                    val isAgreementsActive = state.selectedCategoryTag == "AGREEMENTS"
-                    FilterChip(
-                        selected = isAgreementsActive,
-                        onClick = { onCategoryTagChange("AGREEMENTS") },
-                        label = { Text("📜 Agreements", fontSize = 12.sp, fontWeight = if (isAgreementsActive) FontWeight.Bold else FontWeight.Normal) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Blue400.copy(alpha = 0.2f),
-                            selectedLabelColor = Blue400
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                }
-
-                // Unread Only
-                item {
-                    val isUnreadActive = state.selectedFilter == NotificationFilter.UNREAD
-                    FilterChip(
-                        selected = isUnreadActive,
-                        onClick = {
-                            onFilterChange(if (isUnreadActive) NotificationFilter.ALL else NotificationFilter.UNREAD)
-                        },
-                        label = { Text("📬 Unread", fontSize = 12.sp, fontWeight = if (isUnreadActive) FontWeight.Bold else FontWeight.Normal) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Gold500.copy(alpha = 0.2f),
-                            selectedLabelColor = Gold500
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
-            // 3. CONTENT AREA
+            // CONTENT AREA
             if (state.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -343,7 +487,7 @@ fun NotificationScreen(
                     CircularProgressIndicator(color = Gold500)
                 }
             } else if (state.notifications.isEmpty()) {
-                // Empty State
+                // Inbox Zero Empty State
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -359,7 +503,7 @@ fun NotificationScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = if (state.activeFilterCount > 0) Icons.Default.SearchOff else Icons.Default.NotificationsOff,
+                                imageVector = if (state.activeFilterCount > 0) Icons.Default.SearchOff else Icons.Default.NotificationsNone,
                                 contentDescription = null,
                                 tint = Gold500,
                                 modifier = Modifier.size(36.dp)
@@ -367,32 +511,38 @@ fun NotificationScreen(
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (state.activeFilterCount > 0) "No matching notifications" else "You're all caught up!",
+                            text = if (state.activeFilterCount > 0) "No matching notifications" else "Inbox Zero • All Caught Up!",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = if (state.activeFilterCount > 0) "Try adjusting your search query, tags, or date filter." else "No pending deadlines or activity alerts.",
+                            text = if (state.activeFilterCount > 0)
+                                "Try adjusting or clearing your search, tags, or date filter."
+                            else
+                                "No pending deadlines or activity alerts require your attention.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Gray400,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
                         if (state.activeFilterCount > 0) {
                             Spacer(modifier = Modifier.height(16.dp))
                             OutlinedButton(
-                                onClick = onClearAllFilters,
+                                onClick = {
+                                    onClearAllFilters()
+                                },
                                 shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500)
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500),
+                                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f))
                             ) {
-                                Text("Reset Filters", fontWeight = FontWeight.Bold)
+                                Text("Reset Filters", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
                         }
                     }
                 }
             } else {
-                // Group chronologically into Today, Yesterday, This Week, Earlier
+                // Partition chronologically into Today, Yesterday, This Week, Earlier
                 val groupedNotifications = remember(state.notifications) {
                     groupNotificationsChronologically(state.notifications)
                 }
@@ -407,7 +557,7 @@ fun NotificationScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Urgent Action Hero Card (if present and not specifically filtered out)
+                    // Urgent Action Hero Card (pinned when unread urgent alert exists and not specifically filtered)
                     if (urgentHeroNotification != null && state.selectedCategoryTag == null && state.searchQuery.isBlank()) {
                         item {
                             UrgentActionHeroCard(
@@ -421,7 +571,7 @@ fun NotificationScreen(
                                     }
                                 }
                             )
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                         }
                     }
 
@@ -437,7 +587,7 @@ fun NotificationScreen(
                             ) {
                                 Text(
                                     text = sectionHeader,
-                                    style = MaterialTheme.typography.labelLarge,
+                                    style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Gold500
                                 )
@@ -477,7 +627,7 @@ fun NotificationScreen(
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(28.dp))
                     }
                 }
             }
@@ -494,30 +644,28 @@ fun UrgentActionHeroCard(
     onAction: () -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Red400.copy(alpha = 0.1f)),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.linearGradient(listOf(Red400.copy(alpha = 0.6f), Orange400.copy(alpha = 0.4f)))
-        ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Red400.copy(alpha = 0.08f)),
+        border = BorderStroke(1.dp, Red400.copy(alpha = 0.35f)),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Red400.copy(alpha = 0.2f)
+                    shape = RoundedCornerShape(6.dp),
+                    color = Red400.copy(alpha = 0.18f)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(7.dp)
+                                .size(6.dp)
                                 .clip(CircleShape)
                                 .background(Red400)
                         )
@@ -525,8 +673,9 @@ fun UrgentActionHeroCard(
                         Text(
                             text = "ACTION REQUIRED",
                             color = Red400,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 9.5.sp,
+                            letterSpacing = 0.5.sp
                         )
                     }
                 }
@@ -538,7 +687,7 @@ fun UrgentActionHeroCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = notification.title.replace(Regex("[⏰⚡🔔⚠️📜]"), "").trim(),
@@ -551,33 +700,39 @@ fun UrgentActionHeroCard(
 
             Text(
                 text = notification.message,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Button(
                 onClick = onAction,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Red400,
                     contentColor = Color.White
                 ),
-                modifier = Modifier.fillMaxWidth().height(42.dp)
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp)
             ) {
                 Text(
                     text = if (notification.type == "OVERDUE") "Pay / Settle Overdue Loan ➔" else "Review Loan Details ➔",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
+                    fontSize = 12.5.sp
                 )
             }
         }
     }
 }
 
+/**
+ * Modern Linear/Revolut-styled notification card with unread accent indicator.
+ */
 @Composable
 fun NotificationCard(
     notification: NotificationEntity,
@@ -590,94 +745,115 @@ fun NotificationCard(
     val timeAgo = getRelativeTime(notification.timestamp)
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surface
+            containerColor = if (notification.isRead)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            else
+                MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (!notification.isRead) iconTint.copy(alpha = 0.35f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .border(
-                width = if (!notification.isRead) 1.dp else 0.5.dp,
-                color = if (!notification.isRead) iconTint.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(16.dp)
-            )
-            .clickable { onRead(); onAction() }
+            .clickable {
+                onRead()
+                onAction()
+            }
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // Type Badge Icon (Pocket-Log style)
+            // Unread accent indicator stripe
+            if (!notification.isRead) {
+                Box(
+                    modifier = Modifier
+                        .width(3.5.dp)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(iconTint)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            // Category Icon glyph box
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(bgTint),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(20.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // Top Row: Interactive Tags & Time
+                // Top Row: Interactive Category Tags & Relative Time
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Tag Group
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Clickable Category Pill
                         Surface(
-                            shape = CircleShape,
-                            color = iconTint.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(6.dp),
+                            color = iconTint.copy(alpha = 0.12f),
                             modifier = Modifier.clickable { onTagClick("#${notification.type}") }
                         ) {
                             Text(
                                 text = "#${notification.type.lowercase().replace('_', ' ')}",
                                 color = iconTint,
-                                fontSize = 10.sp,
+                                fontSize = 9.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
 
-                        // Clickable Loan ID tag if available
                         if (notification.relatedLoanId != null) {
                             val shortId = notification.relatedLoanId.take(8)
                             Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
                                 modifier = Modifier.clickable { onTagClick("#$shortId") }
                             ) {
                                 Text(
                                     text = "#$shortId",
                                     color = MaterialTheme.colorScheme.primary,
-                                    fontSize = 10.sp,
+                                    fontSize = 9.5.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                                 )
                             }
                         }
                     }
 
-                    // Time and Unread dot
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = timeAgo,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (!notification.isRead) MaterialTheme.colorScheme.onSurfaceVariant else Gray500,
+                            fontSize = 11.sp
                         )
                         if (!notification.isRead) {
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp)
+                                    .size(6.dp)
                                     .clip(CircleShape)
                                     .background(iconTint)
                             )
@@ -685,7 +861,7 @@ fun NotificationCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(5.dp))
 
                 Text(
                     text = notification.title.replace(Regex("[⏰⚡🔔⚠️📜]"), "").trim(),
@@ -693,23 +869,25 @@ fun NotificationCard(
                     fontWeight = if (notification.isRead) FontWeight.SemiBold else FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 13.5.sp
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(3.dp))
 
                 Text(
                     text = notification.message,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    lineHeight = 17.sp
+                    lineHeight = 16.sp,
+                    fontSize = 12.sp
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Bottom Action Row
+                // Bottom CTA and Dismiss Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -717,42 +895,42 @@ fun NotificationCard(
                 ) {
                     if (!notification.actionRoute.isNullOrBlank()) {
                         Surface(
-                            shape = CircleShape,
-                            color = iconTint.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp),
+                            color = iconTint.copy(alpha = 0.14f),
                             modifier = Modifier.clickable { onAction() }
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = when (notification.type) {
-                                        "AGENT_APPLICATION" -> "Review in Admin Hub"
+                                        "AGENT_APPLICATION" -> "Review in Hub"
                                         "ADMIN_REQUEST" -> "Manage Access"
                                         "COMPLAINT" -> "Inspect Grievance"
-                                        else -> "Open Action ➔"
+                                        else -> "Open Action"
                                     },
                                     color = iconTint,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.5.sp
+                                    fontSize = 11.sp
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = null,
                                     tint = iconTint,
-                                    modifier = Modifier.size(13.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                         }
                     } else if (notification.relatedLoanId != null) {
                         Surface(
-                            shape = CircleShape,
-                            color = iconTint.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp),
+                            color = iconTint.copy(alpha = 0.14f),
                             modifier = Modifier.clickable { onAction() }
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -764,14 +942,14 @@ fun NotificationCard(
                                     },
                                     color = iconTint,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.5.sp
+                                    fontSize = 11.sp
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = null,
                                     tint = iconTint,
-                                    modifier = Modifier.size(13.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                         }
@@ -781,13 +959,13 @@ fun NotificationCard(
 
                     IconButton(
                         onClick = onDelete,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Delete",
+                            contentDescription = "Dismiss",
                             tint = Gray500,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                 }

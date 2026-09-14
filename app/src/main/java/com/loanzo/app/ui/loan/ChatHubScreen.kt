@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +69,7 @@ fun ChatHubScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
@@ -543,11 +545,7 @@ private fun NewChatBottomSheet(
                     modifier = Modifier.padding(vertical = 12.dp)
                 )
             } else {
-                val candidateList = if (searchQuery.isNotBlank()) {
-                    state.searchUserResults
-                } else {
-                    com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS.filter { it.userId != currentUserId }
-                }
+                val candidateList = state.searchUserResults.filter { it.userId != currentUserId }
 
                 val displayUsers = candidateList.filter { user ->
                     when (selectedRoleFilter) {
@@ -562,7 +560,8 @@ private fun NewChatBottomSheet(
 
                 if (displayUsers.isEmpty()) {
                     Text(
-                        "No members found in category '$selectedRoleFilter'.",
+                        if (searchQuery.isBlank()) "Type a name or username to search for members."
+                        else "No members found in category '$selectedRoleFilter'.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 10.dp)

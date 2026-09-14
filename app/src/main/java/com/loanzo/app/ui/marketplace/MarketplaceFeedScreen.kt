@@ -1,6 +1,12 @@
 package com.loanzo.app.ui.marketplace
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,11 +22,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,8 +72,12 @@ fun MarketplaceFeedScreen(
     onNavigateToChat: (channelId: String, loanId: String?, targetUserId: String?) -> Unit = { _, _, _ -> },
     onNavigateToLoanDetail: (String) -> Unit = {},
     onAcceptBid: (MarketplacePostEntity, MarketplaceBidEntity) -> Unit = { _, _ -> },
+    showBackButton: Boolean = true,
     onNavigateBack: () -> Unit
 ) {
+    BackHandler {
+        onNavigateBack()
+    }
     var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
     var activePostForBidsSheet by remember { mutableStateOf<MarketplacePostEntity?>(null) }
     var postToVouch by remember { mutableStateOf<MarketplacePostEntity?>(null) }
@@ -84,8 +97,13 @@ fun MarketplaceFeedScreen(
         MarketplaceTabFilter.BORROWERS -> 2
         MarketplaceTabFilter.MY_POSTS -> 3
     }
+    var isFilterDropdownOpen by remember { mutableStateOf(false) }
 
     val categories = listOf("ALL", "EDUCATION", "MEDICAL", "BUSINESS", "EMERGENCY", "PERSONAL")
+
+    LaunchedEffect(Unit) {
+        viewModel?.refreshFeed()
+    }
 
     LaunchedEffect(state.actionSuccessMessage, state.error) {
         state.actionSuccessMessage?.let {
@@ -98,6 +116,7 @@ fun MarketplaceFeedScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
@@ -117,12 +136,11 @@ fun MarketplaceFeedScreen(
                                     border = BorderStroke(1.dp, Emerald400.copy(alpha = 0.3f))
                                 ) {
                                     Text(
-                                        "LIVE",
-                                        style = MaterialTheme.typography.labelSmall,
+                                        "LIVE P2P",
                                         color = Emerald400,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                                     )
                                 }
                             }
@@ -135,15 +153,24 @@ fun MarketplaceFeedScreen(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                        if (showBackButton) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
                     },
                     actions = {
+                        IconButton(onClick = { viewModel?.refreshFeed() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh Feed",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         IconButton(onClick = { onNavigateToCreatePost("SEEKING_LOAN") }) {
                             Icon(
                                 imageVector = Icons.Default.AddCircleOutline,
@@ -161,39 +188,124 @@ fun MarketplaceFeedScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                // Segmented Tabs: All, Lenders, Borrowers, My Posts
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    SegmentedCapsuleTab(
-                        tabs = tabs,
-                        selectedIndex = selectedTabIndex,
-                        onTabSelected = { index ->
-                            val filter = when (index) {
-                                0 -> MarketplaceTabFilter.ALL
-                                1 -> MarketplaceTabFilter.LENDERS
-                                2 -> MarketplaceTabFilter.BORROWERS
-                                3 -> MarketplaceTabFilter.MY_POSTS
-                                else -> MarketplaceTabFilter.ALL
-                            }
-                            onTabSelected(filter)
-                        }
-                    )
-                }
-
-                // Search Bar + Quick Filter Row
+                // Inline Filter Dropdown ("All Offers") + Search Bar Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // 1. Filter Dropdown Button with 180° Bouncy Chevron Animation
+                    Box {
+                        val chevronRotation by animateFloatAsState(
+                            targetValue = if (isFilterDropdownOpen) 180f else 0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            label = "filter_chevron_rotation"
+                        )
+                        val buttonBorderColor by animateColorAsState(
+                            targetValue = if (isFilterDropdownOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            animationSpec = tween(200),
+                            label = "filter_border_color"
+                        )
+                        val buttonBgColor by animateColorAsState(
+                            targetValue = if (isFilterDropdownOpen) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            animationSpec = tween(200),
+                            label = "filter_bg_color"
+                        )
+
+                        Surface(
+                            onClick = { isFilterDropdownOpen = !isFilterDropdownOpen },
+                            shape = RoundedCornerShape(14.dp),
+                            color = buttonBgColor,
+                            border = BorderStroke(1.dp, buttonBorderColor),
+                            modifier = Modifier.height(50.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            ) {
+                                Text(
+                                    text = tabs.getOrElse(selectedTabIndex) { "All Offers" },
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isFilterDropdownOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Select Filter",
+                                    tint = if (isFilterDropdownOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .graphicsLayer { rotationZ = chevronRotation }
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = isFilterDropdownOpen,
+                            onDismissRequest = { isFilterDropdownOpen = false },
+                            shape = RoundedCornerShape(16.dp),
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 8.dp,
+                            shadowElevation = 8.dp,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                            modifier = Modifier.widthIn(min = 180.dp)
+                        ) {
+                            tabs.forEachIndexed { index, tabTitle ->
+                                val isSelected = selectedTabIndex == index
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = tabTitle,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 14.sp
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        if (isSelected) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        val filter = when (index) {
+                                            0 -> MarketplaceTabFilter.ALL
+                                            1 -> MarketplaceTabFilter.LENDERS
+                                            2 -> MarketplaceTabFilter.BORROWERS
+                                            3 -> MarketplaceTabFilter.MY_POSTS
+                                            else -> MarketplaceTabFilter.ALL
+                                        }
+                                        onTabSelected(filter)
+                                        isFilterDropdownOpen = false
+                                    }
+                                )
+                                if (index < tabs.lastIndex) {
+                                    HorizontalDivider(
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                        thickness = 0.5.dp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // 2. Compact Search Field Inline
                     OutlinedTextField(
                         value = state.searchQuery,
                         onValueChange = onSearchQueryChange,
-                        placeholder = { Text("Search by purpose, city, or name...", fontSize = 13.sp) },
+                        placeholder = { Text("Search purpose, city...", fontSize = 13.sp, maxLines = 1) },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Search,
@@ -251,10 +363,15 @@ fun MarketplaceFeedScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Feed Content List
-                if (state.isLoading && state.posts.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Gold500)
-                    }
+                PullToRefreshBox(
+                    isRefreshing = state.isLoading,
+                    onRefresh = { viewModel?.refreshFeed() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    if (state.isLoading && state.posts.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Gold500)
+                        }
                 } else if (state.posts.isEmpty()) {
                     Box(
                         modifier = Modifier
@@ -295,7 +412,7 @@ fun MarketplaceFeedScreen(
                     }
                 } else {
                     LazyColumn(
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         items(state.posts, key = { it.postId }) { post ->
@@ -366,6 +483,7 @@ fun MarketplaceFeedScreen(
                         }
                     }
                 }
+            }
             }
         }
 
@@ -550,7 +668,10 @@ fun SocialPostCard(
                             text = post.authorName,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         if (post.authorKycVerified) {
                             Spacer(modifier = Modifier.width(5.dp))
@@ -581,6 +702,8 @@ fun SocialPostCard(
                         }
                     }
 
+                    Spacer(modifier = Modifier.height(2.dp))
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -589,11 +712,13 @@ fun SocialPostCard(
                             text = "@${post.authorName.lowercase().replace(" ", "_")}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text("•", color = Gray500, fontSize = 9.sp)
                         Text(
-                            "⭐ ${post.authorTrustScore}/100",
+                            "⭐ ${post.authorTrustScore}",
                             style = MaterialTheme.typography.labelSmall,
                             color = Gold500,
                             fontWeight = FontWeight.SemiBold
@@ -603,17 +728,23 @@ fun SocialPostCard(
                             Text(
                                 "📍 ${post.locationCity}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         Text("•", color = Gray500, fontSize = 9.sp)
                         Text(
                             post.createdAt.toRelativeTime(),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.width(6.dp))
 
                 // Post Type Pill
                 Surface(
@@ -623,11 +754,11 @@ fun SocialPostCard(
                     Text(
                         text = if (isLenderOffer) "LENDER OFFER" else "SEEKING LOAN",
                         color = accentColor,
-                        fontSize = 9.5.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         softWrap = false,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
             }
@@ -737,7 +868,11 @@ fun SocialPostCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Financial Capsule Card - Streamlined & Balanced
+            // Financial Capsule Card - Responsive & Adaptive
+            val amountText = if (isLenderOffer) "₹${post.minAmount.toFormattedString()} - ₹${post.maxAmount.toFormattedString()}"
+            else "₹${post.maxAmount.toFormattedString()}"
+            val amountFontSize = if (amountText.length > 16) 11.5.sp else if (amountText.length > 12) 12.sp else 13.sp
+
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -745,10 +880,10 @@ fun SocialPostCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1.2f)) {
+                    Column(modifier = Modifier.weight(1.3f)) {
                         Text(
                             text = if (isLenderOffer) "CAPITAL POOL" else "AMOUNT NEEDED",
                             fontSize = 8.5.sp,
@@ -758,12 +893,12 @@ fun SocialPostCard(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = if (isLenderOffer) "₹${post.minAmount.toFormattedString()} - ₹${post.maxAmount.toFormattedString()}"
-                            else "₹${post.maxAmount.toFormattedString()}",
-                            fontSize = 13.sp,
+                            text = amountText,
+                            fontSize = amountFontSize,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
+                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -776,7 +911,7 @@ fun SocialPostCard(
                     )
 
                     Column(
-                        modifier = Modifier.weight(0.9f),
+                        modifier = Modifier.weight(0.85f),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -789,10 +924,11 @@ fun SocialPostCard(
                         )
                         Text(
                             text = "${post.interestRate}% p.a.",
-                            fontSize = 13.sp,
+                            fontSize = 12.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = accentColor,
                             maxLines = 1,
+                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -805,7 +941,7 @@ fun SocialPostCard(
                     )
 
                     Column(
-                        modifier = Modifier.weight(0.9f),
+                        modifier = Modifier.weight(0.85f),
                         horizontalAlignment = Alignment.End
                     ) {
                         Text(
@@ -818,10 +954,11 @@ fun SocialPostCard(
                         )
                         Text(
                             text = "${post.tenureMonths} Mo",
-                            fontSize = 13.sp,
+                            fontSize = 12.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
+                            softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -851,89 +988,90 @@ fun SocialPostCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Footer: Social Counters & Endorsers + Primary CTA
-            Row(
+            // Footer: Responsive 2-Tier Layout (Never crowded on any viewport size!)
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Vouch Counter & Vouch Clickers Circular Avatars
+                // Tier 1: Social Engagement & Offers Counter
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Vouch Button
-                    Surface(
-                        onClick = onVouch,
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isVouched) Red400.copy(alpha = 0.20f) else Red400.copy(alpha = 0.08f),
-                        border = if (isVouched) BorderStroke(1.dp, Red400.copy(alpha = 0.5f)) else null
+                    // Left: Vouch Button & Voucher Avatars Stack
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        // Vouch Button
+                        Surface(
+                            onClick = onVouch,
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isVouched) Red400.copy(alpha = 0.20f) else Red400.copy(alpha = 0.08f),
+                            border = if (isVouched) BorderStroke(1.dp, Red400.copy(alpha = 0.5f)) else null
                         ) {
-                            Icon(
-                                imageVector = if (isVouched) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Vouch",
-                                tint = Red400,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (isVouched) "Vouched (${post.vouchCount})" else "Vouch (${post.vouchCount})",
-                                color = Red400,
-                                fontSize = 11.sp,
-                                fontWeight = if (isVouched) FontWeight.ExtraBold else FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    // Vouch Clickers Circular Avatars Stack (Clickable!)
-                    if (vouchers.isNotEmpty()) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .clickable { onViewAllVouchersClick() }
-                                .padding(horizontal = 2.dp, vertical = 2.dp)
-                        ) {
-                            vouchers.take(3).forEach { v ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(22.dp)
-                                        .clip(CircleShape)
-                                        .background(EmeraldLight)
-                                        .border(1.dp, Emerald600, CircleShape)
-                                        .clickable { onVoucherClick(v) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = v.voucherName.take(1).uppercase(),
-                                        color = Emerald600,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(2.dp))
-                            }
-                            if (vouchers.size > 3 || post.vouchCount > vouchers.size) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isVouched) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = "Vouch",
+                                    tint = Red400,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "+${maxOf(vouchers.size - 3, post.vouchCount - 3)}",
-                                    fontSize = 9.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextSlateMedium
+                                    text = if (isVouched) "Vouched (${post.vouchCount})" else "Vouch (${post.vouchCount})",
+                                    color = Red400,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isVouched) FontWeight.ExtraBold else FontWeight.Bold
                                 )
                             }
                         }
-                    }
-                }
 
-                // Inquiries / Bids counter & Primary Action CTA
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+                        // Vouch Clickers Circular Avatars Stack
+                        if (vouchers.isNotEmpty()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable { onViewAllVouchersClick() }
+                                    .padding(horizontal = 2.dp, vertical = 2.dp)
+                            ) {
+                                vouchers.take(3).forEach { v ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clip(CircleShape)
+                                            .background(EmeraldLight)
+                                            .border(1.dp, Emerald600, CircleShape)
+                                            .clickable { onVoucherClick(v) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = v.voucherName.take(1).uppercase(),
+                                            color = Emerald600,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                }
+                                if (vouchers.size > 3 || post.vouchCount > vouchers.size) {
+                                    Text(
+                                        text = "+${maxOf(vouchers.size - 3, post.vouchCount - 3)}",
+                                        fontSize = 9.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextSlateMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Right: Bids / Offers counter badge
                     if (post.bidsCount > 0) {
                         Surface(
                             onClick = onViewBidsClick,
@@ -943,39 +1081,42 @@ fun SocialPostCard(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
                             ) {
                                 Icon(Icons.Default.Bolt, contentDescription = "Bids", tint = Blue400, modifier = Modifier.size(13.dp))
-                                Spacer(modifier = Modifier.width(2.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
                                 Text(
                                     "${post.bidsCount} Offers",
                                     color = Blue400,
-                                    fontSize = 10.5.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                         }
                     }
+                }
 
-                    // Primary CTA Button
-                    Button(
-                        onClick = onPrimaryAction,
-                        colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Navy900),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 11.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = if (isSelf) {
-                                if (post.bidsCount > 0) "Review Bids (${post.bidsCount}) ➔" else "My Post"
-                            } else if (isLenderOffer) {
-                                "Apply Now ➔"
-                            } else {
-                                "Fund / Bid ➔"
-                            },
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                // Tier 2: Full-Width Prominent Primary CTA Button (Never crowded!)
+                Button(
+                    onClick = onPrimaryAction,
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Navy900),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(38.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (isSelf) {
+                            if (post.bidsCount > 0) "Review Received Bids (${post.bidsCount}) ➔" else "Manage Post"
+                        } else if (isLenderOffer) {
+                            "Apply for this Capital ➔"
+                        } else {
+                            "Fund / Propose Bid ➔"
+                        },
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

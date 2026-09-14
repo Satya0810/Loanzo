@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -60,7 +61,7 @@ fun LoginScreen(
     onSelectLanguage: (String) -> Unit = {},
     onLogin: (userId: String, pass: String, role: String) -> Unit,
     onBiometricLogin: (typedUserId: String, role: String) -> Unit,
-    onGoogleLogin: (typedUserId: String) -> Unit = {},
+    onGoogleLogin: (typedUserId: String, role: String) -> Unit = { _, _ -> },
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit,
     isBiometricAvailable: Boolean = true,
@@ -521,7 +522,7 @@ fun LoginScreen(
                         // Continue with Google
                         Spacer(modifier = Modifier.height(12.dp))
                         OutlinedButton(
-                            onClick = { onGoogleLogin(userId.trim()) },
+                            onClick = { onGoogleLogin(userId.trim(), userRole.trim()) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),

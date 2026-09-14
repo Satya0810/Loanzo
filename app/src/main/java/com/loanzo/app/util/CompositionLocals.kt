@@ -55,7 +55,21 @@ val LocalAppLanguage = compositionLocalOf {
 fun String.t(): String {
     val language = LocalAppLanguage.current
     if (language.equals("en", ignoreCase = true) || this.isBlank()) return this
-    val helper = LocalTranslationHelper.current ?: return this
-    return helper.rememberTranslated(this, language)
+    val helper = LocalTranslationHelper.current ?: TranslationHelper.instance
+    return helper?.rememberTranslated(this, language) ?: AppGlossary.getTranslation(this, language) ?: this
+}
+
+
+@androidx.compose.runtime.Composable
+fun androidx.compose.ui.text.AnnotatedString.t(): androidx.compose.ui.text.AnnotatedString {
+    val language = LocalAppLanguage.current
+    if (language.equals("en", ignoreCase = true) || this.text.isBlank()) return this
+    val helper = LocalTranslationHelper.current ?: TranslationHelper.instance
+    val translated = helper?.rememberTranslated(this.text, language) ?: AppGlossary.getTranslation(this.text, language) ?: this.text
+    return androidx.compose.ui.text.AnnotatedString(
+        text = translated,
+        spanStyles = this.spanStyles,
+        paragraphStyles = this.paragraphStyles
+    )
 }
 

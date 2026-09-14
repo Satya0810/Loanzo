@@ -12,18 +12,22 @@
 [![Kotlin Version](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF.svg?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Android SDK](https://img.shields.io/badge/Android%20SDK-26%20..%2034-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.09.00-4285F4.svg?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![Room Database](https://img.shields.io/badge/Room%20DB-v18%20SQLite-00599C.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
+[![Room Database](https://img.shields.io/badge/Room%20DB-v22%20SQLite-00599C.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://developer.android.com/training/data-storage/room)
 [![Dagger Hilt](https://img.shields.io/badge/Dagger%20Hilt-2.51.1-26A69A.svg?style=for-the-badge)](https://dagger.dev/hilt/)
 [![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore%20%7C%20FCM-FFCA28.svg?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
 
 [🌟 Highlights](#-key-innovations--core-features) •
 [📱 Screenshots](#-application-visual-showcase--screenshots) •
-[🛡️ Scam-Free Guarantee](#️-institutional-scam-free-guarantee) •
-[🏗️ Architecture](#️-system-architecture) •
-[🔄 Lifecycle](#-loan-lifecycle-state-machine) •
-[🗄️ Database](#️-database-architecture-room-v12) •
-[📚 Docs & Comics](#-publications--engineering-reports) •
+[🏛️ Flowcharts](docs/diagrams/Loanzo_System_Flowcharts.md) •
+[🤖 Multi-Model AI](docs/AI_Assistant_and_Multi_Model_Racing.md) •
+[📚 Engineering Docs](docs/README.md) •
+[📊 Feasibility Study](docs/Feasibility_Study_Document.md) •
+[📑 Feasibility PDF](docs/Loanzo_Feasibility_Study_Document.pdf) •
+[🗄️ DB Schema](docs/Database_Schema_and_Migrations.md) •
+[🔒 Security](docs/Security_and_Cryptography.md) •
+[🌐 API Specs](docs/API_Specification.md) •
+[🕵️ Field SOP](docs/Field_Agent_SOP_and_Vault_Custody.md) •
 [⚡ Quickstart](#-quickstart--developer-setup)
 
 </div>

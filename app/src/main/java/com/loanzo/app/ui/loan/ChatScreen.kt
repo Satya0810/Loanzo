@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,8 +37,47 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.TelegramManager
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.vector.ImageVector
 import java.text.SimpleDateFormat
 import java.util.*
+
+data class ChatAction(
+    val type: String,
+    val label: String,
+    val icon: ImageVector
+)
+
+fun parseChatActions(rawText: String): Pair<String, List<ChatAction>> {
+    val actions = mutableListOf<ChatAction>()
+    var text = rawText
+
+    if (text.contains("[ACTION:CALCULATOR]")) {
+        actions.add(ChatAction("CALCULATOR", "Open Loan Calculator", Icons.Default.Calculate))
+        text = text.replace("[ACTION:CALCULATOR]", "")
+    }
+    if (text.contains("[ACTION:KYC]")) {
+        actions.add(ChatAction("KYC", "Complete KYC", Icons.Default.VerifiedUser))
+        text = text.replace("[ACTION:KYC]", "")
+    }
+    if (text.contains("[ACTION:MARKETPLACE]")) {
+        actions.add(ChatAction("MARKETPLACE", "Explore Marketplace", Icons.Default.Groups))
+        text = text.replace("[ACTION:MARKETPLACE]", "")
+    }
+    if (text.contains("[ACTION:PORTFOLIO]")) {
+        actions.add(ChatAction("PORTFOLIO", "Smart Portfolio", Icons.Default.PieChart))
+        text = text.replace("[ACTION:PORTFOLIO]", "")
+    }
+    if (text.contains("[ACTION:CREATE_POST]")) {
+        actions.add(ChatAction("CREATE_POST", "Post Loan Request", Icons.Default.AddCircle))
+        text = text.replace("[ACTION:CREATE_POST]", "")
+    }
+    if (text.contains("[ACTION:TELEGRAM]")) {
+        actions.add(ChatAction("TELEGRAM", "Telegram Alerts", Icons.Default.Send))
+        text = text.replace("[ACTION:TELEGRAM]", "")
+    }
+
+    return Pair(text.trim(), actions)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +87,11 @@ fun ChatScreen(
     targetUserId: String? = null,
     onBack: () -> Unit,
     onViewLoanAgreement: ((String) -> Unit)? = null,
+    onNavigateToCalculator: (() -> Unit)? = null,
+    onNavigateToKyc: (() -> Unit)? = null,
+    onNavigateToMarketplace: (() -> Unit)? = null,
+    onNavigateToPortfolio: (() -> Unit)? = null,
+    onNavigateToCreatePost: (() -> Unit)? = null,
     chatViewModel: ChatViewModel = hiltViewModel(),
     translationViewModel: TranslationViewModel = hiltViewModel()
 ) {
@@ -58,6 +103,7 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDealActionsSheet by remember { mutableStateOf(false) }
+
 
     // Hindi translation target
     val targetLanguage = "hi"
@@ -82,7 +128,7 @@ fun ChatScreen(
         }
     }
 
-    val isSupport = channelId == "support_loanzo_assistant" || targetUserId == "LOANZO_BOT"
+    val isSupport = channelId == "support_loanzo_assistant" || targetUserId == "LOANZO_BOT" || channelId.contains("support")
     val counterpartyName = if (isSupport) "Loanzo AI Assistant" else chatState.activeCounterparty?.name ?: chatState.activeCounterparty?.username ?: "Counterparty"
     val counterpartyRole = if (isSupport) "OFFICIAL BOT" else chatState.activeCounterparty?.role ?: "MEMBER"
     val counterpartyPhone = chatState.activeCounterparty?.phone ?: ""
@@ -90,6 +136,15 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box {
@@ -150,11 +205,7 @@ fun ChatScreen(
                         }
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+
                 actions = {
                     if (counterpartyPhone.isNotBlank() && !isSupport) {
                         IconButton(onClick = {
@@ -183,12 +234,23 @@ fun ChatScreen(
                     .imePadding()
             ) {
                 // Quick Suggestion Chips
-                val suggestions = listOf(
-                    "When can we disburse the tranche?",
-                    "Please upload the assaying certificate.",
-                    "Payment of EMI initiated via UPI.",
-                    "Can we schedule an agent visit?"
-                )
+                val suggestions = if (isSupport) {
+                    listOf(
+                        "📊 My Active Loans & Next EMI",
+                        "🚀 How do I apply for a loan?",
+                        "💼 How to lend & earn interest?",
+                        "🧮 Open Loan Calculator",
+                        "🛡️ KYC Verification Guide",
+                        "🤝 How does Marketplace work?"
+                    )
+                } else {
+                    listOf(
+                        "When can we disburse the tranche?",
+                        "Please upload the assaying certificate.",
+                        "Payment of EMI initiated via UPI.",
+                        "Can we schedule an agent visit?"
+                    )
+                }
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -359,11 +421,21 @@ fun ChatScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
-                    items(chatState.messages, key = { it.messageId }) { msg ->
+                    items(chatState.messages, key = { it.messageId.ifBlank { "${it.timestamp}_${it.senderId}" } }) { msg ->
                         RichChatBubble(
                             message = msg,
                             onTranslate = {
                                 chatViewModel.translateMessage(msg.messageId, msg.text, targetLanguage)
+                            },
+                            onActionClick = { actionType ->
+                                when (actionType) {
+                                    "CALCULATOR" -> onNavigateToCalculator?.invoke()
+                                    "KYC" -> onNavigateToKyc?.invoke()
+                                    "MARKETPLACE" -> onNavigateToMarketplace?.invoke()
+                                    "PORTFOLIO" -> onNavigateToPortfolio?.invoke()
+                                    "CREATE_POST" -> onNavigateToCreatePost?.invoke()
+                                    "TELEGRAM" -> TelegramManager.instance.openBotForLinking(context, chatState.currentUserId)
+                                }
                             }
                         )
                     }
@@ -428,6 +500,8 @@ fun ChatScreen(
             }
         }
     }
+
+
 }
 
 // Backward-compatible overload
@@ -435,6 +509,11 @@ fun ChatScreen(
 fun ChatScreen(
     loanId: String,
     onBack: () -> Unit,
+    onNavigateToCalculator: (() -> Unit)? = null,
+    onNavigateToKyc: (() -> Unit)? = null,
+    onNavigateToMarketplace: (() -> Unit)? = null,
+    onNavigateToPortfolio: (() -> Unit)? = null,
+    onNavigateToCreatePost: (() -> Unit)? = null,
     chatViewModel: ChatViewModel = hiltViewModel(),
     translationViewModel: TranslationViewModel = hiltViewModel()
 ) = ChatScreen(
@@ -443,20 +522,36 @@ fun ChatScreen(
     targetUserId = null,
     onBack = onBack,
     onViewLoanAgreement = null,
+    onNavigateToCalculator = onNavigateToCalculator,
+    onNavigateToKyc = onNavigateToKyc,
+    onNavigateToMarketplace = onNavigateToMarketplace,
+    onNavigateToPortfolio = onNavigateToPortfolio,
+    onNavigateToCreatePost = onNavigateToCreatePost,
     chatViewModel = chatViewModel,
     translationViewModel = translationViewModel
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RichChatBubble(
     message: FirestoreChatMessage,
-    onTranslate: () -> Unit
+    onTranslate: () -> Unit,
+    onActionClick: (String) -> Unit = {}
 ) {
     val alignment = if (message.isMe) Alignment.CenterEnd else Alignment.CenterStart
     val bubbleColor = if (message.isMe) Gold500 else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (message.isMe) Navy900 else MaterialTheme.colorScheme.onSurface
     val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
     val formattedTime = remember(message.timestamp) { timeFormat.format(Date(message.timestamp)) }
+    val isThinking = message.messageId.startsWith("ai_thinking_") || (message.senderId == "LOANZO_BOT" && message.status == "SENDING")
+
+    val (displayText, actions) = remember(message.text) {
+        if (message.senderId == "LOANZO_BOT" || message.senderRole == "OFFICIAL_BOT") {
+            parseChatActions(message.text)
+        } else {
+            Pair(message.text, emptyList())
+        }
+    }
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
         Column(
@@ -497,10 +592,31 @@ private fun RichChatBubble(
                         Spacer(modifier = Modifier.height(4.dp))
                     }
 
-                    Text(text = message.text, color = textColor, fontSize = 13.sp, lineHeight = 18.sp)
+                    if (isThinking) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF8B5CF6)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = displayText,
+                                color = textColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 18.sp
+                            )
+                        }
+                    } else {
+                        Text(text = displayText, color = textColor, fontSize = 13.sp, lineHeight = 18.sp)
+                    }
 
                     // Inline translation
-                    if (message.translatedText != null) {
+                    if (message.translatedText != null && !isThinking) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = textColor.copy(alpha = 0.2f))
                         Text(
                             text = message.translatedText,
@@ -509,6 +625,8 @@ private fun RichChatBubble(
                             fontWeight = FontWeight.Medium
                         )
                     }
+
+
 
                     // Timestamp and Ticks row
                     Row(
@@ -533,8 +651,47 @@ private fun RichChatBubble(
                 }
             }
 
+            // Interactive Action Buttons for Bot Responses
+            if (actions.isNotEmpty() && !isThinking) {
+                Spacer(modifier = Modifier.height(6.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                ) {
+                    actions.forEach { action ->
+                        Surface(
+                            onClick = { onActionClick(action.type) },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                            tonalElevation = 2.dp
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = action.icon,
+                                    contentDescription = action.label,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = action.label,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Translation action trigger
-            if (!message.isMe && message.translatedText == null) {
+            if (!message.isMe && message.translatedText == null && !isThinking) {
                 TextButton(
                     onClick = onTranslate,
                     enabled = !message.isTranslating,

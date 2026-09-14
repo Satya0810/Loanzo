@@ -12,6 +12,7 @@ import javax.inject.Inject
 
 data class DashboardUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val user: UserEntity? = null,
     val loansAsBorrower: List<LoanEntity> = emptyList(),
     val loansAsLender: List<LoanEntity> = emptyList(),
@@ -54,6 +55,9 @@ class DashboardViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false) }
                     return@collectLatest
                 }
+
+                // Start real-time cloud sync for user loans (both as borrower and lender)
+                loanRepository.startRealtimeUserLoansSync(userId, viewModelScope)
 
                 // Observe UserEntity continuously
                 launch {
@@ -123,5 +127,31 @@ class DashboardViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun refreshDashboard() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            try {
+                val uid = userRepository.getCurrentUserIdSync()
+                if (!uid.isNullOrBlank()) {
+                    loanRepository.startRealtimeUserLoansSync(uid, viewModelScope)
+                    val cachedUser = userRepository.getUserById(uid)
+                    if (cachedUser != null) {
+                        _uiState.update { it.copy(user = cachedUser) }
+                    }
+                }
+                kotlinx.coroutines.delay(650)
+            } catch (e: Exception) {
+                android.util.Log.w("DashboardViewModel", "Refresh failed: ${e.message}")
+            } finally {
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        loanRepository.stopRealtimeUserLoansSync()
     }
 }

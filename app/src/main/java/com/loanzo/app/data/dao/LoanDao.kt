@@ -9,6 +9,9 @@ interface LoanDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLoan(loan: LoanEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLoans(loans: List<LoanEntity>)
+
     @Update
     suspend fun updateLoan(loan: LoanEntity)
 
@@ -38,4 +41,7 @@ interface LoanDao {
 
     @Delete
     suspend fun deleteLoan(loan: LoanEntity)
+
+    @Query("DELETE FROM loans WHERE loanId LIKE 'demo_%' OR loanId LIKE 'loan_demo_%'")
+    suspend fun deleteDemoLoans()
 }

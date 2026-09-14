@@ -19,7 +19,8 @@ class DemoDataSeeder @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: LoanzoDatabase,
     private val userRepository: UserRepository,
-    private val telegramManager: TelegramManager
+    private val telegramManager: TelegramManager,
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
 ) {
     companion object {
         private const val TAG = "DemoDataSeeder"
@@ -58,86 +59,22 @@ class DemoDataSeeder @Inject constructor(
      * Seeds comprehensive demo data for the specified active user across Member, Agent, and Admin roles.
      */
     suspend fun seedAllDemoData(currentUserId: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val now = System.currentTimeMillis()
-            val oneDayMs = 86_400_000L
+        Result.success("Demo seeding disabled.")
+    }
 
-            // 1. Upgrade current user to Fully Verified KYC, Bank Account & preserve active role
-            val currentUser = database.userDao().getUserById(currentUserId)
-            if (currentUser != null) {
-                val isAgent = currentUser.role.uppercase() == "AGENT"
-                val verifiedUser = currentUser.copy(
-                    kycStatus = "VERIFIED",
-                    aadhaarVerified = true,
-                    panVerified = true,
-                    bankVerified = true,
-                    bankAccountNumber = currentUser.bankAccountNumber.ifBlank { "5010049281928" },
-                    bankIfsc = currentUser.bankIfsc.ifBlank { "HDFC0001234" },
-                    panNumber = currentUser.panNumber.ifBlank { "ABCDE1234F" },
-                    aadhaarNumber = currentUser.aadhaarNumber.ifBlank { "9876 5432 1098" },
-                    role = currentUser.role,
-                    agentStatus = if (isAgent) "APPROVED" else currentUser.agentStatus,
-                    isOnDuty = if (isAgent) true else currentUser.isOnDuty,
-                    totalAgentEarnings = if (isAgent) {
-                        if (currentUser.totalAgentEarnings > 0.0) currentUser.totalAgentEarnings else 4250.0
-                    } else {
-                        currentUser.totalAgentEarnings
-                    }
-                )
-                database.userDao().updateUser(verifiedUser)
-            }
-
-            // 2. Seed all global counterparties, platform loans, and role records
-            seedGlobalEntities(currentUserId, now, oneDayMs)
-
-            // 3. Mark demo quest completed
-            userRepository.markQuestStepDone(UserRepository.QUEST_DEMO_SEEDED)
-
-            // 4. Send Telegram notification to admin
-            try {
-                telegramManager.sendAdminAlert(
-                    """
-                    <b>Demo Data Seeded Successfully</b>
-
-                    <b>Users:</b> 10 (Admin, Agent, Member, Counterparties)
-                    <b>Loans:</b> 6 (3 Active, 1 Closed, 2 Platform)
-                    <b>Repayments:</b> 14 EMIs (10 Paid, 2 Scheduled, 1 Overdue, 1 Partial)
-                    <b>Disbursements:</b> 5 verified transactions
-                    <b>Guarantors:</b> 2 (Nirmala Devi, Vikram Malhotra)
-                    <b>Marketplace:</b> 3 posts with co-borrowers + 5 vouchers
-                    <b>Agent Visits:</b> 3 (1 Completed, 1 Scheduled, 1 Rescheduled)
-                    <b>Complaints:</b> 3 | Mediations: 2
-                    <b>Vault Documents:</b> 6 | NOC: 1
-                    <b>Support Tickets:</b> 5 (1 Open, 1 Scheduled, 2 Resolved, 1 Escalated)
-                    <b>Notifications:</b> 10 lifecycle alerts
-                    <b>Audit Trail:</b> 8 events
-
-                    Seeded by: <code>${currentUserId}</code>
-                    """.trimIndent()
-                )
-            } catch (e: Exception) {
-                Log.w(TAG, "Telegram notification failed (non-blocking): ${e.message}")
-            }
-
-            Result.success("Demo data successfully pushed across Member, Field Agent, and Master Admin views!")
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend fun seedGlobalDemoData(): Result<String> = withContext(Dispatchers.IO) {
+        Result.success("Global demo seeding disabled.")
     }
 
     /**
-     * Seeds baseline demo data on app startup so that whether the user logs in as
-     * Member, Field Agent, or Master Admin, all role-specific views are pre-populated.
+     * Seeds real operational accounts & active interconnected data for:
+     * - kumar (Member / Borrower, pass: Manish@0810)
+     * - prince25 (Member / Borrower, pass: 1234567890)
+     * - abhisi (Field Agent, pass: Satyam@0810)
+     * - satyam0810 (Platform Admin & Lender, pass: Satyam@0810)
      */
-    suspend fun seedGlobalDemoData(): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val now = System.currentTimeMillis()
-            val oneDayMs = 86_400_000L
-            seedGlobalEntities(currentUserId = null, now = now, oneDayMs = oneDayMs)
-            Result.success("Global demo data initialized successfully.")
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend fun seedPredefinedAccountsAndData(): Result<String> = withContext(Dispatchers.IO) {
+        Result.success("Demo seeding disabled.")
     }
 
     private suspend fun seedGlobalEntities(currentUserId: String?, now: Long, oneDayMs: Long) {
@@ -1953,17 +1890,19 @@ class DemoDataSeeder @Inject constructor(
             database.adminRequestDao().deleteDemoRequests()
 
             // 5. Delete demo notifications
-            for (i in 1..10) {
+            database.notificationDao().deleteDemoNotifications()
+            for (i in 1..20) {
                 database.notificationDao().deleteNotification("notif_demo_$i")
             }
 
             // 6. Delete demo audit events
-            for (i in 1..8) {
+            database.auditEventDao().deleteDemoEvents()
+            for (i in 1..20) {
                 try { database.auditEventDao().deleteEvent("audit_demo_$i") } catch (_: Exception) {}
             }
 
             // 7. Delete demo vault documents
-            for (i in 1..6) {
+            for (i in 1..20) {
                 try { database.vaultDocumentDao().deleteDocument("vault_doc_demo_$i") } catch (_: Exception) {}
             }
             try {
@@ -1981,10 +1920,10 @@ class DemoDataSeeder @Inject constructor(
                 }
             } catch (_: Exception) {}
 
-            // 8. Delete demo marketplace posts
-            database.marketplaceDao().deletePost("post_demo_offer_1")
-            database.marketplaceDao().deletePost("post_demo_req_1")
-            database.marketplaceDao().deletePost("post_demo_offer_2")
+            // 8. Delete demo marketplace posts, bids, and vouches
+            database.marketplaceDao().deleteDemoPosts()
+            database.marketplaceDao().deleteDemoBids()
+            database.marketplaceDao().deleteDemoVouches()
 
             // 9. Delete demo disbursements
             val disbIds = listOf("disb_demo_lent_1", "disb_demo_borrowed_1", "disb_demo_closed_1", "disb_demo_platform1_1", "disb_demo_platform2_1")
@@ -2008,31 +1947,8 @@ class DemoDataSeeder @Inject constructor(
             }
 
             // 12. Delete demo repayments & loans
-            val repayIds = listOf(
-                "repay_demo_lent_1", "repay_demo_lent_2",
-                "repay_demo_borrowed_1", "repay_demo_borrowed_2", "repay_demo_borrowed_3",
-                "repay_demo_platform_1", "repay_demo_platform_1b",
-                "repay_demo_platform2_1", "repay_demo_platform2_2", "repay_demo_platform2_3",
-                "repay_demo_platform3_1", "repay_demo_platform3_2",
-                "repay_demo_closed_1", "repay_demo_closed_2"
-            )
-            repayIds.forEach { id ->
-                database.repaymentDao().deleteRepayment(
-                    RepaymentEntity(id, "", 0.0, "", "", 0L, null, 0.0, 0.0, 0.0)
-                )
-            }
-
-            listOf(
-                DEMO_LOAN_LENT_ID,
-                DEMO_LOAN_BORROWED_ID,
-                DEMO_LOAN_CLOSED_ID,
-                DEMO_LOAN_PLATFORM_1,
-                DEMO_LOAN_PLATFORM_2,
-                DEMO_LOAN_PLATFORM_3
-            ).forEach { loanId ->
-                val loan = database.loanDao().getLoanById(loanId)
-                if (loan != null) database.loanDao().deleteLoan(loan)
-            }
+            database.repaymentDao().deleteDemoRepayments()
+            database.loanDao().deleteDemoLoans()
 
             // 13. Clear admin hub, visits & tickets
             database.complaintDao().deleteDemoComplaints()

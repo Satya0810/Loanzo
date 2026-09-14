@@ -25,6 +25,7 @@ class SyncWorker(
     interface SyncWorkerEntryPoint {
         fun syncQueueDao(): SyncQueueDao
         fun firebaseSyncManager(): com.loanzo.app.data.firebase.FirebaseSyncManager
+        fun firebaseManager(): com.loanzo.app.data.firebase.FirebaseManager
     }
 
     companion object {
@@ -40,6 +41,7 @@ class SyncWorker(
         )
         val syncQueueDao = entryPoint.syncQueueDao()
         val firebaseSyncManager = entryPoint.firebaseSyncManager()
+        val firebaseManager = entryPoint.firebaseManager()
         
         val pendingItems = syncQueueDao.getPendingSyncs()
 
@@ -47,6 +49,9 @@ class SyncWorker(
             Log.d(TAG, "No pending items to sync.")
             return Result.success()
         }
+
+        // Ensure active authenticated session so Firestore security rules pass
+        firebaseManager.ensureFirebaseAuthSession()
 
         var hasFailures = false
 

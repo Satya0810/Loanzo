@@ -29,19 +29,25 @@ class FcmSender {
     }
 
     /**
-     * Reads the service account json from res/raw/firebase_service_account
+     * Reads the service account json from res/raw/firebase_service_account if present
      * and generates an OAuth2 Bearer token required for the FCM v1 API.
+     * In production, push notifications should be dispatched by the backend server.
      */
     private suspend fun getAccessToken(context: Context): String? = withContext(Dispatchers.IO) {
         try {
-            val inputStream = context.resources.openRawResource(R.raw.firebase_service_account)
+            val resId = context.resources.getIdentifier("firebase_service_account", "raw", context.packageName)
+            if (resId == 0) {
+                Log.w(TAG, "firebase_service_account.json is not bundled in client APK (secure mode). Push dispatch handled by backend.")
+                return@withContext null
+            }
+            val inputStream = context.resources.openRawResource(resId)
             val googleCredentials = GoogleCredentials.fromStream(inputStream)
                 .createScoped(listOf("https://www.googleapis.com/auth/firebase.messaging"))
             
             googleCredentials.refreshIfExpired()
             return@withContext googleCredentials.accessToken.tokenValue
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to generate access token. Ensure res/raw/firebase_service_account.json exists.", e)
+            Log.e(TAG, "Failed to generate FCM access token from service account.", e)
             null
         }
     }

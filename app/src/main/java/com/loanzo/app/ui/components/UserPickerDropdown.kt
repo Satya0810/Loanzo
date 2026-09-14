@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,143 +33,7 @@ import com.loanzo.app.ui.theme.*
 /**
  * Standard candidate users fallback in case offline repository is syncing.
  */
-val DEFAULT_DEMO_CANDIDATE_USERS = listOf(
-    UserEntity(
-        userId = "demo_lender_priya",
-        name = "Priya Patel",
-        email = "priya.patel@loanzo.app",
-        phone = "+91 91234 56789",
-        username = "priya_invest",
-        role = "LENDER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_vikram_malhotra",
-        name = "Vikram Malhotra",
-        email = "vikram.investor@loanzo.app",
-        phone = "+91 98333 44556",
-        username = "vikram_angel",
-        role = "LENDER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_rajesh_gupta",
-        name = "Rajesh Gupta",
-        email = "rajesh.gupta@loanzo.app",
-        phone = "+91 98999 88776",
-        username = "rajesh_capital",
-        role = "LENDER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_borrower_rahul",
-        name = "Rahul Sharma",
-        email = "rahul.sharma@loanzo.app",
-        phone = "+91 98765 43210",
-        username = "rahul_sharma",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_sneha_roy",
-        name = "Sneha Roy",
-        email = "sneha.clinic@loanzo.app",
-        phone = "+91 98111 22334",
-        username = "sneha_roy",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_amit_verma",
-        name = "Amit Verma",
-        email = "amit.agri@loanzo.app",
-        phone = "+91 98444 55667",
-        username = "amit_verma",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_coborrower_rohan",
-        name = "Dr. Rohan Patil",
-        email = "rohan.patil@demo.loanzo.app",
-        phone = "+91 98765 88990",
-        username = "dr_rohan_patil",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_guarantor_nirmala",
-        name = "Nirmala Devi",
-        email = "nirmala.devi@demo.loanzo.app",
-        phone = "+91 99100 33445",
-        username = "nirmala_devi",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_meera_sen",
-        name = "Meera Sen",
-        email = "meera.sen@demo.loanzo.app",
-        phone = "+91 98301 44552",
-        username = "meera_sen",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_kunal_rawat",
-        name = "Kunal Rawat",
-        email = "kunal.rawat@demo.loanzo.app",
-        phone = "+91 98441 77221",
-        username = "kunal_rawat",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_alok_trivedi",
-        name = "Alok Trivedi",
-        email = "alok.trivedi@demo.loanzo.app",
-        phone = "+91 98122 33445",
-        username = "alok_trivedi",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_user_arjun",
-        name = "Arjun Mehta",
-        email = "arjun.mehta@demo.loanzo.app",
-        phone = "+91 98765 12340",
-        username = "arjun_mehta",
-        role = "BORROWER",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_agent_abhisi",
-        name = "Abhisi (Field Agent)",
-        email = "abhisi@loanzo.app",
-        phone = "+91 98100 12345",
-        username = "abhisi",
-        role = "AGENT",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_agent_sunil",
-        name = "Sunil Patil (Field Officer 2)",
-        email = "sunil.agent@loanzo.app",
-        phone = "+91 98200 54321",
-        username = "agent_sunil",
-        role = "AGENT",
-        kycStatus = "VERIFIED"
-    ),
-    UserEntity(
-        userId = "demo_admin_satyam",
-        name = "Satyam Kumar (Admin)",
-        email = "satyam@loanzo.app",
-        phone = "+91 70615 59039",
-        username = "satyam0810",
-        role = "ADMIN",
-        kycStatus = "VERIFIED"
-    )
-)
+val DEFAULT_DEMO_CANDIDATE_USERS: List<UserEntity> = emptyList()
 
 /**
  * Reusable, searchable dropdown / scroll-down user picker.
@@ -200,7 +65,7 @@ fun UserPickerDropdown(
     }
 
     val allUsers = remember(candidateUsers, onlineUsers) {
-        val merged = (candidateUsers + onlineUsers + DEFAULT_DEMO_CANDIDATE_USERS).distinctBy { it.userId }
+        val merged = (candidateUsers + onlineUsers).distinctBy { it.userId }
         merged
     }
 

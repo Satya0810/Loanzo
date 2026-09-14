@@ -16,11 +16,6 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideFirebaseFirestore(): FirebaseFirestore {
-        return try {
-            val app = com.google.firebase.FirebaseApp.getInstance()
-            FirebaseFirestore.getInstance(app, "default")
-        } catch (_: Exception) {
-            Firebase.firestore
-        }
+        return com.loanzo.app.data.firebase.FirestoreProvider.get()
     }
 }

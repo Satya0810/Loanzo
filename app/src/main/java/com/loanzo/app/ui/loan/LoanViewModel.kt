@@ -80,11 +80,40 @@ class LoanViewModel @Inject constructor(
     private val telegramManager: com.loanzo.app.util.TelegramManager,
     private val marketplaceRepository: com.loanzo.app.data.repository.MarketplaceRepository,
     private val agentRepository: com.loanzo.app.data.repository.AgentRepository,
-    private val mediationMeetingDao: com.loanzo.app.data.dao.MediationMeetingDao
+    private val mediationMeetingDao: com.loanzo.app.data.dao.MediationMeetingDao,
+    private val multiAiRaceEngine: com.loanzo.app.data.ai.MultiAiRaceEngine? = null
 ) : ViewModel() {
+
+    suspend fun simplifyAgreementClause(clauseText: String): com.loanzo.app.data.ai.AiRaceResult {
+        return multiAiRaceEngine?.simplifyLegalAgreementResult(clauseText)
+            ?: com.loanzo.app.data.ai.AiRaceResult.Success(
+                providerName = "Offline Legal Rulebook",
+                providerType = "OFFLINE",
+                content = "• Repayment: Mandatory fixed-schedule debt service with zero compound penalties.\n• Grace Window: 3-day statutory waiver prior to any late fee assessment.\n• Legal Enforceability: Valid promissory obligation under Section 4 Negotiable Instruments Act.",
+                latencyMs = 0L,
+                modelUsed = "offline-legal-v1"
+            )
+    }
 
     private val _uiState = MutableStateFlow(LoanUiState())
     val uiState: StateFlow<LoanUiState> = _uiState.asStateFlow()
+
+    private val firestore get() = com.loanzo.app.data.firebase.FirestoreProvider.get()
+
+    private fun notificationToMap(notif: com.loanzo.app.data.entity.NotificationEntity): Map<String, Any?> {
+        return hashMapOf(
+            "notificationId" to notif.notificationId,
+            "userId" to notif.userId,
+            "title" to notif.title,
+            "message" to notif.message,
+            "type" to notif.type,
+            "relatedLoanId" to notif.relatedLoanId,
+            "actionRoute" to notif.actionRoute,
+            "dayKey" to notif.dayKey,
+            "timestamp" to notif.timestamp,
+            "isRead" to notif.isRead
+        )
+    }
 
     fun loadLoans() {
         viewModelScope.launch {
@@ -93,6 +122,11 @@ class LoanViewModel @Inject constructor(
             if (userId.isNullOrBlank()) {
                 _uiState.update { it.copy(isLoading = false, loans = emptyList()) }
                 return@launch
+            }
+            // Trigger automatic cloud sync to restore all user loans into Room
+            launch(kotlinx.coroutines.Dispatchers.IO) {
+                loanRepository.syncUserLoansFromCloud(userId)
+                loanRepository.startRealtimeUserLoansSync(userId, this)
             }
             loanRepository.getAllLoansForUser(userId).collect { loans ->
                 _uiState.update { it.copy(isLoading = false, loans = loans) }
@@ -124,7 +158,7 @@ class LoanViewModel @Inject constructor(
                 timestamp = System.currentTimeMillis()
             )
             try {
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                firestore
                     .collection("notifications")
                     .document(notif.notificationId)
                     .set(notif)
@@ -139,6 +173,8 @@ class LoanViewModel @Inject constructor(
     fun loadLoanDetail(loanId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+            // Fetch directly from Cloud Firestore in case this device hasn't cached it yet (e.g. counterparty / notification open)
+            loanRepository.fetchAndSyncLoanById(loanId)
             loanRepository.observeLoan(loanId).collect { loan ->
                 _uiState.update { state ->
                     val schedule = if (loan != null) buildAmortizationSchedule(loan, state.repayments) else emptyList()
@@ -392,10 +428,10 @@ class LoanViewModel @Inject constructor(
 
                 // Push to Firestore so both parties have cloud records
                 try {
-                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    firestore
                         .collection("loans")
                         .document(loan.loanId)
-                        .set(loan)
+                        .set(loanRepository.loanToFirestoreMap(loan), com.google.firebase.firestore.SetOptions.merge())
                 } catch (_: Exception) {}
 
                 // Bug #15: Notify counterparty in Firestore of loan creation/grant
@@ -412,10 +448,10 @@ class LoanViewModel @Inject constructor(
                             actionRoute = "loan_detail/${loan.loanId}",
                             timestamp = System.currentTimeMillis()
                         )
-                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        firestore
                             .collection("notifications")
                             .document(notif.notificationId)
-                            .set(notif)
+                            .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
                     }
                 } catch (_: Exception) {}
 
@@ -504,10 +540,10 @@ class LoanViewModel @Inject constructor(
                         actionRoute = "loan_detail/$loanId",
                         timestamp = System.currentTimeMillis()
                     )
-                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    firestore
                         .collection("notifications")
                         .document(notif.notificationId)
-                        .set(notif)
+                        .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
                 } catch (_: Exception) {}
             }
 
@@ -541,10 +577,10 @@ class LoanViewModel @Inject constructor(
                     actionRoute = "loan_detail/${disb.loanId}",
                     timestamp = System.currentTimeMillis()
                 )
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                firestore
                     .collection("notifications")
                     .document(notif.notificationId)
-                    .set(notif)
+                    .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
             } catch (_: Exception) {}
 
             _uiState.update { it.copy(message = "Tranche approved") }
@@ -571,10 +607,10 @@ class LoanViewModel @Inject constructor(
                         actionRoute = "loan_detail/${disb.loanId}",
                         timestamp = System.currentTimeMillis()
                     )
-                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    firestore
                         .collection("notifications")
                         .document(notif.notificationId)
-                        .set(notif)
+                        .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
                 } catch (_: Exception) {}
             }
 
@@ -608,9 +644,24 @@ class LoanViewModel @Inject constructor(
 
             // Sync to Firestore cloud for instant real-time delivery to counterparty
             try {
-                val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val firestore = firestore
+                val repaymentMap = hashMapOf<String, Any?>(
+                    "repaymentId" to repayment.repaymentId,
+                    "loanId" to repayment.loanId,
+                    "amount" to repayment.amount,
+                    "dueDate" to repayment.dueDate,
+                    "paidDate" to repayment.paidDate,
+                    "transactionRef" to repayment.transactionRef,
+                    "status" to repayment.status,
+                    "outstandingSnapshot" to repayment.outstandingSnapshot,
+                    "principalComponent" to repayment.principalComponent,
+                    "interestComponent" to repayment.interestComponent,
+                    "penalty" to repayment.penalty,
+                    "timestamp" to repayment.timestamp,
+                    "note" to repayment.note
+                )
                 firestore.collection("repayments").document(repayment.repaymentId)
-                    .set(repayment, com.google.firebase.firestore.SetOptions.merge())
+                    .set(repaymentMap, com.google.firebase.firestore.SetOptions.merge())
                 
                 val updatedLoan = loan.copy(
                     outstandingAmount = newOutstanding,
@@ -618,7 +669,7 @@ class LoanViewModel @Inject constructor(
                     closedAt = if (newOutstanding <= 0.0) System.currentTimeMillis() else null
                 )
                 firestore.collection("loans").document(loanId)
-                    .set(updatedLoan, com.google.firebase.firestore.SetOptions.merge())
+                    .set(loanRepository.loanToFirestoreMap(updatedLoan), com.google.firebase.firestore.SetOptions.merge())
 
                 // Bug #17: Send notification to counterparty with relatedLoanId and detail route
                 val counterpartyId = if (loan.borrowerId == userId) loan.lenderId else loan.borrowerId
@@ -633,7 +684,19 @@ class LoanViewModel @Inject constructor(
                         actionRoute = "loan_detail/$loanId",
                         timestamp = System.currentTimeMillis()
                     )
-                    firestore.collection("notifications").document(notif.notificationId).set(notif)
+                    val notifMap = hashMapOf(
+                        "notificationId" to notif.notificationId,
+                        "userId" to notif.userId,
+                        "title" to notif.title,
+                        "message" to notif.message,
+                        "type" to notif.type,
+                        "relatedLoanId" to notif.relatedLoanId,
+                        "actionRoute" to notif.actionRoute,
+                        "timestamp" to notif.timestamp,
+                        "isRead" to notif.isRead
+                    )
+                    firestore.collection("notifications").document(notif.notificationId)
+                        .set(notifMap, com.google.firebase.firestore.SetOptions.merge())
                 }
             } catch (e: Exception) {
                 android.util.Log.w("LoanViewModel", "Cloud repayment sync note: ${e.message}")
@@ -974,10 +1037,10 @@ class LoanViewModel @Inject constructor(
                         actionRoute = "loan_detail/$loanId",
                         timestamp = System.currentTimeMillis()
                     )
-                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    firestore
                         .collection("notifications")
                         .document(notif.notificationId)
-                        .set(notif)
+                        .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
                 } catch (_: Exception) {}
             }
 
@@ -1006,10 +1069,10 @@ class LoanViewModel @Inject constructor(
                             actionRoute = "loan_detail/$loanId",
                             timestamp = System.currentTimeMillis()
                         )
-                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        firestore
                             .collection("notifications")
                             .document(notif.notificationId)
-                            .set(notif)
+                            .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
                     } catch (_: Exception) {}
                 }
             }
@@ -1046,10 +1109,10 @@ class LoanViewModel @Inject constructor(
 
             loanRepository.updateLoan(updated, userId, logMessage)
             try {
-                val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val firestore = firestore
                 firestore.collection("loans")
                     .document(loan.loanId)
-                    .set(updated, com.google.firebase.firestore.SetOptions.merge())
+                    .set(loanRepository.loanToFirestoreMap(updated), com.google.firebase.firestore.SetOptions.merge())
 
                 // Bug #15: Bilateral agreement signing notifications
                 if (isFullySigned) {
@@ -1073,8 +1136,20 @@ class LoanViewModel @Inject constructor(
                         actionRoute = "loan_detail/${loan.loanId}",
                         timestamp = System.currentTimeMillis()
                     )
-                    firestore.collection("notifications").document(notifB.notificationId).set(notifB)
-                    firestore.collection("notifications").document(notifL.notificationId).set(notifL)
+                    val notifBMap = hashMapOf(
+                        "notificationId" to notifB.notificationId, "userId" to notifB.userId,
+                        "title" to notifB.title, "message" to notifB.message,
+                        "type" to notifB.type, "relatedLoanId" to notifB.relatedLoanId,
+                        "actionRoute" to notifB.actionRoute, "timestamp" to notifB.timestamp, "isRead" to notifB.isRead
+                    )
+                    val notifLMap = hashMapOf(
+                        "notificationId" to notifL.notificationId, "userId" to notifL.userId,
+                        "title" to notifL.title, "message" to notifL.message,
+                        "type" to notifL.type, "relatedLoanId" to notifL.relatedLoanId,
+                        "actionRoute" to notifL.actionRoute, "timestamp" to notifL.timestamp, "isRead" to notifL.isRead
+                    )
+                    firestore.collection("notifications").document(notifB.notificationId).set(notifBMap, com.google.firebase.firestore.SetOptions.merge())
+                    firestore.collection("notifications").document(notifL.notificationId).set(notifLMap, com.google.firebase.firestore.SetOptions.merge())
                 } else {
                     val pendingPartyId = if (isLenderSigning) loan.borrowerId else loan.lenderId
                     val signerRole = if (isLenderSigning) "Lender" else "Borrower"
@@ -1088,7 +1163,13 @@ class LoanViewModel @Inject constructor(
                         actionRoute = "agreement_signing/${loan.loanId}",
                         timestamp = System.currentTimeMillis()
                     )
-                    firestore.collection("notifications").document(notifPending.notificationId).set(notifPending)
+                    val notifPMap = hashMapOf(
+                        "notificationId" to notifPending.notificationId, "userId" to notifPending.userId,
+                        "title" to notifPending.title, "message" to notifPending.message,
+                        "type" to notifPending.type, "relatedLoanId" to notifPending.relatedLoanId,
+                        "actionRoute" to notifPending.actionRoute, "timestamp" to notifPending.timestamp, "isRead" to notifPending.isRead
+                    )
+                    firestore.collection("notifications").document(notifPending.notificationId).set(notifPMap, com.google.firebase.firestore.SetOptions.merge())
                 }
             } catch (_: Exception) {}
 
@@ -1138,10 +1219,10 @@ class LoanViewModel @Inject constructor(
                         actionRoute = "loan_detail/$loanId",
                         timestamp = System.currentTimeMillis()
                     )
-                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    firestore
                         .collection("notifications")
                         .document(notif.notificationId)
-                        .set(notif)
+                        .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
                 } catch (_: Exception) {}
             }
 

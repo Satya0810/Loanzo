@@ -41,10 +41,16 @@ class SplashWarmupCoordinator @Inject constructor(
     private val userDao: UserDao,
     private val loanDao: LoanDao,
     private val notificationDao: NotificationDao,
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager,
     @ApplicationContext private val context: Context
 ) {
     suspend fun executeParallelWarmup(): WarmupResult = withContext(Dispatchers.IO) {
         try {
+            // Stage 0: Ensure active Firebase Auth session for cloud sync & security rules
+            try {
+                firebaseManager.ensureFirebaseAuthSession()
+            } catch (_: Exception) {}
+
             // Stage 1: Fast Session & Identity Inspection
             val isLoggedIn = userRepository.isLoggedIn().first()
             val userId = userRepository.getCurrentUserIdSync()

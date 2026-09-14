@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.launch
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +41,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.loanzo.app.ui.components.SegmentedCapsuleTab
 import com.loanzo.app.ui.components.UserPickerDropdown
-import com.loanzo.app.ui.components.DEFAULT_DEMO_CANDIDATE_USERS
 import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.calculateEMI
 import java.text.NumberFormat
@@ -94,6 +95,7 @@ fun CreateMarketplacePostScreen(
     initialMode: String = "OFFER_TO_LEND",
     isKycCompleted: Boolean = true,
     onNavigateToKyc: () -> Unit = {},
+    onEnhancePitch: (suspend (draft: String, category: String, amount: Double, tenure: Int) -> com.loanzo.app.data.ai.AiRaceResult)? = null,
     onPublish: (
         title: String,
         description: String,
@@ -111,7 +113,11 @@ fun CreateMarketplacePostScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
+
+    var isEnhancingPitch by remember { mutableStateOf(false) }
+    var pitchAiWinnerBadge by remember { mutableStateOf<String?>(null) }
 
     var postType by remember { mutableStateOf(if (initialMode == "SEEKING_LOAN") "SEEKING_LOAN" else "OFFER_TO_LEND") }
     val isLenderOffer = postType == "OFFER_TO_LEND"
@@ -300,10 +306,74 @@ fun CreateMarketplacePostScreen(
 
             Spacer(modifier = Modifier.height(6.dp))
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Detailed Narrative & Terms *",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (onEnhancePitch != null) {
+                    FilledTonalButton(
+                        onClick = {
+                            if (!isEnhancingPitch) {
+                                coroutineScope.launch {
+                                    isEnhancingPitch = true
+                                    val draft = description.ifBlank { title.ifBlank { "Loan request for $selectedCategory" } }
+                                    val result = onEnhancePitch(draft, selectedCategory, parsedMax, selectedTenure)
+                                    when (result) {
+                                        is com.loanzo.app.data.ai.AiRaceResult.Success -> {
+                                            description = result.content
+                                            pitchAiWinnerBadge = "⚡ Enhanced via ${result.providerName} in ${result.latencyMs}ms"
+                                        }
+                                        is com.loanzo.app.data.ai.AiRaceResult.Failure -> {
+                                            description = result.fallbackContent
+                                            pitchAiWinnerBadge = "ℹ️ Offline Heuristic Rulebook"
+                                        }
+                                    }
+                                    isEnhancingPitch = false
+                                }
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = accentColor.copy(alpha = 0.15f),
+                            contentColor = secondaryAccent
+                        ),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        if (isEnhancingPitch) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                strokeWidth = 2.dp,
+                                color = secondaryAccent
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Enhancing with AI...", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = "AI Enhance",
+                                modifier = Modifier.size(14.dp),
+                                tint = secondaryAccent
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("✨ AI Enhance", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Detailed Narrative & Terms *") },
                 placeholder = {
                     Text(
                         if (isLenderOffer) "Describe your lending terms, preferred causes, and documentation required..."
@@ -327,6 +397,36 @@ fun CreateMarketplacePostScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            AnimatedVisibility(visible = pitchAiWinnerBadge != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Emerald500.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = pitchAiWinnerBadge ?: "",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Emerald500,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                    Text(
+                        text = "Dismiss",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clickable { pitchAiWinnerBadge = null }
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(18.dp))
 
@@ -858,7 +958,7 @@ fun CreateMarketplacePostScreen(
                             label = "Pick Registered Co-Borrower (Optional)",
                             placeholder = "Search @username or name e.g. Dr. Rohan Patil...",
                             preferredRole = "BORROWER",
-                            candidateUsers = DEFAULT_DEMO_CANDIDATE_USERS,
+                            candidateUsers = emptyList(),
                             onSearchOnline = { query -> userRepository.searchUsersOnline(query) }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
