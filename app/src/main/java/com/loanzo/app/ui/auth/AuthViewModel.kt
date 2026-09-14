@@ -708,19 +708,6 @@ class AuthViewModel @Inject constructor(
                     } catch (_: Exception) {}
                 }
 
-                // Pre-configured credentials verification
-                if (cleanUsername in listOf("kumar", "prince25", "abhisi", "satyam0810", "satyam_081", "satyam")) {
-                    val validPasswords = when (cleanUsername) {
-                        "kumar" -> listOf("Manish@0810", "password123")
-                        "prince25" -> listOf("1234567890", "password123")
-                        "abhisi" -> listOf("Satyam@0810", "password123")
-                        "satyam0810", "satyam_081", "satyam" -> listOf("Satyam@0810", "password123")
-                        else -> emptyList()
-                    }
-                    if (pass.trim() in validPasswords || isPasswordValid) {
-                        isPasswordValid = true
-                    }
-                }
 
                 if (isPasswordValid) {
                     var finalUser = user
@@ -1209,18 +1196,64 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    private fun isDemoAccount(id: String?): Boolean {
+        if (id.isNullOrBlank()) return false
+        val clean = id.trim().lowercase()
+        return clean.startsWith("demo_") || clean.startsWith("demo-") ||
+                clean in listOf("user_demo", "demo_user_arjun", "demo_lender_priya", "demo_borrower_rahul", "demo_agent_abhisi", "kumar", "prince25")
+    }
+
     /**
-     * Handles Biometric (Fingerprint/Face) login.
+     * Handles Biometric (Fingerprint/Face) login with strict user targeting and demo protection.
      */
-    fun handleBiometricLogin(selectedRole: String? = null) {
+    fun handleBiometricLogin(selectedRole: String? = null, targetUserId: String? = null) {
         val targetRole = selectedRole ?: _uiState.value.selectedRole
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val biometricUserId = userRepository.getBiometricUserIdSync() 
-                    ?: userRepository.getCurrentUserIdSync()
+                val rawEnrolledId = userRepository.getBiometricUserIdSync()
+                if (isDemoAccount(rawEnrolledId)) {
+                    userRepository.saveBiometricEnrollment("", false)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Stale demo biometric enrollment cleared. Please sign in with your account credentials."
+                        )
+                    }
+                    return@launch
+                }
 
-                if (biometricUserId == null) {
+                val biometricUserId: String? = if (!targetUserId.isNullOrBlank()) {
+                    val cleanTarget = targetUserId.trim().lowercase().removePrefix("@")
+                    val targetUser = userRepository.getUserByUsername(cleanTarget)
+                        ?: userRepository.getUserById(targetUserId.trim())
+                        ?: if (cleanTarget.contains("@")) userRepository.getUserByEmail(cleanTarget) else null
+                        ?: userRepository.getUserByPhone(cleanTarget)
+
+                    if (targetUser != null && (targetUser.userId == rawEnrolledId || targetUser.username.equals(rawEnrolledId, ignoreCase = true))) {
+                        targetUser.userId
+                    } else if (targetUser != null && rawEnrolledId.isNullOrBlank()) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Biometrics not enrolled for '@$cleanTarget'. Please sign in with password to enable biometrics."
+                            )
+                        }
+                        return@launch
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Enrolled biometric profile does not match '@$cleanTarget'. Please sign in with your password."
+                            )
+                        }
+                        return@launch
+                    }
+                } else {
+                    rawEnrolledId ?: userRepository.getCurrentUserIdSync()
+                }
+
+                if (biometricUserId.isNullOrBlank() || isDemoAccount(biometricUserId)) {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -1317,16 +1350,33 @@ class AuthViewModel @Inject constructor(
      * Checks whether a valid biometric profile is registered on this device.
      */
     fun checkBiometricEnrollment(
+        targetUserId: String? = null,
         onEnrolled: (userId: String) -> Unit,
         onNotEnrolled: () -> Unit
     ) {
         viewModelScope.launch {
             val enrolledUserId = userRepository.getBiometricUserIdSync()
             val isEnabled = userRepository.isBiometricEnabledSync()
+            if (isDemoAccount(enrolledUserId)) {
+                userRepository.saveBiometricEnrollment("", false)
+                onNotEnrolled()
+                return@launch
+            }
             if (isEnabled && !enrolledUserId.isNullOrBlank()) {
                 val user = userRepository.getUserById(enrolledUserId) 
                     ?: firebaseManager.fetchUserFromFirestore(enrolledUserId)
                 if (user != null) {
+                    if (!targetUserId.isNullOrBlank()) {
+                        val cleanTarget = targetUserId.trim().lowercase().removePrefix("@")
+                        val matches = user.userId.equals(cleanTarget, ignoreCase = true) ||
+                                      user.username.equals(cleanTarget, ignoreCase = true) ||
+                                      user.phone.replace(" ", "").contains(cleanTarget) ||
+                                      user.email.equals(cleanTarget, ignoreCase = true)
+                        if (!matches) {
+                            onNotEnrolled()
+                            return@launch
+                        }
+                    }
                     onEnrolled(enrolledUserId)
                     return@launch
                 }
@@ -1791,7 +1841,9 @@ class AuthViewModel @Inject constructor(
             try {
                 com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
             } catch (_: Exception) {}
-            // Do NOT clear biometric enrollment on logout so they can sign in with it next time
+            try {
+                userRepository.purgeDemoDataAndBiometrics()
+            } catch (_: Exception) {}
             userRepository.clearSession()
         }
     }

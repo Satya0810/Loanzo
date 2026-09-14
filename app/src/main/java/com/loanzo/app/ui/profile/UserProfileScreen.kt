@@ -3,6 +3,7 @@ package com.loanzo.app.ui.profile
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -292,31 +293,69 @@ fun UserProfileScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT 1: HERO IDENTITY HEADER
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun ProfileHeroCard(profile: UserProfileData) {
-    GlassCard(
-        modifier = Modifier.fillMaxWidth()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        tonalElevation = 2.dp
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Circular Avatar with Monogram
-            Surface(
-                shape = CircleShape,
-                color = Gold500.copy(alpha = 0.2f),
-                border = BorderStroke(2.dp, Gold500),
-                modifier = Modifier.size(68.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = profile.name.firstOrNull()?.uppercase() ?: "U",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Gold500
+            // Avatar with verified emblem
+            Box(contentAlignment = Alignment.BottomEnd) {
+                if (!profile.profilePhotoUri.isNullOrBlank()) {
+                    coil.compose.AsyncImage(
+                        model = profile.profilePhotoUri,
+                        contentDescription = profile.name,
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, BrandRoyalBlue, CircleShape)
                     )
+                } else {
+                    Surface(
+                        shape = CircleShape,
+                        color = BrandIceBlue,
+                        border = BorderStroke(2.dp, BrandIceBorder),
+                        modifier = Modifier.size(68.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = profile.name.take(2).uppercase().ifBlank { "U" },
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = BrandRoyalBlue
+                            )
+                        }
+                    }
+                }
+
+                if (profile.verificationStatus == UserVerificationStatus.VERIFIED) {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Emerald500)
+                            .border(2.dp, Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Verified Member",
+                            tint = Color.White,
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
                 }
             }
 
@@ -333,20 +372,6 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (profile.verificationStatus == UserVerificationStatus.VERIFIED) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Emerald400.copy(alpha = 0.2f),
-                            modifier = Modifier.size(20.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = "Verified",
-                                tint = Emerald400,
-                                modifier = Modifier.padding(3.dp)
-                            )
-                        }
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(2.dp))
@@ -354,24 +379,52 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                 Text(
                     text = "@${profile.username.removePrefix("@")}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = BrandRoyalBlue,
+                    fontWeight = FontWeight.SemiBold
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Role Pill
-                    val isLender = profile.role.uppercase() == "LENDER"
+                    val isLender = profile.role.uppercase() in listOf("LENDER", "INVESTOR")
+                    val isAgent = profile.role.uppercase() == "AGENT"
+                    val isOwner = profile.role.uppercase() == "ADMIN"
+
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isLender) Gold500.copy(alpha = 0.15f) else Emerald400.copy(alpha = 0.15f)
+                        color = when {
+                            isOwner -> GoldCoinCream
+                            isAgent -> EmeraldLight
+                            isLender -> GoldCoinCream
+                            else -> BrandIceBlue
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            when {
+                                isOwner -> GoldCoinBorder
+                                isAgent -> Emerald400.copy(alpha = 0.4f)
+                                isLender -> GoldCoinBorder
+                                else -> BrandIceBorder
+                            }
+                        )
                     ) {
                         Text(
-                            text = if (isLender) "CAPITAL PROVIDER" else "VERIFIED BORROWER",
-                            color = if (isLender) Gold500 else Emerald400,
+                            text = when {
+                                isOwner -> "PLATFORM ADMIN"
+                                isAgent -> "FIELD AGENT"
+                                isLender -> "CAPITAL PROVIDER"
+                                else -> "VERIFIED MEMBER"
+                            },
+                            color = when {
+                                isOwner -> GoldCoinAmber
+                                isAgent -> Emerald600
+                                isLender -> GoldCoinAmber
+                                else -> BrandRoyalBlue
+                            },
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -405,29 +458,29 @@ private fun VerificationStatusCard(status: UserVerificationStatus) {
     val (bgColor, borderColor, icon, title, subtitle) = when (status) {
         UserVerificationStatus.VERIFIED -> {
             Quint(
-                Emerald400.copy(alpha = 0.12f),
-                Emerald400.copy(alpha = 0.5f),
-                Icons.Default.Verified,
-                "Fully Verified Identity",
-                "Aadhaar, PAN & DigiLocker identity documents have been legally verified."
+                BrandIceBlue,
+                BrandIceBorder,
+                Icons.Default.VerifiedUser,
+                "Official Identity & Bank Verified",
+                "Authenticated with UIDAI Aadhaar, Income Tax PAN, and verified bank account."
             )
         }
         UserVerificationStatus.PARTIALLY_VERIFIED -> {
             Quint(
-                Gold500.copy(alpha = 0.12f),
-                Gold500.copy(alpha = 0.5f),
+                GoldCoinCream,
+                GoldCoinBorder,
                 Icons.Default.Pending,
-                "Partially Verified Member",
-                "Phone and basic KYC completed. DigiLocker attestation is recommended."
+                "Basic Verification Completed",
+                "Phone and KYC details on file. Complete DigiLocker linking for gold badge."
             )
         }
         UserVerificationStatus.NOT_VERIFIED -> {
             Quint(
-                Red400.copy(alpha = 0.12f),
-                Red400.copy(alpha = 0.5f),
+                RedLight,
+                Red400.copy(alpha = 0.4f),
                 Icons.Default.Warning,
-                "Identity Not Verified",
-                "User has not yet completed government identity verification."
+                "Verification Incomplete",
+                "User has not yet linked government-issued identity documents."
             )
         }
     }
@@ -444,12 +497,26 @@ private fun VerificationStatusCard(status: UserVerificationStatus) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (status == UserVerificationStatus.VERIFIED) Emerald400 else if (status == UserVerificationStatus.PARTIALLY_VERIFIED) Gold500 else Red400,
-                modifier = Modifier.size(32.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when (status) {
+                            UserVerificationStatus.VERIFIED -> BrandRoyalBlue
+                            UserVerificationStatus.PARTIALLY_VERIFIED -> GoldCoinAmber
+                            UserVerificationStatus.NOT_VERIFIED -> Red400
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
             Spacer(modifier = Modifier.width(14.dp))
             Column {
                 Text(
@@ -474,35 +541,55 @@ private fun VerificationStatusCard(status: UserVerificationStatus) {
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun TrustScoreGaugeCard(trustScore: Int, tier: String) {
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Security,
-                        contentDescription = null,
-                        tint = Gold500,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(GoldCoinCream),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = GoldCoinAmber,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Loanzo Trust Score",
+                        text = "Community Trust Standing",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Gold500.copy(alpha = 0.15f)
+                    color = if (trustScore >= 80) EmeraldLight else GoldCoinCream,
+                    border = BorderStroke(1.dp, if (trustScore >= 80) Emerald400.copy(alpha = 0.4f) else GoldCoinBorder)
                 ) {
                     Text(
-                        text = tier,
-                        color = Gold500,
+                        text = if (trustScore >= 85) "High Reliability" else if (trustScore >= 70) "Established" else "Standard",
+                        color = if (trustScore >= 80) Emerald600 else GoldCoinAmber,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -522,7 +609,7 @@ private fun TrustScoreGaugeCard(trustScore: Int, tier: String) {
                         text = "$trustScore",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = if (trustScore >= 85) Emerald400 else if (trustScore >= 70) Gold500 else Red400
+                        color = if (trustScore >= 85) Emerald500 else if (trustScore >= 70) GoldCoinAmber else Red400
                     )
                     Text(
                         text = " / 100",
@@ -533,14 +620,8 @@ private fun TrustScoreGaugeCard(trustScore: Int, tier: String) {
                     )
                 }
 
-                val percentile = when {
-                    trustScore >= 95 -> "Top 1% Borrower Rating"
-                    trustScore >= 90 -> "Top 5% Trust Percentile"
-                    trustScore >= 80 -> "Top 15% Platform Standard"
-                    else -> "Average Trust Tier"
-                }
                 Text(
-                    text = percentile,
+                    text = if (trustScore >= 85) "Excellent repayment standing" else "Normal community rating",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 4.dp)
@@ -556,14 +637,14 @@ private fun TrustScoreGaugeCard(trustScore: Int, tier: String) {
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp)),
-                color = if (trustScore >= 85) Emerald400 else if (trustScore >= 70) Gold500 else Red400,
+                color = if (trustScore >= 85) Emerald500 else if (trustScore >= 70) GoldCoinAmber else Red400,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Computed from database records: verified KYC, on-time repayments, completed contracts, and dispute history.",
+                text = "Based on verified repayments, fulfilled peer loan agreements, and community discipline.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -572,38 +653,50 @@ private fun TrustScoreGaugeCard(trustScore: Int, tier: String) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT 4: WHY IS THIS USER TRUSTWORTHY?
+// COMPONENT 4: COMMUNITY TRUST SIGNALS
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun WhyTrustworthySection(signals: List<WhyTrustworthySignal>) {
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Emerald400.copy(alpha = 0.15f),
-                    modifier = Modifier.size(28.dp)
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(BrandIceBlue),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Star,
                         contentDescription = null,
-                        tint = Emerald400,
-                        modifier = Modifier.padding(6.dp)
+                        tint = BrandRoyalBlue,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "Why is this user trustworthy?",
+                        text = "Community Trust Signals",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Objective verification & reputation signals to help make decisions",
+                        text = "Verified credentials and community track record",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -621,13 +714,13 @@ private fun WhyTrustworthySection(signals: List<WhyTrustworthySignal>) {
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = if (sig.isPassed) Emerald400.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if (sig.isPassed) EmeraldLight else MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.size(24.dp)
                     ) {
                         Icon(
                             imageVector = if (sig.isPassed) Icons.Default.Check else Icons.Default.Close,
                             contentDescription = null,
-                            tint = if (sig.isPassed) Emerald400 else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = if (sig.isPassed) Emerald600 else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(4.dp)
                         )
                     }
@@ -652,13 +745,14 @@ private fun WhyTrustworthySection(signals: List<WhyTrustworthySignal>) {
 
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = if (sig.isPassed) Emerald400.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
+                        color = if (sig.isPassed) EmeraldLight else MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(0.8.dp, if (sig.isPassed) Emerald400.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Text(
                             text = sig.badgeText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (sig.isPassed) Emerald400 else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (sig.isPassed) Emerald600 else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -676,51 +770,93 @@ private fun WhyTrustworthySection(signals: List<WhyTrustworthySignal>) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT 5: MULTI-FACTOR VERIFICATION AUDIT CHECKLIST
+// COMPONENT 5: IDENTITY & BANKING VERIFICATION
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun MultiFactorAuditCard(profile: UserProfileData) {
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "Verification Audit Checklist",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(BrandIceBlue),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Badge,
+                        contentDescription = null,
+                        tint = BrandRoyalBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Identity & Banking Verification",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Government ID credentials and banking status",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(14.dp))
 
             VerificationRow(
                 icon = Icons.Default.Phone,
-                title = "Phone Verification",
+                title = "Phone OTP Verified",
                 detail = profile.maskedPhone,
                 isVerified = profile.isPhoneVerified
             )
 
             VerificationRow(
                 icon = Icons.Default.Email,
-                title = "Email Verification",
+                title = "Email Address Verified",
                 detail = profile.maskedEmail,
                 isVerified = profile.isEmailVerified
             )
 
             VerificationRow(
                 icon = Icons.Default.Badge,
-                title = "Aadhaar & PAN Identity KYC",
-                detail = if (profile.isKycVerified) "Verified via UIDAI / NSDL" else "Pending submission",
+                title = "Aadhaar eKYC (UIDAI)",
+                detail = if (profile.isKycVerified) "Demographic & Aadhaar eKYC Match" else "Verification pending",
+                isVerified = profile.isKycVerified
+            )
+
+            VerificationRow(
+                icon = Icons.Default.CreditCard,
+                title = "PAN Card (Income Tax Dept)",
+                detail = if (profile.isKycVerified) "Taxpayer Record Validated" else "PAN verification pending",
                 isVerified = profile.isKycVerified
             )
 
             VerificationRow(
                 icon = Icons.Default.FolderShared,
                 title = "DigiLocker Attestation",
-                detail = profile.maskedDigiLockerId ?: "Not linked",
+                detail = if (profile.isDigiLockerVerified) (profile.maskedDigiLockerId ?: "Official Documents Linked") else "Optional linking",
                 isVerified = profile.isDigiLockerVerified
             )
 
             VerificationRow(
                 icon = Icons.Default.AccountBalance,
-                title = "Bank Account & UPI VPA",
-                detail = if (profile.isBankVerified) "Penny Drop Verified" else "Pending setup",
+                title = "Bank Account & UPI Handle",
+                detail = if (profile.isBankVerified) "Penny-Drop & Name Confirmed" else "Account setup pending",
                 isVerified = profile.isBankVerified
             )
         }
@@ -765,7 +901,8 @@ private fun VerificationRow(
 
         Surface(
             shape = RoundedCornerShape(6.dp),
-            color = if (isVerified) Emerald400.copy(alpha = 0.15f) else Red400.copy(alpha = 0.15f)
+            color = if (isVerified) EmeraldLight else RedLight,
+            border = BorderStroke(0.8.dp, if (isVerified) Emerald400.copy(alpha = 0.4f) else Red400.copy(alpha = 0.4f))
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -774,15 +911,15 @@ private fun VerificationRow(
                 Icon(
                     imageVector = if (isVerified) Icons.Default.CheckCircle else Icons.Default.Cancel,
                     contentDescription = null,
-                    tint = if (isVerified) Emerald400 else Red400,
+                    tint = if (isVerified) Emerald600 else Red400,
                     modifier = Modifier.size(12.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = if (isVerified) "Verified" else "Unverified",
+                    text = if (isVerified) "Verified" else "Pending",
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
-                    color = if (isVerified) Emerald400 else Red400
+                    color = if (isVerified) Emerald600 else Red400
                 )
             }
         }
@@ -790,18 +927,53 @@ private fun VerificationRow(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT 6: REPAYMENT & FINANCIAL HISTORY GRID
+// COMPONENT 6: CREDIT DISCIPLINE & REPAYMENT HISTORY
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun RepaymentHistoryGrid(profile: UserProfileData) {
     val rep = profile.repaymentSummary
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "Repayment & Financial History",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(EmeraldLight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.AccountBalanceWallet,
+                        contentDescription = null,
+                        tint = Emerald600,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Credit Discipline & Track Record",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Historical settlement record on peer contracts",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(14.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -823,17 +995,17 @@ private fun RepaymentHistoryGrid(profile: UserProfileData) {
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 MetricItemBox(
-                    label = "On-Time Repayment",
-                    value = "${String.format("%.1f", rep.onTimeRepaymentRate)}%",
+                    label = "On-Time Repayments",
+                    value = "${String.format("%.0f", rep.onTimeRepaymentRate)}%",
                     sub = "${rep.punctualEmisCount} EMIs on-time",
-                    valueColor = Emerald400,
+                    valueColor = Emerald500,
                     modifier = Modifier.weight(1f)
                 )
                 MetricItemBox(
-                    label = "Defaults",
+                    label = "Legal Defaults",
                     value = "${rep.defaultsCount}",
                     sub = if (rep.defaultsCount == 0) "Clean record" else "Overdue contracts",
-                    valueColor = if (rep.defaultsCount == 0) Emerald400 else Red400,
+                    valueColor = if (rep.defaultsCount == 0) Emerald500 else Red400,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -927,7 +1099,7 @@ private fun ProfileActionsSection(
                 Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Connect / Chat with ${profile.name.split(" ").firstOrNull() ?: "Member"}",
+                    text = "Message / Chat with ${profile.name.split(" ").firstOrNull() ?: "Member"}",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
@@ -945,7 +1117,7 @@ private fun ProfileActionsSection(
                 ) {
                     Icon(Icons.Default.ReportProblem, null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Report User", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text("Report Member", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 }
 
                 OutlinedButton(

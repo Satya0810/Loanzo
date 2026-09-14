@@ -39,7 +39,7 @@ interface UserDao {
     @Delete
     suspend fun deleteUser(user: UserEntity)
 
-    @Query("DELETE FROM users WHERE userId LIKE 'demo_%' OR userId LIKE 'demo-%' OR userId = 'user_demo' OR username LIKE 'demo_%'")
+    @Query("DELETE FROM users WHERE userId LIKE 'demo_%' OR userId LIKE 'demo-%' OR userId = 'user_demo' OR username LIKE 'demo_%' OR userId IN ('kumar', 'prince25', 'demo_user_arjun', 'demo_lender_priya', 'demo_borrower_rahul') OR username IN ('kumar', 'prince25', 'user_demo')")
     suspend fun deleteDemoUsers()
 
     @Query("DELETE FROM users WHERE userId = :userId")

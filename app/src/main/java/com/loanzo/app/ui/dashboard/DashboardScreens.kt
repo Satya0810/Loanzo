@@ -96,9 +96,11 @@ fun DashboardScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToAgentCockpit: () -> Unit = {},
     onPushDemoData: () -> Unit = {},
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     var isMenuExpanded by remember { mutableStateOf(false) }
+    var showLogoutConfirmation by remember { mutableStateOf(false) }
     var showChatSheet by remember { mutableStateOf(false) }
     var showReportSheet by remember { mutableStateOf(false) }
     var selectedPostForBid by remember { mutableStateOf<MarketplacePostEntity?>(null) }
@@ -417,6 +419,25 @@ fun DashboardScreen(
                                                     onClick = {
                                                         isMenuExpanded = false
                                                         onNavigateToSupport()
+                                                    }
+                                                )
+
+                                                HorizontalDivider(
+                                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                    thickness = 0.5.dp,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                                )
+
+                                                // Option 5: Log Out
+                                                DashboardMenuRow(
+                                                    icon = Icons.Default.Logout,
+                                                    iconTint = Red400,
+                                                    iconBg = Red400.copy(alpha = 0.12f),
+                                                    title = "Log Out",
+                                                    subtitle = "Securely sign out of this device",
+                                                    onClick = {
+                                                        isMenuExpanded = false
+                                                        showLogoutConfirmation = true
                                                     }
                                                 )
                                             }
@@ -1539,6 +1560,56 @@ fun DashboardScreen(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { isMenuExpanded = false }
+        )
+    }
+
+    if (showLogoutConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirmation = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Logout,
+                    contentDescription = null,
+                    tint = Red400,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Confirm Sign Out",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to log out? Your active session on this device will be securely terminated.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutConfirmation = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Red400,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Log Out", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirmation = false }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(18.dp)
         )
     }
 

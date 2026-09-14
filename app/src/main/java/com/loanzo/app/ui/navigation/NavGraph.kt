@@ -445,12 +445,13 @@ fun LoanzoNavGraph(
                     val fragmentActivity = activity
                     fragmentActivity?.let { fa ->
                         authViewModel.checkBiometricEnrollment(
+                            targetUserId = currentTypedUser,
                             onEnrolled = { _ ->
                                 com.loanzo.app.util.BiometricAuthManager.authenticate(
                                     activity = fa,
                                     title = "Biometric Login",
                                     subtitle = "Scan fingerprint or face to sign in as $role",
-                                    onSuccess = { authViewModel.handleBiometricLogin(role) },
+                                    onSuccess = { authViewModel.handleBiometricLogin(role, currentTypedUser) },
                                     onError = { err -> authViewModel.setError(err) }
                                 )
                             },
@@ -2133,7 +2134,8 @@ fun MainScaffold(
                     onNavigateToNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                     onNavigateToAgentCockpit = { navController.navigate(Routes.AGENT_MAIN) },
                     onPushDemoData = { authViewModel.pushDemoData() },
-                    onRefresh = { dashboardViewModel.refreshDashboard() }
+                    onRefresh = { dashboardViewModel.refreshDashboard() },
+                    onLogout = { authViewModel.logout() }
                 )
             }
 

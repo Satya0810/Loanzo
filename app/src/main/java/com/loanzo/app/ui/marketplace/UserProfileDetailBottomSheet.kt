@@ -270,7 +270,7 @@ fun UserProfileDetailBottomSheet(
                         }
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Authenticated via UIDAI Aadhaar eKYC, NSDL PAN, & NPCI Penny Drop",
+                            text = "Government Aadhaar eKYC, Income Tax PAN, and bank account verified",
                             style = MaterialTheme.typography.labelSmall,
                             color = TextSlateMedium,
                             fontSize = 11.sp,
@@ -286,7 +286,7 @@ fun UserProfileDetailBottomSheet(
             // 2. VERIFICATION CREDENTIALS CHECKLIST
             // ─────────────────────────────────────────────────────────────────
             Text(
-                text = "VERIFICATION CREDENTIALS & AUDIT TRAIL",
+                text = "IDENTITY & BANKING VERIFICATION",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -314,26 +314,26 @@ fun UserProfileDetailBottomSheet(
                     )
                     VerificationItemRow(
                         icon = Icons.Default.Email,
-                        label = "Email Domain Verified",
+                        label = "Email Address Verified",
                         detail = profile.emailMasked,
                         isVerified = profile.emailVerified
                     )
                     VerificationItemRow(
                         icon = Icons.Default.Badge,
                         label = "Aadhaar eKYC (UIDAI)",
-                        detail = "Biometric & Demographic Match",
+                        detail = "Demographic & UIDAI Match",
                         isVerified = profile.aadhaarVerified
                     )
                     VerificationItemRow(
                         icon = Icons.Default.CreditCard,
-                        label = "PAN Card (NSDL/ITD)",
-                        detail = "Income Tax Database Validated",
+                        label = "PAN Card (Income Tax Dept)",
+                        detail = "Taxpayer Record Validated",
                         isVerified = profile.panVerified
                     )
                     VerificationItemRow(
                         icon = Icons.Default.Face,
-                        label = "Liveness Selfie & Biometric",
-                        detail = "Facial Geometry Authenticated",
+                        label = "Liveness Selfie & Photo",
+                        detail = "Facial Geometry Matched",
                         isVerified = profile.selfieVerified
                     )
                     VerificationItemRow(
@@ -345,13 +345,13 @@ fun UserProfileDetailBottomSheet(
                     VerificationItemRow(
                         icon = Icons.Default.QrCode,
                         label = "Instant UPI VPA Handle",
-                        detail = "Automated Repayment Enabled",
+                        detail = "Automated Settlement Enabled",
                         isVerified = profile.upiVerified
                     )
                     VerificationItemRow(
                         icon = Icons.Default.Shield,
                         label = "Central RBI CKYC Registry",
-                        detail = "Digital Banking Record Cleared",
+                        detail = "CKYC Registry Record Cleared",
                         isVerified = profile.ckycVerified
                     )
                 }
@@ -363,7 +363,7 @@ fun UserProfileDetailBottomSheet(
             // 3. CREDIT & REPAYMENT TRACK RECORD MATRIX
             // ─────────────────────────────────────────────────────────────────
             Text(
-                text = "COMMUNITY TRUST & REPAYMENT METRICS",
+                text = "CREDIT DISCIPLINE & REPUTATION",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -114,6 +114,16 @@ class UserRepository @Inject constructor(
         sessionManager.clearSession()
     }
 
+    suspend fun purgeDemoDataAndBiometrics() {
+        try {
+            userDao.deleteDemoUsers()
+            val bioId = getBiometricUserIdSync()
+            if (bioId != null && (bioId.startsWith("demo_") || bioId.startsWith("demo-") || bioId in listOf("user_demo", "demo_user_arjun", "demo_lender_priya", "demo_borrower_rahul", "demo_agent_abhisi", "kumar", "prince25"))) {
+                saveBiometricEnrollment("", false)
+            }
+        } catch (_: Exception) {}
+    }
+
     fun getCurrentUserId(): Flow<String?> = context.dataStore.data.map { it[CURRENT_USER_ID] }
     fun isLoggedIn(): Flow<Boolean> = context.dataStore.data.map { it[IS_LOGGED_IN] ?: false }
     fun getCurrentRole(): Flow<String?> = context.dataStore.data.map { it[USER_ROLE] }
@@ -416,43 +426,43 @@ class UserRepository @Inject constructor(
             val signals = listOf(
                 WhyTrustworthySignal(
                     id = "SIG_GOV_KYC",
-                    title = "Government Aadhaar & PAN KYC",
-                    description = if (user.kycStatus == "VERIFIED") "Identity legally verified via UIDAI & Income Tax Department" else "Pending formal government identity verification",
+                    title = "Government ID Verification",
+                    description = if (user.kycStatus == "VERIFIED") "Identity authenticated with UIDAI Aadhaar & Income Tax PAN records" else "Government identity verification pending",
                     isPassed = user.kycStatus == "VERIFIED",
                     iconType = "IDENTITY",
-                    badgeText = if (user.kycStatus == "VERIFIED") "Verified" else "Unverified"
+                    badgeText = if (user.kycStatus == "VERIFIED") "Verified" else "Pending"
                 ),
                 WhyTrustworthySignal(
                     id = "SIG_DIGILOCKER",
-                    title = "DigiLocker Cryptographic Attestation",
-                    description = if (isDigiLocker) "Official electronic documents attested directly from DigiLocker" else "DigiLocker certificate not yet linked",
+                    title = "DigiLocker Attestation",
+                    description = if (isDigiLocker) "Official electronic identity documents linked via DigiLocker" else "DigiLocker documents not yet linked",
                     isPassed = isDigiLocker,
                     iconType = "DIGILOCKER",
-                    badgeText = if (isDigiLocker) "Cryptographic Link" else "Optional"
+                    badgeText = if (isDigiLocker) "Linked" else "Optional"
                 ),
                 WhyTrustworthySignal(
                     id = "SIG_REPAYMENT",
-                    title = "Punctual Repayment Record",
-                    description = "${String.format("%.1f", onTimeRate)}% on-time EMI settlement across all peer contracts",
+                    title = "Repayment Track Record",
+                    description = "${String.format("%.0f", onTimeRate)}% punctual EMI settlements across peer agreements",
                     isPassed = onTimeRate >= 90.0,
                     iconType = "PAYMENT",
-                    badgeText = "${String.format("%.0f", onTimeRate)}% Punctuality"
+                    badgeText = "${String.format("%.0f", onTimeRate)}% On-Time"
                 ),
                 WhyTrustworthySignal(
                     id = "SIG_CONTRACTS",
-                    title = "Peer Contract Fulfillment",
-                    description = "$completedLoans peer loan agreements successfully settled with 0 legal defaults",
+                    title = "Agreement Settlement",
+                    description = if (completedLoans > 0) "$completedLoans peer loan contracts completed with clean standing" else "New borrower with clean platform record",
                     isPassed = defaultedLoans == 0,
                     iconType = "SHIELD",
-                    badgeText = if (defaultedLoans == 0) "Zero Defaults" else "$defaultedLoans Defaults"
+                    badgeText = if (defaultedLoans == 0) "0 Defaults" else "$defaultedLoans Overdue"
                 ),
                 WhyTrustworthySignal(
                     id = "SIG_ESCROW",
-                    title = "Verified Bank Account & UPI VPA",
-                    description = if (user.bankAccountNumber.isNotBlank() || user.upiId.isNotBlank()) "Penny-drop verified bank account and registered UPI handle" else "Bank account details pending verification",
+                    title = "Bank Account & UPI Handle",
+                    description = if (user.bankAccountNumber.isNotBlank() || user.upiId.isNotBlank()) "Penny-drop verified bank account & active UPI handle linked" else "Bank account details pending linking",
                     isPassed = user.bankAccountNumber.isNotBlank() || user.upiId.isNotBlank(),
                     iconType = "COMMUNITY",
-                    badgeText = if (user.bankAccountNumber.isNotBlank() || user.upiId.isNotBlank()) "Penny Tested" else "Pending"
+                    badgeText = if (user.bankAccountNumber.isNotBlank() || user.upiId.isNotBlank()) "Linked" else "Pending"
                 )
             )
 
