@@ -38,7 +38,8 @@ class UserRepository @Inject constructor(
     private val appSyncManager: AppSyncManager,
     @ApplicationContext private val context: Context,
     private val sessionManager: com.loanzo.app.data.session.BankingSessionManager,
-    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager,
+    private val database: com.loanzo.app.data.LoanzoDatabase
 ) {
     companion object {
         private val CURRENT_USER_ID = stringPreferencesKey("current_user_id")
@@ -116,12 +117,33 @@ class UserRepository @Inject constructor(
 
     suspend fun purgeDemoDataAndBiometrics() {
         try {
-            userDao.deleteDemoUsers()
+            database.userDao().deleteDemoUsers()
+            database.loanDao().deleteDemoLoans()
+            database.repaymentDao().deleteDemoRepayments()
+            database.agentDao().deleteDemoApplications()
+            database.adminRequestDao().deleteDemoRequests()
+            database.notificationDao().deleteDemoNotifications()
+            database.marketplaceDao().deleteDemoPosts()
+            database.marketplaceDao().deleteDemoBids()
+            database.marketplaceDao().deleteDemoVouches()
+            database.complaintDao().deleteDemoComplaints()
+            database.mediationMeetingDao().deleteDemoMeetings()
+            database.collateralVaultDao().deleteDemoVaultItems()
+            database.nocCertificateDao().deleteDemoNocs()
+            database.agentDao().deleteDemoVisits()
+            database.supportTicketDao().deleteDemoTickets()
+
             val bioId = getBiometricUserIdSync()
-            if (bioId != null && (bioId.startsWith("demo_") || bioId.startsWith("demo-") || bioId in listOf("user_demo", "demo_user_arjun", "demo_lender_priya", "demo_borrower_rahul", "demo_agent_abhisi", "kumar", "prince25"))) {
+            if (bioId != null && com.loanzo.app.util.VerificationManager.isDemoAccount(bioId)) {
                 saveBiometricEnrollment("", false)
             }
-        } catch (_: Exception) {}
+            val curId = getCurrentUserIdSync()
+            if (curId != null && com.loanzo.app.util.VerificationManager.isDemoAccount(curId)) {
+                clearSession()
+            }
+        } catch (e: Exception) {
+            Log.w("UserRepository", "purgeDemoDataAndBiometrics note: ${e.message}")
+        }
     }
 
     fun getCurrentUserId(): Flow<String?> = context.dataStore.data.map { it[CURRENT_USER_ID] }
@@ -152,8 +174,6 @@ class UserRepository @Inject constructor(
                        user.phone.replace(" ", "").contains("7061559039") ||
                        user.email.lowercase().startsWith("satyam0810")
         val isAbhisi = u == "abhisi" || uid == "abhisi" || user.email.lowercase().startsWith("abhisi")
-        val isKumar = u == "kumar" || uid == "kumar" || user.email.lowercase().startsWith("kumar")
-        val isPrince = u == "prince25" || uid == "prince25" || user.email.lowercase().startsWith("prince25")
 
         return when {
             isAbhisi -> {
@@ -172,12 +192,6 @@ class UserRepository @Inject constructor(
                 }
                 user.copy(role = activeRole)
             }
-            isKumar || isPrince -> {
-                user.copy(
-                    role = "BORROWER",
-                    kycStatus = "VERIFIED"
-                )
-            }
             // satyam0810 is the ONLY admin. Demote any other user with ADMIN role to USER
             user.role.equals("ADMIN", ignoreCase = true) -> {
                 user.copy(
@@ -189,7 +203,9 @@ class UserRepository @Inject constructor(
     }
 
     suspend fun getUserById(userId: String): UserEntity? {
+        if (com.loanzo.app.util.VerificationManager.isDemoAccount(userId)) return null
         val cleanId = userId.trim().lowercase().removePrefix("@")
+        if (com.loanzo.app.util.VerificationManager.isDemoAccount(cleanId)) return null
         val user = userDao.getUserById(userId) 
             ?: userDao.getUserById(cleanId) 
             ?: userDao.getUserByUsername(cleanId) 
@@ -198,12 +214,16 @@ class UserRepository @Inject constructor(
         return sanitizeUserRole(user)
     }
 
-    fun observeUser(userId: String): Flow<UserEntity?> = userDao.observeUser(userId).map { user ->
-        user?.let { sanitizeUserRole(it) }
+    fun observeUser(userId: String): Flow<UserEntity?> {
+        if (com.loanzo.app.util.VerificationManager.isDemoAccount(userId)) return kotlinx.coroutines.flow.flowOf(null)
+        return userDao.observeUser(userId).map { user ->
+            user?.let { sanitizeUserRole(it) }
+        }
     }
 
     suspend fun getUserByEmail(email: String): UserEntity? {
         val clean = email.trim().lowercase()
+        if (com.loanzo.app.util.VerificationManager.isDemoAccount(clean)) return null
         val user = userDao.getUserByEmail(clean) ?: userDao.getUserByEmail(email)
         return user?.let { sanitizeUserRole(it) }
     }
@@ -215,21 +235,26 @@ class UserRepository @Inject constructor(
     }
 
     suspend fun getUserByUsername(username: String): UserEntity? {
+        if (com.loanzo.app.util.VerificationManager.isDemoAccount(username)) return null
         val clean = username.trim().lowercase().removePrefix("@")
+        if (com.loanzo.app.util.VerificationManager.isDemoAccount(clean)) return null
         val user = userDao.getUserByUsername(clean) ?: userDao.getUserByUsername(username)
         return user?.let { sanitizeUserRole(it) }
     }
 
     fun getUsersByRole(role: String): Flow<List<UserEntity>> = userDao.getUsersByRole(role).map { list ->
-        list.map { sanitizeUserRole(it) }
+        list.filterNot { com.loanzo.app.util.VerificationManager.isDemoAccount(it.userId) || com.loanzo.app.util.VerificationManager.isDemoAccount(it.username) }
+            .map { sanitizeUserRole(it) }
     }
 
     fun getAllUsers(): Flow<List<UserEntity>> = userDao.getAllUsers().map { list ->
-        list.map { sanitizeUserRole(it) }
+        list.filterNot { com.loanzo.app.util.VerificationManager.isDemoAccount(it.userId) || com.loanzo.app.util.VerificationManager.isDemoAccount(it.username) }
+            .map { sanitizeUserRole(it) }
     }
 
     fun searchUsers(query: String): Flow<List<UserEntity>> = userDao.searchUsers(query).map { list ->
-        list.map { sanitizeUserRole(it) }
+        list.filterNot { com.loanzo.app.util.VerificationManager.isDemoAccount(it.userId) || com.loanzo.app.util.VerificationManager.isDemoAccount(it.username) }
+            .map { sanitizeUserRole(it) }
     }
 
     suspend fun deleteUser(user: UserEntity) = userDao.deleteUser(user)
@@ -568,6 +593,7 @@ class UserRepository @Inject constructor(
         // Merge, deduplicate, and sanitize
         (localMatches + remoteMatches)
             .distinctBy { it.userId }
+            .filterNot { com.loanzo.app.util.VerificationManager.isDemoAccount(it.userId) || com.loanzo.app.util.VerificationManager.isDemoAccount(it.username) }
             .map { sanitizeUserRole(it) }
     }
 

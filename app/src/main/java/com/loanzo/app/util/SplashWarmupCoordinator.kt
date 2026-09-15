@@ -51,9 +51,25 @@ class SplashWarmupCoordinator @Inject constructor(
                 firebaseManager.ensureFirebaseAuthSession()
             } catch (_: Exception) {}
 
+            // Automatic startup purge of all residual demo entities & stale demo biometrics
+            try {
+                userRepository.purgeDemoDataAndBiometrics()
+            } catch (_: Exception) {}
+
             // Stage 1: Fast Session & Identity Inspection
             val isLoggedIn = userRepository.isLoggedIn().first()
             val userId = userRepository.getCurrentUserIdSync()
+
+            // If active session belongs to a demo/fake account, kill it immediately and force login
+            if (isLoggedIn && (VerificationManager.isDemoAccount(userId) || userId.isNullOrBlank())) {
+                userRepository.clearSession()
+                sessionManager.clearSession()
+                return@withContext WarmupResult(
+                    targetRoute = Routes.LOGIN,
+                    user = null,
+                    isSessionLocked = false
+                )
+            }
 
             if (!isLoggedIn || userId.isNullOrBlank()) {
                 return@withContext WarmupResult(

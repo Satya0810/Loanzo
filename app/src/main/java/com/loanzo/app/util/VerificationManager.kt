@@ -110,6 +110,21 @@ class VerificationManager @Inject constructor(
             val code = secureRandom.nextInt(900000) + 100000 // 100000 to 999999
             return String.format(java.util.Locale.US, "%06d", code)
         }
+
+        fun isDemoAccount(id: String?): Boolean {
+            if (id.isNullOrBlank()) return false
+            val clean = id.trim().lowercase().removePrefix("@")
+            return clean.startsWith("demo_") || clean.startsWith("demo-") ||
+                    clean in listOf(
+                        "user_demo", "demo_user_arjun", "demo_lender_priya",
+                        "demo_borrower_rahul", "demo_agent_abhisi", "demo_agent_sunil",
+                        "demo_admin_satyam", "demo_amit_verma", "demo_sneha_roy",
+                        "demo_rajesh_gupta", "demo_vikram_malhotra", "demo_guarantor_nirmala",
+                        "demo_coborrower_rohan", "demo_meera_sen", "demo_kunal_rawat",
+                        "demo_alok_trivedi", "demo_staff_deepak", "demo_staff_neha",
+                        "kumar", "prince25"
+                    )
+        }
     }
 
     suspend fun createVerificationRequest(phone: String, channel: String): String {

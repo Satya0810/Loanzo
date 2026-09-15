@@ -80,23 +80,39 @@ class AuthViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            try {
+                userRepository.purgeDemoDataAndBiometrics()
+            } catch (_: Exception) {}
+
             userRepository.isLoggedIn().collect { loggedIn ->
                 if (loggedIn) {
                     val userId = userRepository.getCurrentUserIdSync()
-                    val role = userRepository.getCurrentRole().firstOrNull()
-                    _uiState.update {
-                        it.copy(
-                            isSessionChecking = false,
-                            isLoggedIn = true,
-                            currentUserId = userId,
-                            currentRole = role
-                        )
-                    }
-                    if (userId != null) {
-                        com.loanzo.app.fcm.LoanzoMessagingService.registerFcmToken(context, userId)
-                        val user = userRepository.getUserById(userId)
-                        if (user != null) {
-                            downloadUserMediaLocally(user)
+                    if (com.loanzo.app.util.VerificationManager.isDemoAccount(userId) || userId.isNullOrBlank()) {
+                        userRepository.clearSession()
+                        _uiState.update {
+                            it.copy(
+                                isSessionChecking = false,
+                                isLoggedIn = false,
+                                currentUserId = null,
+                                currentRole = null
+                            )
+                        }
+                    } else {
+                        val role = userRepository.getCurrentRole().firstOrNull()
+                        _uiState.update {
+                            it.copy(
+                                isSessionChecking = false,
+                                isLoggedIn = true,
+                                currentUserId = userId,
+                                currentRole = role
+                            )
+                        }
+                        if (userId != null) {
+                            com.loanzo.app.fcm.LoanzoMessagingService.registerFcmToken(context, userId)
+                            val user = userRepository.getUserById(userId)
+                            if (user != null) {
+                                downloadUserMediaLocally(user)
+                            }
                         }
                     }
                 } else {
@@ -158,6 +174,11 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val cleanId = loginId.trim().lowercase().removePrefix("@")
+
+            if (com.loanzo.app.util.VerificationManager.isDemoAccount(cleanId)) {
+                _uiState.update { it.copy(isLoading = false, isUserIdVerified = false, error = "This demo/test account has been permanently disabled. Please sign in with your authentic account.") }
+                return@launch
+            }
 
             var user = userRepository.getUserByUsername(cleanId)
                 ?: if (cleanId.contains("@")) userRepository.getUserByEmail(cleanId) else null
@@ -647,6 +668,11 @@ class AuthViewModel @Inject constructor(
 
                 val cleanLoginId = loginId.trim().removePrefix("@")
                 val cleanUsername = cleanLoginId.lowercase()
+
+                if (com.loanzo.app.util.VerificationManager.isDemoAccount(cleanLoginId) || com.loanzo.app.util.VerificationManager.isDemoAccount(cleanUsername)) {
+                    _uiState.update { it.copy(isLoading = false, error = "This demo/test account has been permanently disabled. Please sign in with your authentic account.") }
+                    return@launch
+                }
 
                 // 1. Check Local Database (Room) first (by username, email, or phone)
                 var user = userRepository.getUserByUsername(cleanUsername)
@@ -1197,10 +1223,7 @@ class AuthViewModel @Inject constructor(
     }
 
     private fun isDemoAccount(id: String?): Boolean {
-        if (id.isNullOrBlank()) return false
-        val clean = id.trim().lowercase()
-        return clean.startsWith("demo_") || clean.startsWith("demo-") ||
-                clean in listOf("user_demo", "demo_user_arjun", "demo_lender_priya", "demo_borrower_rahul", "demo_agent_abhisi", "kumar", "prince25")
+        return com.loanzo.app.util.VerificationManager.isDemoAccount(id)
     }
 
     /**
@@ -1225,6 +1248,15 @@ class AuthViewModel @Inject constructor(
 
                 val biometricUserId: String? = if (!targetUserId.isNullOrBlank()) {
                     val cleanTarget = targetUserId.trim().lowercase().removePrefix("@")
+                    if (isDemoAccount(cleanTarget)) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "This demo/test account has been permanently disabled."
+                            )
+                        }
+                        return@launch
+                    }
                     val targetUser = userRepository.getUserByUsername(cleanTarget)
                         ?: userRepository.getUserById(targetUserId.trim())
                         ?: if (cleanTarget.contains("@")) userRepository.getUserByEmail(cleanTarget) else null
@@ -1250,7 +1282,13 @@ class AuthViewModel @Inject constructor(
                         return@launch
                     }
                 } else {
-                    rawEnrolledId ?: userRepository.getCurrentUserIdSync()
+                    val fallbackId = rawEnrolledId ?: userRepository.getCurrentUserIdSync()
+                    if (isDemoAccount(fallbackId)) {
+                        userRepository.saveBiometricEnrollment("", false)
+                        null
+                    } else {
+                        fallbackId
+                    }
                 }
 
                 if (biometricUserId.isNullOrBlank() || isDemoAccount(biometricUserId)) {
@@ -1355,9 +1393,13 @@ class AuthViewModel @Inject constructor(
         onNotEnrolled: () -> Unit
     ) {
         viewModelScope.launch {
+            if (!targetUserId.isNullOrBlank() && isDemoAccount(targetUserId)) {
+                onNotEnrolled()
+                return@launch
+            }
             val enrolledUserId = userRepository.getBiometricUserIdSync()
             val isEnabled = userRepository.isBiometricEnabledSync()
-            if (isDemoAccount(enrolledUserId)) {
+            if (isDemoAccount(enrolledUserId) || enrolledUserId.isNullOrBlank()) {
                 userRepository.saveBiometricEnrollment("", false)
                 onNotEnrolled()
                 return@launch
@@ -1915,18 +1957,10 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
-     * Seeds real operational accounts & active interconnected data for kumar, prince25, abhisi, and satyam0810.
+     * Demo seeding is permanently decommissioned.
      */
     fun pushDemoData(onComplete: (Boolean, String) -> Unit = { _, _ -> }) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            val res = demoDataSeeder.seedPredefinedAccountsAndData()
-            _uiState.update { it.copy(isLoading = false) }
-            res.fold(
-                onSuccess = { msg -> onComplete(true, msg) },
-                onFailure = { err -> onComplete(false, err.message ?: "Failed to push real data") }
-            )
-        }
+        onComplete(false, "Demo accounts have been permanently decommissioned.")
     }
 
     /**
@@ -1934,24 +1968,12 @@ class AuthViewModel @Inject constructor(
      */
     fun clearDemoData(onComplete: (Boolean, String) -> Unit = { _, _ -> }) {
         viewModelScope.launch {
-            val userId = _uiState.value.currentUserId?.ifBlank { null }
-                ?: userRepository.getCurrentUserIdSync()
-                ?: ""
-            if (userId.isBlank()) {
-                onComplete(false, "No active user session.")
-                return@launch
+            try {
+                userRepository.purgeDemoDataAndBiometrics()
+                onComplete(true, "All demo data permanently purged.")
+            } catch (e: Exception) {
+                onComplete(false, e.message ?: "Failed to purge demo data")
             }
-            _uiState.update { it.copy(isLoading = true) }
-            val res = demoDataSeeder.clearDemoData(userId)
-            _uiState.update { it.copy(isLoading = false) }
-            res.fold(
-                onSuccess = { msg ->
-                    onComplete(true, msg)
-                },
-                onFailure = { err ->
-                    onComplete(false, err.message ?: "Failed to clear demo data")
-                }
-            )
         }
     }
 

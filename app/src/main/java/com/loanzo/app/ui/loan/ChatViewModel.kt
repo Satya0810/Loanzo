@@ -180,16 +180,7 @@ class ChatViewModel @Inject constructor(
                 val counterpartyName = counterparty?.name ?: counterparty?.username ?: if (isLender) "Borrower (${loan.borrowerId.take(6)})" else "Lender (${loan.lenderId.take(6)})"
                 val counterpartyRole = if (isLender) "BORROWER" else "LENDER"
                 val channelId = getLoanChannelId(loan.loanId)
-                val lowerLoanId = loan.loanId.lowercase()
-                val demoLastMessage = when {
-                    lowerLoanId.contains("lent") || lowerLoanId.contains("50k") -> "Received full amount! EMI #1 of ₹8,834 paid via UPI. Attached receipt."
-                    lowerLoanId.contains("borrowed") || lowerLoanId.contains("25k") -> "Approved and eSigned! ₹25,000 transferred to your ICICI account. Best wishes for your course!"
-                    lowerLoanId.contains("closed") || lowerLoanId.contains("15k") -> "Loan fully settled ahead of schedule. NOC and pledge release certificate issued."
-                    lowerLoanId.contains("biz") || lowerLoanId.contains("150k") -> "Machinery serial number verified by Agent Abhisi. First installment credited."
-                    lowerLoanId.contains("gadget") || lowerLoanId.contains("80k") -> "Workstation audio gear delivered and collateral tagged. Thank you!"
-                    lowerLoanId.contains("super") || lowerLoanId.contains("200k") -> "Warehouse lease escrow agreement eSigned. Disbursement processed."
-                    else -> "Deal chat active: ₹${loan.sanctionedAmount.toInt()} (${loan.purpose}) - ${loan.status}"
-                }
+                val conversationPreview = "Deal chat active: ₹${loan.sanctionedAmount.toInt()} (${loan.purpose}) - ${loan.status}"
 
                 list.add(
                     ChatConversationSummary(
@@ -203,7 +194,7 @@ class ChatViewModel @Inject constructor(
                         loanId = loan.loanId,
                         loanTitle = "${if (isLender) "Lent" else "Borrowed"} INR ${loan.sanctionedAmount.toInt()} (${loan.status})",
                         loanPrincipal = loan.sanctionedAmount,
-                        lastMessage = demoLastMessage,
+                        lastMessage = conversationPreview,
                         lastTimestamp = loan.createdAt,
                         unreadCount = 0,
                         isOnline = true

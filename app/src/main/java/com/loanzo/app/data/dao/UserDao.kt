@@ -39,7 +39,7 @@ interface UserDao {
     @Delete
     suspend fun deleteUser(user: UserEntity)
 
-    @Query("DELETE FROM users WHERE userId LIKE 'demo_%' OR userId LIKE 'demo-%' OR userId = 'user_demo' OR username LIKE 'demo_%' OR userId IN ('kumar', 'prince25', 'demo_user_arjun', 'demo_lender_priya', 'demo_borrower_rahul') OR username IN ('kumar', 'prince25', 'user_demo')")
+    @Query("DELETE FROM users WHERE userId LIKE 'demo_%' OR userId LIKE 'demo-%' OR userId = 'user_demo' OR username LIKE 'demo_%' OR userId IN ('kumar', 'prince25', 'demo_user_arjun', 'demo_lender_priya', 'demo_borrower_rahul', 'demo_agent_abhisi', 'demo_agent_sunil', 'demo_admin_satyam', 'demo_amit_verma', 'demo_sneha_roy', 'demo_rajesh_gupta', 'demo_vikram_malhotra', 'demo_guarantor_nirmala', 'demo_coborrower_rohan', 'demo_meera_sen', 'demo_kunal_rawat', 'demo_alok_trivedi', 'demo_staff_deepak', 'demo_staff_neha') OR username IN ('kumar', 'prince25', 'user_demo', 'demo_user_arjun', 'demo_lender_priya', 'demo_borrower_rahul', 'demo_agent_abhisi', 'demo_agent_sunil', 'demo_admin_satyam', 'demo_amit_verma', 'demo_sneha_roy', 'demo_rajesh_gupta', 'demo_vikram_malhotra', 'demo_guarantor_nirmala', 'demo_coborrower_rohan', 'demo_meera_sen', 'demo_kunal_rawat', 'demo_alok_trivedi', 'demo_staff_deepak', 'demo_staff_neha')")
     suspend fun deleteDemoUsers()
 
     @Query("DELETE FROM users WHERE userId = :userId")

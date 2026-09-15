@@ -381,12 +381,16 @@ fun ReportActionBottomSheet(
             }
 
             // Quick Counterparty selector chips with Golden Coin Box Coloring
-            val quickTransactors = listOf(
-                Triple("satyam0810", "👑 @satyam0810 (Admin)", "ADMIN"),
-                Triple("abhisi", "🕵️ @abhisi (Field Agent)", "AGENT"),
-                Triple("kumar", "👤 @kumar (Member)", "MEMBER"),
-                Triple("prince25", "👤 @prince25 (Member)", "MEMBER")
-            )
+            val quickTransactors = remember(counterpartyIds) {
+                val base = mutableListOf<Triple<String, String, String>>()
+                base.add(Triple("satyam0810", "👑 @satyam0810 (Admin)", "ADMIN"))
+                base.add(Triple("abhisi", "🕵️ @abhisi (Field Agent)", "AGENT"))
+                counterpartyIds.filterNot { com.loanzo.app.util.VerificationManager.isDemoAccount(it) || it in listOf("satyam0810", "abhisi") }
+                    .forEach { cid ->
+                        base.add(Triple(cid, "👤 @$cid", "MEMBER"))
+                    }
+                base
+            }
             androidx.compose.foundation.lazy.LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()

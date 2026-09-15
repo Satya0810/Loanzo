@@ -42,6 +42,6 @@ interface LoanDao {
     @Delete
     suspend fun deleteLoan(loan: LoanEntity)
 
-    @Query("DELETE FROM loans WHERE loanId LIKE 'demo_%' OR loanId LIKE 'loan_demo_%'")
+    @Query("DELETE FROM loans WHERE loanId LIKE 'demo_%' OR loanId LIKE 'loan_demo_%' OR loanId LIKE '%_demo_%' OR loanId IN ('loan_kumar_biz_50k', 'loan_prince_edu_75k') OR borrowerId IN ('kumar', 'prince25', 'demo_borrower_rahul', 'demo_user_arjun') OR lenderId IN ('demo_lender_priya', 'demo_rajesh_gupta', 'demo_vikram_malhotra')")
     suspend fun deleteDemoLoans()
 }
