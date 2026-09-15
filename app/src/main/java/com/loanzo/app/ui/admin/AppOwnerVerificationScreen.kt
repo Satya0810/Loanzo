@@ -606,9 +606,15 @@ fun AppOwnerVerificationScreen(
         }
 
         dispatchingVisit?.let { visit ->
+            val workloadMap = remember(allVisits) {
+                allVisits.filter { it.agentId.isNotBlank() && it.agentId != "UNASSIGNED" && it.status != "COMPLETED" && it.status != "CANCELLED" }
+                    .groupingBy { it.agentId }
+                    .eachCount()
+            }
             DispatchAgentSheet(
                 visit = visit,
                 availableAgents = agentApplications.filter { it.status == "APPROVED" },
+                agentWorkload = workloadMap,
                 onDispatch = { agentId, payout ->
                     dispatchingVisit = null // Immediate dismissal prevents repetitive opening
                     scope.launch(Dispatchers.IO) {
