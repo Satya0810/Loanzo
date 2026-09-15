@@ -185,21 +185,12 @@ class AgentRepository @Inject constructor(
         try {
             val userDocRef = firestore.collection("users").document(app.userId)
             val updates = mapOf<String, Any>(
+                "userId" to app.userId,
                 "role" to "AGENT",
                 "agentStatus" to "APPROVED",
                 "isOnDuty" to true
             )
-            userDocRef.update(updates).addOnFailureListener {
-                userDocRef.set(
-                    mapOf(
-                        "userId" to app.userId,
-                        "role" to "AGENT",
-                        "agentStatus" to "APPROVED",
-                        "isOnDuty" to true
-                    ),
-                    com.google.firebase.firestore.SetOptions.merge()
-                )
-            }
+            userDocRef.set(updates, com.google.firebase.firestore.SetOptions.merge()).await()
         } catch (_: Exception) {}
 
         // Update local Room user if present
@@ -295,7 +286,7 @@ class AgentRepository @Inject constructor(
             type = "AGENT_VERIFICATION",
             timestamp = System.currentTimeMillis(),
             isRead = false,
-            actionRoute = "profile"
+            actionRoute = "agent_application"
         )
         try {
             notificationDao.insertNotification(notif)

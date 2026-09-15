@@ -26,7 +26,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import com.loanzo.app.data.entity.AgentApplicationEntity
+import com.loanzo.app.ui.theme.BrandRoyalBlue
+import com.loanzo.app.ui.theme.Emerald500
+import com.loanzo.app.ui.theme.Gold500
+import com.loanzo.app.ui.theme.Red400
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -37,17 +42,23 @@ fun AgentApplicationScreen(
     userName: String,
     userPhone: String,
     userEmail: String,
+    application: AgentApplicationEntity? = null,
     onNavigateBack: () -> Unit,
+    onEnterAgentDashboard: () -> Unit = {},
+    onRefreshApplication: () -> Unit = {},
     onSubmitSuccess: () -> Unit,
     onSubmitApplication: suspend (AgentApplicationEntity) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isEditingReapplication by remember { mutableStateOf(false) }
 
     // Section 1: Experience
     val experienceOptions = listOf("1-2 Years", "3-5 Years", "5+ Years")
-    var selectedExperience by remember { mutableStateOf(experienceOptions[1]) }
+    var selectedExperience by remember(application) {
+        mutableStateOf(if (application != null && application.experienceYears in experienceOptions) application.experienceYears else experienceOptions[1])
+    }
 
     val domainOptions = listOf(
         "Banking / NBFC Field Officer",
@@ -56,23 +67,27 @@ fun AgentApplicationScreen(
         "Real Estate & Vehicle Appraiser",
         "Legal Recovery & Verification"
     )
-    var selectedDomain by remember { mutableStateOf(domainOptions[0]) }
+    var selectedDomain by remember(application) {
+        mutableStateOf(if (application != null && application.priorDomain in domainOptions) application.priorDomain else domainOptions[0])
+    }
 
     // Section 2: Police Verification
-    var pccNumber by remember { mutableStateOf("") }
-    var policeStation by remember { mutableStateOf("") }
-    var pccDate by remember { mutableStateOf("") }
-    var pccUploaded by remember { mutableStateOf(false) }
+    var pccNumber by remember(application) { mutableStateOf(application?.policeVerificationNumber ?: "") }
+    var policeStation by remember(application) { mutableStateOf(application?.policeStation ?: "") }
+    var pccDate by remember(application) { mutableStateOf(application?.policeVerificationDate ?: "") }
+    var pccUploaded by remember(application) { mutableStateOf(!application?.policeDocUri.isNullOrBlank()) }
 
     // Section 3: Territory & Transport
-    var permanentAddress by remember { mutableStateOf("") }
-    var operatingCity by remember { mutableStateOf("") }
-    var operatingPincode by remember { mutableStateOf("") }
-    var serviceRadiusKm by remember { mutableFloatStateOf(15f) }
+    var permanentAddress by remember(application) { mutableStateOf(application?.permanentAddress ?: "") }
+    var operatingCity by remember(application) { mutableStateOf(application?.operatingCity ?: "") }
+    var operatingPincode by remember(application) { mutableStateOf(application?.operatingPincode ?: "") }
+    var serviceRadiusKm by remember(application) { mutableFloatStateOf(application?.serviceRadiusKm?.toFloat() ?: 15f) }
 
     val transportOptions = listOf("Two-Wheeler", "Four-Wheeler", "Public Transit")
-    var selectedTransport by remember { mutableStateOf(transportOptions[0]) }
-    var dlNumber by remember { mutableStateOf("") }
+    var selectedTransport by remember(application) {
+        mutableStateOf(if (application != null && application.vehicleType in transportOptions) application.vehicleType else transportOptions[0])
+    }
+    var dlNumber by remember(application) { mutableStateOf(application?.drivingLicenseNumber ?: "") }
 
     // Section 4: Legal Undertaking
     var decl1 by remember { mutableStateOf(false) }
@@ -93,13 +108,15 @@ fun AgentApplicationScreen(
             operatingPincode.isNotBlank() &&
             decl1 && decl2 && decl3
 
+    val showStatusView = application != null && (application.status.equals("PENDING", ignoreCase = true) || application.status.equals("APPROVED", ignoreCase = true))
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
-                            text = "Agent Empanelment",
+                            text = if (showStatusView && !isEditingReapplication) "Empanelment Dossier" else "Agent Empanelment",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -107,7 +124,7 @@ fun AgentApplicationScreen(
                             softWrap = false
                         )
                         Text(
-                            text = "Bank-Grade Field Officer Application",
+                            text = if (showStatusView && !isEditingReapplication) "Bank-Grade Compliance Status" else "Bank-Grade Field Officer Application",
                             fontSize = 11.sp,
                             color = goldAccent,
                             maxLines = 1,
@@ -131,13 +148,63 @@ fun AgentApplicationScreen(
         },
         containerColor = darkBg
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 18.dp, vertical = 16.dp)
-        ) {
+        if (showStatusView && !isEditingReapplication) {
+            Box(modifier = Modifier.padding(innerPadding)) {
+                AgentApplicationStatusView(
+                    application = application!!,
+                    onEnterAgentDashboard = onEnterAgentDashboard,
+                    onRefreshApplication = onRefreshApplication,
+                    onNavigateBack = onNavigateBack,
+                    onReapply = {
+                        isEditingReapplication = true
+                    }
+                )
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 16.dp)
+            ) {
+                if (application != null && application.status.equals("REJECTED", ignoreCase = true)) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                        border = androidx.compose.foundation.BorderStroke(1.2.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("⚠️", fontSize = 20.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Application Requires Correction",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            if (!application.adminRemarks.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Admin Remarks: ${application.adminRemarks}",
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 17.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Please update your verification credentials below and re-submit for review.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             // Empanelment Banner
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -623,6 +690,7 @@ fun AgentApplicationScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
@@ -711,3 +779,322 @@ private fun textFieldColors(container: Color, border: Color, focused: Color) =
         unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
         cursorColor = focused
     )
+
+@Composable
+fun AgentApplicationStatusView(
+    application: AgentApplicationEntity,
+    onEnterAgentDashboard: () -> Unit,
+    onRefreshApplication: () -> Unit,
+    onNavigateBack: () -> Unit,
+    onReapply: () -> Unit = {}
+) {
+    val isApproved = application.status.equals("APPROVED", ignoreCase = true)
+    val isPending = application.status.equals("PENDING", ignoreCase = true)
+    val isRejected = application.status.equals("REJECTED", ignoreCase = true)
+
+    val statusColor = when {
+        isApproved -> Emerald500
+        isRejected -> Red400
+        else -> Gold500
+    }
+    val statusText = when {
+        isApproved -> "EMPANELMENT APPROVED & ACTIVATED"
+        isRejected -> "CORRECTION / RESUBMISSION REQUIRED"
+        else -> "COMPLIANCE REVIEW IN PROGRESS"
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Status Hero Card
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, statusColor.copy(alpha = 0.6f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(68.dp)
+                        .clip(CircleShape)
+                        .background(statusColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isApproved) "🛡️" else if (isRejected) "⚠️" else "⏳",
+                        fontSize = 32.sp
+                    )
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = statusColor.copy(alpha = 0.15f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = statusText,
+                        color = statusColor,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = if (isApproved) "Certified Field Verification Officer" else "Dossier #${application.applicationId.takeLast(8).uppercase()}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (isApproved)
+                        "Your bank-grade field agent credentials have been verified and activated by Master Admin. You have full doorstep audit & appraisal authority."
+                    else if (isRejected)
+                        "Remarks from Admin: ${application.adminRemarks ?: "Please review your police verification details and submit an updated application."}"
+                    else
+                        "Your verification dossier has been logged into the compliance queue. Field agent credentials will be activated upon Master Admin clearance.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // Verification Steps Tracker
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Text(
+                    text = "Verification Progress",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Step 1
+                VerificationStepRow(
+                    stepNumber = "1",
+                    title = "Dossier Submission",
+                    subtitle = "Application recorded & registered on ledger",
+                    isComplete = true,
+                    isActive = false
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Step 2
+                VerificationStepRow(
+                    stepNumber = "2",
+                    title = "Police Verification (PCC)",
+                    subtitle = "Station: ${application.policeStation.ifBlank { "Recorded" }} | No: ${application.policeVerificationNumber.ifBlank { "Recorded" }}",
+                    isComplete = isApproved,
+                    isActive = isPending
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Step 3
+                VerificationStepRow(
+                    stepNumber = "3",
+                    title = "Master Admin Sign-Off",
+                    subtitle = if (isApproved) "Approved & activated by satyam0810" else if (isRejected) "Action required" else "Queued in HQ Admin Console",
+                    isComplete = isApproved,
+                    isActive = isPending,
+                    isError = isRejected
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        // Dossier Information Summary
+        Card(
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(18.dp)) {
+                Text(
+                    text = "Empanelment Details",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                DossierDetailRow("Applicant Name", application.applicantName)
+                DossierDetailRow("Phone / Login", application.applicantPhone)
+                DossierDetailRow("Operational Hub", "${application.operatingCity} (${application.operatingPincode})")
+                DossierDetailRow("Service Radius", "${application.serviceRadiusKm} km")
+                DossierDetailRow("Specialization", application.priorDomain)
+                DossierDetailRow("Experience", application.experienceYears)
+                DossierDetailRow("Vehicle Mode", application.vehicleType)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Primary Action
+        if (isApproved) {
+            Button(
+                onClick = onEnterAgentDashboard,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue)
+            ) {
+                Icon(Icons.Default.Dashboard, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Launch Field Agent Cockpit 🚀",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color.White
+                )
+            }
+        } else if (isRejected) {
+            Button(
+                onClick = onReapply,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue)
+            ) {
+                Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Update & Re-Submit Application 📝",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color.White
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onRefreshApplication,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, Gold500)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Gold500, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Sync Status 🔄", color = Gold500, fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = onNavigateBack,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Return Home 🏠", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun VerificationStepRow(
+    stepNumber: String,
+    title: String,
+    subtitle: String,
+    isComplete: Boolean,
+    isActive: Boolean,
+    isError: Boolean = false
+) {
+    val stepColor = when {
+        isComplete -> Emerald500
+        isError -> Red400
+        isActive -> Gold500
+        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(stepColor.copy(alpha = 0.15f))
+                .border(1.2.dp, stepColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isComplete) {
+                Icon(Icons.Default.Check, contentDescription = null, tint = Emerald500, modifier = Modifier.size(16.dp))
+            } else if (isError) {
+                Icon(Icons.Default.Close, contentDescription = null, tint = Red400, modifier = Modifier.size(16.dp))
+            } else {
+                Text(
+                    text = stepNumber,
+                    color = stepColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.5.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                fontSize = 11.5.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 15.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun DossierDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.5.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value.ifBlank { "Not Specified" },
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}

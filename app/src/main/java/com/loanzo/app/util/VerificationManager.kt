@@ -75,24 +75,23 @@ class VerificationManager @Inject constructor(
             val em = user.email.trim().lowercase()
             val p = user.phone.trim().replace(" ", "").removePrefix("+91").trim()
 
-            // Field Agent account always operates in Field Agent mode
+            // Dedicated Field Agent account always operates in Field Agent mode
             val isDedicatedAgent = u == "abhisi" || uid == "abhisi" ||
                                    em.startsWith("abhisi") || p == "9810012345"
             if (isDedicatedAgent) return true
 
-            // A user operating in an active Member / Consumer role is strictly NOT in Field Agent mode,
-            // regardless of background empanelment status.
-            val activeRole = user.role.trim().uppercase()
-            if (activeRole in listOf("USER", "MEMBER", "BORROWER", "LENDER")) {
-                return false
-            }
-
             // If user is eligible app owner (Satyam), check if his chosen active role is AGENT
             if (isEligibleAppOwner(user) || u in listOf("satyam0810", "satyam_081", "satyam") || p == "7061559039") {
-                return activeRole == "AGENT"
+                return user.role.trim().equals("AGENT", ignoreCase = true)
             }
 
-            return activeRole == "AGENT"
+            // Any user whose agent empanelment is APPROVED or whose role is AGENT operates as Field Agent
+            if (user.agentStatus.trim().equals("APPROVED", ignoreCase = true) ||
+                user.role.trim().equals("AGENT", ignoreCase = true)) {
+                return true
+            }
+
+            return false
         }
 
         fun isFieldAgent(username: String?, userId: String? = null, email: String? = null, phone: String? = null): Boolean {

@@ -821,13 +821,36 @@ fun LoanzoNavGraph(
             val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
             val activeUserId = authState.currentUserId ?: currentUserId ?: ""
             val user by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+            val application by (if (activeUserId.isNotBlank()) agentRepository.getApplication(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+            val scope = rememberCoroutineScope()
+
+            LaunchedEffect(activeUserId) {
+                if (activeUserId.isNotBlank()) {
+                    userRepository.syncUserById(activeUserId, forceCloud = true)
+                }
+            }
 
             AgentApplicationScreen(
                 userId = activeUserId,
                 userName = user?.name?.ifBlank { null } ?: user?.username?.ifBlank { null } ?: activeUserId,
                 userPhone = user?.phone ?: "",
                 userEmail = user?.email ?: "",
-                onNavigateBack = { navController.popBackStack() },
+                application = application,
+                onNavigateBack = {
+                    if (!navController.popBackStack()) {
+                        navController.navigate(Routes.MAIN)
+                    }
+                },
+                onEnterAgentDashboard = {
+                    navController.navigate(Routes.AGENT_MAIN) {
+                        launchSingleTop = true
+                    }
+                },
+                onRefreshApplication = {
+                    scope.launch {
+                        userRepository.syncUserById(activeUserId, forceCloud = true)
+                    }
+                },
                 onSubmitSuccess = {
                     navController.navigate(Routes.AGENT_PENDING_APPROVAL) {
                         popUpTo(Routes.ROLE_SELECTION) { inclusive = true }
@@ -850,12 +873,13 @@ fun LoanzoNavGraph(
                 application = application,
                 onEnterAgentDashboard = {
                     navController.navigate(Routes.AGENT_MAIN) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(Routes.AGENT_PENDING_APPROVAL) { inclusive = true }
+                        launchSingleTop = true
                     }
                 },
                 onContinueAsMember = {
                     navController.navigate(Routes.MAIN) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(Routes.AGENT_PENDING_APPROVAL) { inclusive = true }
                     }
                 },
                 onReapply = {
@@ -879,11 +903,31 @@ fun LoanzoNavGraph(
             val visits by (if (activeUserId.isNotBlank()) agentRepository.getVisitsForAgent(activeUserId) else kotlinx.coroutines.flow.flowOf(emptyList())).collectAsStateWithLifecycle(initialValue = emptyList())
             val scope = rememberCoroutineScope()
 
+            LaunchedEffect(activeUserId) {
+                if (activeUserId.isNotBlank()) {
+                    userRepository.syncUserById(activeUserId, forceCloud = true)
+                    userRepository.startRealtimeUserSync(activeUserId, scope)
+                }
+            }
+
             LaunchedEffect(user?.role, user?.agentStatus) {
-                val isAgent = com.loanzo.app.util.VerificationManager.isFieldAgent(user)
-                if (user != null && !isAgent) {
-                    navController.navigate(Routes.MAIN) {
-                        popUpTo(0) { inclusive = true }
+                if (user != null) {
+                    val isApprovedAgent = user?.agentStatus.equals("APPROVED", ignoreCase = true) ||
+                            user?.role.equals("AGENT", ignoreCase = true) ||
+                            com.loanzo.app.util.VerificationManager.isFieldAgent(user)
+                    if (isApprovedAgent) {
+                        if (user?.role != "AGENT") {
+                            userRepository.updateUser(user!!.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true))
+                            userRepository.saveSession(user!!.userId, "AGENT")
+                        }
+                    } else if (user?.agentStatus.equals("PENDING", ignoreCase = true)) {
+                        navController.navigate(Routes.AGENT_PENDING_APPROVAL) {
+                            popUpTo(Routes.AGENT_MAIN) { inclusive = true }
+                        }
+                    } else {
+                        if (!navController.popBackStack()) {
+                            navController.navigate(Routes.MAIN)
+                        }
                     }
                 }
             }

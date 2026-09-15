@@ -21,8 +21,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -597,13 +599,47 @@ class UserRepository @Inject constructor(
             .map { sanitizeUserRole(it) }
     }
 
+    private var userSnapshotListener: com.google.firebase.firestore.ListenerRegistration? = null
+
+    /**
+     * Starts continuous real-time synchronization for the currently active user document in Cloud Firestore.
+     */
+    fun startRealtimeUserSync(userId: String, scope: CoroutineScope) {
+        if (userId.isBlank()) return
+        userSnapshotListener?.remove()
+
+        val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
+        userSnapshotListener = firestore.collection("users").document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null || !snapshot.exists()) return@addSnapshotListener
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val remoteUser = parseUserFromFirestoreDoc(snapshot.data, snapshot.id)
+                        if (remoteUser != null) {
+                            val sanitized = sanitizeUserRole(remoteUser)
+                            userDao.insertUser(sanitized)
+                            
+                            // Elevate session if user became Field Agent
+                            if (sanitized.role.equals("AGENT", ignoreCase = true) || sanitized.agentStatus.equals("APPROVED", ignoreCase = true)) {
+                                saveSession(sanitized.userId, "AGENT")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w("UserRepository", "Realtime user sync error: ${e.message}")
+                    }
+                }
+            }
+    }
+
     /**
      * Resolves a user by ID from local database or Cloud Firestore, ensuring cross-device consistency.
      */
-    suspend fun syncUserById(userId: String): UserEntity? = withContext(Dispatchers.IO) {
+    suspend fun syncUserById(userId: String, forceCloud: Boolean = false): UserEntity? = withContext(Dispatchers.IO) {
         if (userId.isBlank()) return@withContext null
-        var user = getUserById(userId)
-        if (user != null) return@withContext user
+        if (!forceCloud) {
+            val user = getUserById(userId)
+            if (user != null) return@withContext user
+        }
 
         try {
             firebaseManager.ensureFirebaseAuthSession()
@@ -612,14 +648,15 @@ class UserRepository @Inject constructor(
             if (doc.exists()) {
                 val remoteUser = parseUserFromFirestoreDoc(doc.data, doc.id)
                 if (remoteUser != null) {
-                    userDao.insertUser(remoteUser)
-                    return@withContext sanitizeUserRole(remoteUser)
+                    val sanitized = sanitizeUserRole(remoteUser)
+                    userDao.insertUser(sanitized)
+                    return@withContext sanitized
                 }
             }
         } catch (e: Exception) {
             Log.w("UserRepository", "syncUserById error: ${e.message}")
         }
-        null
+        getUserById(userId)
     }
 
     private fun parseUserFromFirestoreDoc(data: Map<String, Any>?, fallbackId: String): UserEntity? {
@@ -641,12 +678,23 @@ class UserRepository @Inject constructor(
         val selfieVerified = (data["selfieVerified"] as? Boolean) ?: false
         val upiId = (data["upiId"] as? String) ?: ""
         val bankAccountNumber = (data["bankAccountNumber"] as? String) ?: ""
+        val bankIfsc = (data["bankIfsc"] as? String) ?: ""
+        val bankVerified = (data["bankVerified"] as? Boolean) ?: false
         val profilePhotoUri = (data["profilePhotoUri"] as? String) ?: ""
         val panImageUrl = (data["panImageUrl"] as? String) ?: ""
         val aadhaarImageUrl = (data["aadhaarImageUrl"] as? String) ?: ""
         val dateOfBirth = (data["dateOfBirth"] as? String) ?: ""
         val address = (data["address"] as? String) ?: ""
         val fcmToken = (data["fcmToken"] as? String) ?: ""
+        val agentStatus = (data["agentStatus"] as? String) ?: "NOT_APPLIED"
+        val isOnDuty = (data["isOnDuty"] as? Boolean) ?: true
+        val totalAgentEarnings = when (val e = data["totalAgentEarnings"]) {
+            is Number -> e.toDouble()
+            else -> 0.0
+        }
+        val registeredDeviceId = (data["registeredDeviceId"] as? String) ?: ""
+        val registeredDeviceModel = (data["registeredDeviceModel"] as? String) ?: ""
+        val telegramUsername = (data["telegramUsername"] as? String) ?: ""
         val createdAt = when (val c = data["createdAt"]) {
             is Timestamp -> c.toDate().time
             is Number -> c.toLong()
@@ -671,12 +719,20 @@ class UserRepository @Inject constructor(
             selfieVerified = selfieVerified,
             upiId = upiId,
             bankAccountNumber = bankAccountNumber,
+            bankIfsc = bankIfsc,
+            bankVerified = bankVerified,
             profilePhotoUri = profilePhotoUri,
             panImageUrl = panImageUrl,
             aadhaarImageUrl = aadhaarImageUrl,
             dateOfBirth = dateOfBirth,
             address = address,
             fcmToken = fcmToken,
+            agentStatus = agentStatus,
+            isOnDuty = isOnDuty,
+            totalAgentEarnings = totalAgentEarnings,
+            registeredDeviceId = registeredDeviceId,
+            registeredDeviceModel = registeredDeviceModel,
+            telegramUsername = telegramUsername,
             createdAt = createdAt
         )
     }

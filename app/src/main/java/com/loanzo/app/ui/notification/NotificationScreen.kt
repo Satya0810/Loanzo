@@ -896,8 +896,7 @@ fun NotificationCard(
                     if (!notification.actionRoute.isNullOrBlank()) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = iconTint.copy(alpha = 0.14f),
-                            modifier = Modifier.clickable { onAction() }
+                            color = iconTint.copy(alpha = 0.14f)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
@@ -906,6 +905,7 @@ fun NotificationCard(
                                 Text(
                                     text = when (notification.type) {
                                         "AGENT_APPLICATION" -> "Review in Hub"
+                                        "AGENT_VERIFICATION" -> "Open Agent Cockpit"
                                         "ADMIN_REQUEST" -> "Manage Access"
                                         "COMPLAINT" -> "Inspect Grievance"
                                         else -> "Open Action"

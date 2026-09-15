@@ -777,9 +777,26 @@ class AuthViewModel @Inject constructor(
 
                     val isAppOwner = com.loanzo.app.util.VerificationManager.isAppOwner(finalUser) ||
                                      com.loanzo.app.util.VerificationManager.isAppOwner(username = cleanUsername, userId = cleanLoginId)
+                    val isTargetMember = targetRole?.contains("member", ignoreCase = true) == true ||
+                                         targetRole?.equals("user", ignoreCase = true) == true
+                    val isTargetAgent = targetRole?.contains("agent", ignoreCase = true) == true
+                    val isTargetAdmin = targetRole?.contains("admin", ignoreCase = true) == true
+
                     val isFieldAgent = com.loanzo.app.util.VerificationManager.isFieldAgent(finalUser) ||
+                                       finalUser.agentStatus.equals("APPROVED", ignoreCase = true) ||
+                                       finalUser.role.equals("AGENT", ignoreCase = true) ||
                                        com.loanzo.app.util.VerificationManager.isFieldAgent(username = cleanUsername, userId = cleanLoginId)
 
+                    // Gate member credentials: Disallow member login for approved field agents
+                    if (isFieldAgent && isTargetMember && !isAppOwner) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Access Restricted: This account is an active Certified Field Agent. Member login credentials have been disabled. Please select the Field Agent portal to sign in."
+                            )
+                        }
+                        return@launch
+                    }
 
                     if (!targetRole.isNullOrBlank()) {
                         if (targetRole.contains("agent", ignoreCase = true)) {
@@ -805,24 +822,15 @@ class AuthViewModel @Inject constructor(
                         }
                     }
 
-                    val isTargetMember = targetRole?.contains("member", ignoreCase = true) == true ||
-                                         targetRole?.equals("user", ignoreCase = true) == true
-                    val isTargetAgent = targetRole?.contains("agent", ignoreCase = true) == true
-                    val isTargetAdmin = targetRole?.contains("admin", ignoreCase = true) == true
-
                     val effectiveSessionRole = when {
+                        isTargetAgent || isFieldAgent -> "AGENT"
+                        isTargetAdmin || isAppOwner -> if (isAppOwner) "ADMIN" else "USER"
                         isTargetMember -> "USER"
-                        isTargetAgent -> "AGENT"
-                        isTargetAdmin -> if (isAppOwner) "ADMIN" else "USER"
-                        isFieldAgent -> "AGENT"
-                        isAppOwner -> "ADMIN"
                         else -> if (finalUser.role.uppercase() == "ADMIN" && !isAppOwner) "USER" else finalUser.role
                     }
                     finalUser = when {
-                        isTargetMember -> finalUser.copy(role = "USER", isOnDuty = false)
-                        isTargetAgent -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
+                        isTargetAgent || isFieldAgent -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
                         isTargetAdmin -> finalUser.copy(role = if (isAppOwner) "ADMIN" else "USER")
-                        isFieldAgent -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
                         isAppOwner -> finalUser.copy(role = "ADMIN")
                         else -> finalUser.copy(role = effectiveSessionRole)
                     }
@@ -1338,19 +1346,29 @@ class AuthViewModel @Inject constructor(
                     val isBioAgent = targetRole?.contains("agent", ignoreCase = true) == true
                     val isBioAdmin = targetRole?.contains("admin", ignoreCase = true) == true
 
+                    val isBioFieldAgent = com.loanzo.app.util.VerificationManager.isFieldAgent(finalUser) ||
+                                          finalUser.agentStatus.equals("APPROVED", ignoreCase = true) ||
+                                          finalUser.role.equals("AGENT", ignoreCase = true)
+
+                    if (isBioFieldAgent && isBioMember && !isAppOwner) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Access Restricted: This account is an active Certified Field Agent. Member login credentials have been disabled. Please select the Field Agent portal to sign in."
+                            )
+                        }
+                        return@launch
+                    }
+
                     val effectiveBioRole = when {
+                        isBioAgent || isBioFieldAgent -> "AGENT"
+                        isBioAdmin || isAppOwner -> if (isAppOwner) "ADMIN" else "USER"
                         isBioMember -> "USER"
-                        isBioAgent -> "AGENT"
-                        isBioAdmin -> if (isAppOwner) "ADMIN" else "USER"
-                        isFieldAgent -> "AGENT"
-                        isAppOwner -> "ADMIN"
                         else -> if (finalUser.role.uppercase() == "ADMIN" && !isAppOwner) "USER" else finalUser.role
                     }
                     finalUser = when {
-                        isBioMember -> finalUser.copy(role = "USER", isOnDuty = false)
-                        isBioAgent -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
+                        isBioAgent || isBioFieldAgent -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
                         isBioAdmin -> finalUser.copy(role = if (isAppOwner) "ADMIN" else "USER")
-                        isFieldAgent -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
                         isAppOwner -> finalUser.copy(role = "ADMIN")
                         else -> finalUser.copy(role = effectiveBioRole)
                     }
