@@ -120,23 +120,24 @@ class ChatViewModel @Inject constructor(
      * Initializes the user identity for chats
      */
     fun initUser(userId: String) {
-        if (userId.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
-            val user = userDao.getUserById(userId)
-            val authUser = FirebaseAuth.getInstance().currentUser
-            val currentId = userId.ifBlank { authUser?.uid ?: "" }
-            val currentName = user?.name ?: user?.username ?: authUser?.displayName ?: "Member"
+            val resolvedId = userId.ifBlank {
+                userRepository.getCurrentUserIdSync() ?: ""
+            }
+            if (resolvedId.isBlank()) return@launch
+            val user = userDao.getUserById(resolvedId) ?: userRepository.syncUserById(resolvedId)
+            val currentName = user?.name?.ifBlank { user.username } ?: user?.username ?: "Member"
             val currentRole = user?.role ?: "MEMBER"
 
             _uiState.update {
                 it.copy(
-                    currentUserId = currentId,
+                    currentUserId = resolvedId,
                     currentUserName = currentName,
                     currentUserRole = currentRole
                 )
             }
 
-            loadUserConversations(currentId)
+            loadUserConversations(resolvedId)
         }
     }
 
@@ -247,7 +248,11 @@ class ChatViewModel @Inject constructor(
                                 )
                             } else {
                                 val participants = doc.get("participants") as? List<*> ?: emptyList<Any>()
-                                val otherUserId = participants.mapNotNull { it?.toString() }.firstOrNull { it != userId } ?: ""
+                                val otherUserId = participants.mapNotNull { it?.toString() }.firstOrNull { it != userId }
+                                    ?: if (chId.startsWith("direct_")) {
+                                        val parts = chId.removePrefix("direct_").split("_")
+                                        parts.firstOrNull { it != userId } ?: parts.lastOrNull() ?: ""
+                                    } else ""
                                 val otherUser = if (otherUserId.isNotBlank()) {
                                     userDao.getUserById(otherUserId) ?: userRepository.syncUserById(otherUserId)
                                 } else null
@@ -356,9 +361,8 @@ class ChatViewModel @Inject constructor(
      * Starts or opens a real-time chat channel
      */
     fun loadChat(channelId: String, loanId: String? = null, targetUserId: String? = null) {
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        val initialUserId = _uiState.value.currentUserId.ifBlank { currentUser?.uid ?: "" }
-        val initialUserName = _uiState.value.currentUserName.ifBlank { currentUser?.displayName ?: "You" }
+        val initialUserId = _uiState.value.currentUserId
+        val initialUserName = _uiState.value.currentUserName.ifBlank { "You" }
 
         _uiState.update {
             it.copy(
@@ -377,12 +381,10 @@ class ChatViewModel @Inject constructor(
                 firebaseManager.ensureFirebaseAuthSession()
             } catch (_: Exception) {}
             val resolvedUserId = initialUserId.ifBlank {
-                userRepository.getCurrentUserIdSync()
-                    ?: FirebaseAuth.getInstance().currentUser?.uid
-                    ?: ""
+                userRepository.getCurrentUserIdSync() ?: ""
             }
-            val localUser = if (resolvedUserId.isNotBlank()) userDao.getUserById(resolvedUserId) else null
-            val resolvedUserName = initialUserName.takeIf { it != "You" } ?: localUser?.name ?: localUser?.username ?: "You"
+            val localUser = if (resolvedUserId.isNotBlank()) userDao.getUserById(resolvedUserId) ?: userRepository.syncUserById(resolvedUserId) else null
+            val resolvedUserName = initialUserName.takeIf { it != "You" } ?: localUser?.name?.ifBlank { localUser.username } ?: localUser?.username ?: "You"
             val resolvedUserRole = localUser?.role ?: "MEMBER"
 
             val loan = if (!loanId.isNullOrBlank()) {
@@ -425,9 +427,8 @@ class ChatViewModel @Inject constructor(
                     return@addSnapshotListener
                 }
 
-                val currentUid = _uiState.value.currentUserId.ifBlank {
-                    FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                }
+                val currentUid = _uiState.value.currentUserId
+                val currentUName = _uiState.value.currentUserName
 
                 val isSupportChannel = channelId == "support_loanzo_assistant" || channelId.contains("support") || targetUserId == "LOANZO_BOT"
 
@@ -442,10 +443,11 @@ class ChatViewModel @Inject constructor(
                     val messageType = doc.getString("messageType") ?: "TEXT"
                     val metaPayload = doc.getString("metaPayload")
 
-                    val fbAuthUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                    val isMe = (currentUid.isNotBlank() && senderId == currentUid) ||
-                            (fbAuthUid.isNotBlank() && senderId == fbAuthUid) ||
-                            (isSupportChannel && senderId != "LOANZO_BOT" && senderRole != "OFFICIAL_BOT")
+                    val isMe = if (isSupportChannel) {
+                        senderId != "LOANZO_BOT" && senderRole != "OFFICIAL_BOT"
+                    } else {
+                        currentUid.isNotBlank() && (senderId == currentUid || (currentUName.isNotBlank() && currentUName != "Member" && currentUName != "You" && senderId == currentUName))
+                    }
 
                     FirestoreChatMessage(
                         messageId = doc.id,
@@ -496,13 +498,12 @@ class ChatViewModel @Inject constructor(
 
         viewModelScope.launch {
             var userId = currentUid.ifBlank {
-                userRepository.getCurrentUserIdSync()
-                    ?: FirebaseAuth.getInstance().currentUser?.uid
-                    ?: "user_member"
+                userRepository.getCurrentUserIdSync() ?: ""
             }
             if (userId.isBlank()) userId = "user_member"
-            var userName = currentUName.ifBlank { "Member" }
-            var role = currentRole.ifBlank { "MEMBER" }
+            val localUser = if (userId.isNotBlank()) userDao.getUserById(userId) ?: userRepository.syncUserById(userId) else null
+            var userName = currentUName.takeIf { it != "You" && it.isNotBlank() } ?: localUser?.name?.ifBlank { localUser.username } ?: "Member"
+            var role = currentRole.takeIf { it.isNotBlank() && it != "MEMBER" } ?: localUser?.role ?: "MEMBER"
 
             // Resolve other participant ID
             val otherId = state.activeCounterparty?.userId?.takeIf { it.isNotBlank() }
@@ -522,7 +523,6 @@ class ChatViewModel @Inject constructor(
                     } else ""
                 } else ""
 
-            val localUser = if (userId.isNotBlank()) userDao.getUserById(userId) else null
             if (localUser != null) {
                 if (userName == "Member" || userName.isBlank()) userName = localUser.name.ifBlank { localUser.username }
                 if (role == "MEMBER") role = localUser.role
@@ -586,6 +586,10 @@ class ChatViewModel @Inject constructor(
                     val allParticipants = buildList {
                         if (userId.isNotBlank()) add(userId)
                         if (otherId.isNotBlank()) add(otherId)
+                        if (channelId.startsWith("direct_")) {
+                            val parts = channelId.removePrefix("direct_").split("_")
+                            addAll(parts.filter { it.isNotBlank() })
+                        }
                         if (channelId == "support_loanzo_assistant" || channelId.contains("support")) {
                             add("LOANZO_BOT")
                         }
@@ -601,6 +605,28 @@ class ChatViewModel @Inject constructor(
                         "participants" to allParticipants
                     )
                     firestore.collection("channels").document(channelId).set(channelDoc, SetOptions.merge()).await()
+
+                    // Push direct cloud notification for recipient
+                    if (otherId.isNotBlank() && otherId != "LOANZO_BOT" && otherId != userId) {
+                        try {
+                            val notifDocId = "notif_msg_${channelId}_${localNow}"
+                            firestore.collection("notifications").document(notifDocId).set(
+                                hashMapOf(
+                                    "notificationId" to notifDocId,
+                                    "userId" to otherId,
+                                    "title" to "💬 Message from $userName",
+                                    "message" to text.trim().take(120),
+                                    "type" to "CHAT",
+                                    "actionRoute" to "chat/$channelId?targetUserId=$userId",
+                                    "isRead" to false,
+                                    "timestamp" to localNow
+                                )
+                            )
+                        } catch (notifErr: Exception) {
+                            Log.d(TAG, "Chat notification note: ${notifErr.message}")
+                        }
+                    }
+
                     Log.d(TAG, "Message sent successfully to channel $channelId with participants $allParticipants")
                 }
 
