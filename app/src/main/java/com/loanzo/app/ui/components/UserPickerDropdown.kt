@@ -65,7 +65,9 @@ fun UserPickerDropdown(
     }
 
     val allUsers = remember(candidateUsers, onlineUsers) {
-        val merged = (candidateUsers + onlineUsers).distinctBy { it.userId }
+        val merged = (candidateUsers + onlineUsers)
+            .filterNot { com.loanzo.app.util.VerificationManager.isDemoAccount(it.userId) || com.loanzo.app.util.VerificationManager.isDemoAccount(it.username) }
+            .distinctBy { it.userId }
         merged
     }
 
