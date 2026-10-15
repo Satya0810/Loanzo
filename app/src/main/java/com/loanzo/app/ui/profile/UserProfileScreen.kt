@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,6 +56,7 @@ fun UserProfileScreen(
     val context = LocalContext.current
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showMoreMenu by remember { mutableStateOf(false) }
+    var showScoreBreakdownSheet by remember { mutableStateOf(false) }
     val moreMenuBlurRadius by animateDpAsState(
         targetValue = if (showMoreMenu) 20.dp else 0.dp,
         animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
@@ -178,18 +180,14 @@ fun UserProfileScreen(
                     ) {
                         item {
                             Spacer(modifier = Modifier.height(4.dp))
-                            ProfileHeroCard(profile = profile)
+                            ProfileHeroCard(
+                                profile = profile,
+                                onScoreClick = { showScoreBreakdownSheet = true }
+                            )
                         }
 
                         item {
                             VerificationStatusCard(status = profile.verificationStatus)
-                        }
-
-                        item {
-                            TrustScoreGaugeCard(
-                                trustScore = profile.trustScore,
-                                tier = profile.trustScoreTier
-                            )
                         }
 
                         item {
@@ -290,14 +288,23 @@ fun UserProfileScreen(
             }
         )
     }
+
+    if (showScoreBreakdownSheet && state.profileData != null) {
+        TrustScoreBreakdownSheet(
+            profile = state.profileData!!,
+            onDismiss = { showScoreBreakdownSheet = false }
+        )
+    }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT 1: HERO IDENTITY HEADER
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
-private fun ProfileHeroCard(profile: UserProfileData) {
+private fun ProfileHeroCard(
+    profile: UserProfileData,
+    onScoreClick: () -> Unit = {}
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -311,14 +318,17 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                 .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar with verified emblem
-            Box(contentAlignment = Alignment.BottomEnd) {
+            // Avatar with intersecting clickable score box out of 100
+            Box(
+                contentAlignment = Alignment.BottomCenter,
+                modifier = Modifier.padding(bottom = 6.dp)
+            ) {
                 if (!profile.profilePhotoUri.isNullOrBlank()) {
                     coil.compose.AsyncImage(
                         model = profile.profilePhotoUri,
                         contentDescription = profile.name,
                         modifier = Modifier
-                            .size(68.dp)
+                            .size(76.dp)
                             .clip(CircleShape)
                             .border(2.dp, BrandRoyalBlue, CircleShape)
                     )
@@ -327,7 +337,7 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                         shape = CircleShape,
                         color = BrandIceBlue,
                         border = BorderStroke(2.dp, BrandIceBorder),
-                        modifier = Modifier.size(68.dp)
+                        modifier = Modifier.size(76.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
@@ -343,7 +353,8 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                 if (profile.verificationStatus == UserVerificationStatus.VERIFIED) {
                     Box(
                         modifier = Modifier
-                            .size(22.dp)
+                            .align(Alignment.TopEnd)
+                            .size(20.dp)
                             .clip(CircleShape)
                             .background(Emerald500)
                             .border(2.dp, Color.White, CircleShape),
@@ -353,9 +364,29 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                             imageVector = Icons.Default.Check,
                             contentDescription = "Verified Member",
                             tint = Color.White,
-                            modifier = Modifier.size(13.dp)
+                            modifier = Modifier.size(12.dp)
                         )
                     }
+                }
+
+                // Clickable score box showing ONLY score intersecting lower circular picture (ice cream on cone)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.5.dp, if (profile.trustScore >= 80) Emerald500 else Gold500),
+                    shadowElevation = 3.dp,
+                    modifier = Modifier
+                        .offset(y = 10.dp)
+                        .clickable(onClick = onScoreClick)
+                ) {
+                    Text(
+                        text = "${profile.trustScore}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 11.5.sp,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                    )
                 }
             }
 
@@ -370,7 +401,9 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                         text = profile.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -380,7 +413,9 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                     text = "@${profile.username.removePrefix("@")}",
                     style = MaterialTheme.typography.bodySmall,
                     color = BrandRoyalBlue,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -427,6 +462,9 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                             },
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
@@ -442,7 +480,9 @@ private fun ProfileHeroCard(profile: UserProfileData) {
                     Text(
                         text = "Member since $dateStr",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -536,121 +576,7 @@ private fun VerificationStatusCard(status: UserVerificationStatus) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT 3: TRUST SCORE GAUGE CARD
-// ─────────────────────────────────────────────────────────────────────────────
-@Composable
-private fun TrustScoreGaugeCard(trustScore: Int, tier: String) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
-        tonalElevation = 2.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(GoldCoinCream),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = GoldCoinAmber,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Community Trust Standing",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
 
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (trustScore >= 80) EmeraldLight else GoldCoinCream,
-                    border = BorderStroke(1.dp, if (trustScore >= 80) Emerald400.copy(alpha = 0.4f) else GoldCoinBorder)
-                ) {
-                    Text(
-                        text = if (trustScore >= 85) "High Reliability" else if (trustScore >= 70) "Established" else "Standard",
-                        color = if (trustScore >= 80) Emerald600 else GoldCoinAmber,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = "$trustScore",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (trustScore >= 85) Emerald500 else if (trustScore >= 70) GoldCoinAmber else Red400
-                    )
-                    Text(
-                        text = " / 100",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                }
-
-                Text(
-                    text = if (trustScore >= 85) "Excellent repayment standing" else "Normal community rating",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Score Bar
-            LinearProgressIndicator(
-                progress = { (trustScore / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = if (trustScore >= 85) Emerald500 else if (trustScore >= 70) GoldCoinAmber else Red400,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Based on verified repayments, fulfilled peer loan agreements, and community discipline.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT 4: COMMUNITY TRUST SIGNALS
@@ -1068,8 +994,9 @@ private fun ProfileActionsSection(
                 onClick = onReKycClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .heightIn(min = 48.dp),
                 shape = RoundedCornerShape(14.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = BrandRoyalBlue,
                     contentColor = Color.White
@@ -1080,7 +1007,8 @@ private fun ProfileActionsSection(
                 Text(
                     text = "Update / Re-KYC Credentials",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center
                 )
             }
         } else {
@@ -1089,8 +1017,9 @@ private fun ProfileActionsSection(
                 onClick = onChatClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .heightIn(min = 48.dp),
                 shape = RoundedCornerShape(14.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = BrandRoyalBlue,
                     contentColor = Color.White
@@ -1101,7 +1030,8 @@ private fun ProfileActionsSection(
                 Text(
                     text = "Message / Chat with ${profile.name.split(" ").firstOrNull() ?: "Member"}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center
                 )
             }
 
@@ -1110,22 +1040,24 @@ private fun ProfileActionsSection(
                     onClick = onReportClick,
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp),
+                        .heightIn(min = 48.dp),
                     shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     border = BorderStroke(1.dp, Red400.copy(alpha = 0.6f)),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400)
                 ) {
                     Icon(Icons.Default.ReportProblem, null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Report Member", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                    Text("Report Member", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, textAlign = TextAlign.Center)
                 }
 
                 OutlinedButton(
                     onClick = onBlockClick,
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp),
+                        .heightIn(min = 48.dp),
                     shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
                 ) {
@@ -1138,7 +1070,8 @@ private fun ProfileActionsSection(
                     Text(
                         if (profile.isBlocked) "Unblock" else "Block",
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
@@ -1242,6 +1175,113 @@ private fun ReportUserDialog(
             }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TrustScoreBreakdownSheet(
+    profile: UserProfileData,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 36.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Gold500.copy(alpha = 0.15f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = Gold500,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Trust Score Breakdown",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Score: ${profile.trustScore}/100 • ${profile.trustScoreTier}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Close")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ScoreFactorRow("Aadhaar & PAN Verification", "+30", "Identity authenticated via government databases", true)
+                    ScoreFactorRow("DigiLocker ID Attestation", "+20", "Verified digital identity credentials", profile.verificationStatus == UserVerificationStatus.VERIFIED)
+                    ScoreFactorRow("Clean Repayment Record", "+25", "Zero defaults and prompt settlement history", profile.trustScore >= 70)
+                    ScoreFactorRow("Dispute & Delinquency Free", "+15", "No outstanding complaints or legal disputes", true)
+                    ScoreFactorRow("Community Vouches & Endorsements", "+10", "Endorsed by peer community lenders", profile.trustScore >= 80)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Note: Loanzo Trust Scores are calculated autonomously using weighted compliance and transaction data. Scores adapt dynamically with each repayment and counterparty feedback.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScoreFactorRow(title: String, points: String, description: String, achieved: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+            Text(description, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (achieved) Emerald500.copy(alpha = 0.15f) else Gray700.copy(alpha = 0.15f)
+        ) {
+            Text(
+                text = "$points pts",
+                color = if (achieved) Emerald500 else Gray400,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+    }
 }
 
 private data class Quint<A, B, C, D, E>(

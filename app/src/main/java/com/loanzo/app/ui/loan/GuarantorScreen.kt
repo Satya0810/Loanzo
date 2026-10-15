@@ -131,7 +131,7 @@ fun GuarantorScreen(
                     GuarantorCard(
                         guarantor = guarantor,
                         currentUserId = currentUserId,
-                        currentUserPhone = currentUser?.phone,
+                        currentUser = currentUser,
                         onUpdateConsent = { status -> onUpdateConsent(guarantor.guarantorId, status) }
                     )
                 }
@@ -154,12 +154,25 @@ fun GuarantorScreen(
 private fun GuarantorCard(
     guarantor: GuarantorEntity,
     currentUserId: String?,
-    currentUserPhone: String?,
+    currentUser: UserEntity?,
     onUpdateConsent: (String) -> Unit
 ) {
-    val cleanCurrent = currentUserPhone?.replace("\\D".toRegex(), "")?.takeLast(10) ?: ""
-    val cleanGuarantor = guarantor.phone.replace("\\D".toRegex(), "").takeLast(10)
-    val isGuarantorSelf = cleanCurrent.isNotEmpty() && cleanCurrent == cleanGuarantor
+    val cleanCurrentPhone = currentUser?.phone?.replace("\\D".toRegex(), "")?.takeLast(10) ?: ""
+    val cleanGuarantorPhone = guarantor.phone.replace("\\D".toRegex(), "").takeLast(10)
+    val phoneMatches = cleanCurrentPhone.isNotEmpty() && cleanCurrentPhone == cleanGuarantorPhone
+    val emailMatches = !currentUser?.email.isNullOrBlank() && !guarantor.email.isNullOrBlank() &&
+            currentUser?.email?.trim().equals(guarantor.email.trim(), ignoreCase = true)
+    val panMatches = !currentUser?.panNumber.isNullOrBlank() && !guarantor.panNumber.isNullOrBlank() &&
+            currentUser?.panNumber?.trim().equals(guarantor.panNumber.trim(), ignoreCase = true)
+    val nameMatches = !currentUser?.name.isNullOrBlank() &&
+            currentUser?.name?.trim().equals(guarantor.name.trim(), ignoreCase = true)
+    val idMatches = currentUserId != null && currentUserId.isNotBlank() && (
+            guarantor.guarantorId.contains(currentUserId, ignoreCase = true) ||
+            guarantor.phone.contains(currentUserId, ignoreCase = true) ||
+            guarantor.email.contains(currentUserId, ignoreCase = true)
+    )
+
+    val isGuarantorSelf = phoneMatches || emailMatches || panMatches || nameMatches || idMatches
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),

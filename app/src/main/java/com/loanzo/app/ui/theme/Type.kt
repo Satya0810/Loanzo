@@ -1,6 +1,7 @@
 package com.loanzo.app.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -11,6 +12,11 @@ import androidx.compose.ui.unit.sp
 // Using system default fonts (Inter-like)
 val LoanzoFontFamily = FontFamily.Default
 
+@Suppress("DEPRECATION")
+private val defaultPlatformTextStyle = PlatformTextStyle(
+    includeFontPadding = false
+)
+
 val LoanzoTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -19,7 +25,8 @@ val LoanzoTypography = Typography(
         lineHeight = 40.sp,
         letterSpacing = (-0.5).sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     displayMedium = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -28,7 +35,8 @@ val LoanzoTypography = Typography(
         lineHeight = 34.sp,
         letterSpacing = 0.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     displaySmall = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -37,7 +45,8 @@ val LoanzoTypography = Typography(
         lineHeight = 30.sp,
         letterSpacing = 0.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     headlineLarge = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -46,7 +55,8 @@ val LoanzoTypography = Typography(
         lineHeight = 28.sp,
         letterSpacing = 0.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     headlineMedium = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -55,7 +65,8 @@ val LoanzoTypography = Typography(
         lineHeight = 26.sp,
         letterSpacing = 0.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     headlineSmall = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -64,7 +75,8 @@ val LoanzoTypography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     titleLarge = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -73,7 +85,8 @@ val LoanzoTypography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     titleMedium = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -82,7 +95,8 @@ val LoanzoTypography = Typography(
         lineHeight = 22.sp,
         letterSpacing = 0.1.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     titleSmall = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -91,7 +105,8 @@ val LoanzoTypography = Typography(
         lineHeight = 20.sp,
         letterSpacing = 0.1.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     bodyLarge = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -100,7 +115,8 @@ val LoanzoTypography = Typography(
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp,
         lineBreak = LineBreak.Paragraph,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     bodyMedium = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -109,7 +125,8 @@ val LoanzoTypography = Typography(
         lineHeight = 20.sp,
         letterSpacing = 0.25.sp,
         lineBreak = LineBreak.Paragraph,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     bodySmall = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -118,7 +135,8 @@ val LoanzoTypography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.4.sp,
         lineBreak = LineBreak.Paragraph,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     labelLarge = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -127,7 +145,8 @@ val LoanzoTypography = Typography(
         lineHeight = 20.sp,
         letterSpacing = 0.1.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     labelMedium = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -136,7 +155,8 @@ val LoanzoTypography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     ),
     labelSmall = TextStyle(
         fontFamily = LoanzoFontFamily,
@@ -145,6 +165,7 @@ val LoanzoTypography = Typography(
         lineHeight = 14.sp,
         letterSpacing = 0.5.sp,
         lineBreak = LineBreak.Heading,
-        hyphens = Hyphens.None
+        hyphens = Hyphens.None,
+        platformStyle = defaultPlatformTextStyle
     )
 )

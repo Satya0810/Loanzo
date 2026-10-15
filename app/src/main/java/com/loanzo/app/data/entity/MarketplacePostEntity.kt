@@ -44,5 +44,8 @@ data class MarketplacePostEntity(
     val coBorrowerRelationship: String = "", // e.g. "Spouse", "Brother", "Business Partner"
     val coBorrowerAvatarUrl: String = "",
     val coBorrowerKycVerified: Boolean = false,
-    val coBorrowerTrustScore: Int = 88
+    val coBorrowerTrustScore: Int = 88,
+
+    // Master Admin Verification
+    val isAdminVerified: Boolean = false
 )

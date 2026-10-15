@@ -29,7 +29,8 @@ class LoanRepository @Inject constructor(
     private val guarantorDao: GuarantorDao,
     private val auditEventDao: AuditEventDao,
     private val penaltyEngine: PenaltyEngine,
-    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager,
+    private val coLenderDao: CoLenderDao
 ) {
     private val firestore: FirebaseFirestore
         get() = com.loanzo.app.data.firebase.FirestoreProvider.get()
@@ -143,10 +144,57 @@ class LoanRepository @Inject constructor(
     fun getLoansByBorrower(userId: String): Flow<List<LoanEntity>> = loanDao.getLoansByBorrower(userId)
     fun getLoansByLender(userId: String): Flow<List<LoanEntity>> = loanDao.getLoansByLender(userId)
     fun getAllLoansForUser(userId: String): Flow<List<LoanEntity>> = loanDao.getAllLoansForUser(userId)
+    fun getAllPlatformLoans(): Flow<List<LoanEntity>> = loanDao.getAllPlatformLoans()
     fun getTotalDisbursed(userId: String): Flow<Double?> = loanDao.getTotalDisbursedForBorrower(userId)
     fun getTotalOutstanding(userId: String): Flow<Double?> = loanDao.getTotalOutstandingForBorrower(userId)
 
     // Disbursement operations
+    fun disbursementToFirestoreMap(disbursement: DisbursementEntity): Map<String, Any?> {
+        return hashMapOf(
+            "disbursementId" to disbursement.disbursementId,
+            "loanId" to disbursement.loanId,
+            "amount" to disbursement.amount,
+            "payeeId" to disbursement.payeeId,
+            "payeeName" to disbursement.payeeName,
+            "purpose" to disbursement.purpose,
+            "purposeCategory" to disbursement.purposeCategory,
+            "verificationStatus" to disbursement.verificationStatus,
+            "ruleEngineResult" to disbursement.ruleEngineResult,
+            "approvalStatus" to disbursement.approvalStatus,
+            "transactionRef" to disbursement.transactionRef,
+            "upiDeepLink" to disbursement.upiDeepLink,
+            "timestamp" to disbursement.timestamp,
+            "lenderNote" to disbursement.lenderNote,
+            "borrowerNote" to disbursement.borrowerNote
+        )
+    }
+
+    fun parseDocumentToDisbursement(doc: DocumentSnapshot): DisbursementEntity? {
+        return try {
+            val d = doc.data ?: return null
+            DisbursementEntity(
+                disbursementId = doc.getString("disbursementId") ?: doc.id,
+                loanId = doc.getString("loanId") ?: "",
+                amount = doc.getDouble("amount") ?: doc.getLong("amount")?.toDouble() ?: 0.0,
+                payeeId = doc.getString("payeeId"),
+                payeeName = doc.getString("payeeName") ?: "",
+                purpose = doc.getString("purpose") ?: "",
+                purposeCategory = doc.getString("purposeCategory") ?: "OTHER",
+                verificationStatus = doc.getString("verificationStatus") ?: "PENDING",
+                ruleEngineResult = doc.getString("ruleEngineResult") ?: "CONSISTENT",
+                approvalStatus = doc.getString("approvalStatus") ?: "PENDING",
+                transactionRef = doc.getString("transactionRef") ?: "",
+                upiDeepLink = doc.getString("upiDeepLink") ?: "",
+                timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis(),
+                lenderNote = doc.getString("lenderNote") ?: "",
+                borrowerNote = doc.getString("borrowerNote") ?: ""
+            )
+        } catch (e: Exception) {
+            Log.w("LoanRepository", "Failed to parse disbursement ${doc.id}: ${e.message}")
+            null
+        }
+    }
+
     suspend fun createDisbursement(disbursement: DisbursementEntity, actorId: String) {
         disbursementDao.insertDisbursement(disbursement)
         auditEventDao.insertEvent(
@@ -160,6 +208,19 @@ class LoanRepository @Inject constructor(
                 description = "Tranche request: ₹${disbursement.amount} to ${disbursement.payeeName} for ${disbursement.purpose}"
             )
         )
+        try {
+            withContext(Dispatchers.IO) {
+                firebaseManager.ensureFirebaseAuthSession()
+                withTimeoutOrNull(8000L) {
+                    firestore.collection("disbursements")
+                        .document(disbursement.disbursementId)
+                        .set(disbursementToFirestoreMap(disbursement), SetOptions.merge())
+                        .await()
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w("LoanRepository", "Cloud push for createDisbursement failed: ${e.message}")
+        }
     }
 
     suspend fun updateDisbursement(disbursement: DisbursementEntity, actorId: String, eventType: String = "UPDATED") {
@@ -175,6 +236,42 @@ class LoanRepository @Inject constructor(
                 description = "Disbursement ${eventType.lowercase()}: ₹${disbursement.amount}"
             )
         )
+        try {
+            withContext(Dispatchers.IO) {
+                firebaseManager.ensureFirebaseAuthSession()
+                withTimeoutOrNull(8000L) {
+                    firestore.collection("disbursements")
+                        .document(disbursement.disbursementId)
+                        .set(disbursementToFirestoreMap(disbursement), SetOptions.merge())
+                        .await()
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w("LoanRepository", "Cloud push for updateDisbursement failed: ${e.message}")
+        }
+    }
+
+    suspend fun syncDisbursementsForLoan(loanId: String): Result<Int> = withContext(Dispatchers.IO) {
+        if (loanId.isBlank()) return@withContext Result.success(0)
+        try {
+            firebaseManager.ensureFirebaseAuthSession()
+            val snap = withTimeoutOrNull(8000L) {
+                firestore.collection("disbursements")
+                    .whereEqualTo("loanId", loanId)
+                    .get()
+                    .await()
+            } ?: return@withContext Result.success(0)
+
+            val disbs = snap.documents.mapNotNull { parseDocumentToDisbursement(it) }
+            if (disbs.isNotEmpty()) {
+                disbursementDao.insertDisbursements(disbs)
+                Log.d("LoanRepository", "Synced ${disbs.size} disbursements for loan $loanId into Room")
+            }
+            Result.success(disbs.size)
+        } catch (e: Exception) {
+            Log.w("LoanRepository", "Failed to sync disbursements for loan $loanId: ${e.message}")
+            Result.failure(e)
+        }
     }
 
     fun getDisbursementsByLoan(loanId: String): Flow<List<DisbursementEntity>> =
@@ -189,6 +286,50 @@ class LoanRepository @Inject constructor(
         disbursementDao.getPendingApprovalsForLender(lenderId)
 
     // Repayment operations
+    fun repaymentToFirestoreMap(repayment: RepaymentEntity): Map<String, Any?> {
+        return hashMapOf(
+            "repaymentId" to repayment.repaymentId,
+            "loanId" to repayment.loanId,
+            "amount" to repayment.amount,
+            "transactionRef" to repayment.transactionRef,
+            "status" to repayment.status,
+            "dueDate" to repayment.dueDate,
+            "paidDate" to repayment.paidDate,
+            "outstandingSnapshot" to repayment.outstandingSnapshot,
+            "principalComponent" to repayment.principalComponent,
+            "interestComponent" to repayment.interestComponent,
+            "penalty" to repayment.penalty,
+            "penaltyWaived" to repayment.penaltyWaived,
+            "timestamp" to repayment.timestamp,
+            "note" to repayment.note
+        )
+    }
+
+    fun parseDocumentToRepayment(doc: DocumentSnapshot): RepaymentEntity? {
+        return try {
+            val d = doc.data ?: return null
+            RepaymentEntity(
+                repaymentId = doc.getString("repaymentId") ?: doc.id,
+                loanId = doc.getString("loanId") ?: "",
+                amount = doc.getDouble("amount") ?: doc.getLong("amount")?.toDouble() ?: 0.0,
+                transactionRef = doc.getString("transactionRef") ?: "",
+                status = doc.getString("status") ?: "SCHEDULED",
+                dueDate = doc.getLong("dueDate") ?: System.currentTimeMillis(),
+                paidDate = doc.getLong("paidDate"),
+                outstandingSnapshot = doc.getDouble("outstandingSnapshot") ?: doc.getLong("outstandingSnapshot")?.toDouble() ?: 0.0,
+                principalComponent = doc.getDouble("principalComponent") ?: doc.getLong("principalComponent")?.toDouble() ?: 0.0,
+                interestComponent = doc.getDouble("interestComponent") ?: doc.getLong("interestComponent")?.toDouble() ?: 0.0,
+                penalty = doc.getDouble("penalty") ?: doc.getLong("penalty")?.toDouble() ?: 0.0,
+                penaltyWaived = doc.getBoolean("penaltyWaived") ?: false,
+                timestamp = doc.getLong("timestamp") ?: System.currentTimeMillis(),
+                note = doc.getString("note") ?: ""
+            )
+        } catch (e: Exception) {
+            Log.w("LoanRepository", "Failed to parse repayment ${doc.id}: ${e.message}")
+            null
+        }
+    }
+
     suspend fun createRepayment(repayment: RepaymentEntity, actorId: String) {
         repaymentDao.insertRepayment(repayment)
         auditEventDao.insertEvent(
@@ -228,6 +369,42 @@ class LoanRepository @Inject constructor(
                 description = "Repayment recorded: ₹${repayment.amount}, Ref: ${repayment.transactionRef}"
             )
         )
+        try {
+            withContext(Dispatchers.IO) {
+                firebaseManager.ensureFirebaseAuthSession()
+                withTimeoutOrNull(8000L) {
+                    firestore.collection("repayments")
+                        .document(repayment.repaymentId)
+                        .set(repaymentToFirestoreMap(repayment), SetOptions.merge())
+                        .await()
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w("LoanRepository", "Cloud push for recordRepayment failed: ${e.message}")
+        }
+    }
+
+    suspend fun syncRepaymentsForLoan(loanId: String): Result<Int> = withContext(Dispatchers.IO) {
+        if (loanId.isBlank()) return@withContext Result.success(0)
+        try {
+            firebaseManager.ensureFirebaseAuthSession()
+            val snap = withTimeoutOrNull(8000L) {
+                firestore.collection("repayments")
+                    .whereEqualTo("loanId", loanId)
+                    .get()
+                    .await()
+            } ?: return@withContext Result.success(0)
+
+            val repayments = snap.documents.mapNotNull { parseDocumentToRepayment(it) }
+            if (repayments.isNotEmpty()) {
+                repaymentDao.insertRepayments(repayments)
+                Log.d("LoanRepository", "Synced ${repayments.size} repayments for loan $loanId into Room")
+            }
+            Result.success(repayments.size)
+        } catch (e: Exception) {
+            Log.w("LoanRepository", "Failed to sync repayments for loan $loanId: ${e.message}")
+            Result.failure(e)
+        }
     }
 
     fun getRepaymentsByLoan(loanId: String): Flow<List<RepaymentEntity>> {
@@ -250,6 +427,44 @@ class LoanRepository @Inject constructor(
         repaymentDao.getTotalPaidForLoan(loanId)
 
     // Pledge operations
+    fun pledgeToFirestoreMap(pledge: PledgeEntity): Map<String, Any?> {
+        return hashMapOf(
+            "pledgeId" to pledge.pledgeId,
+            "loanId" to pledge.loanId,
+            "assetDescription" to pledge.assetDescription,
+            "assetType" to pledge.assetType,
+            "estimatedValue" to pledge.estimatedValue,
+            "weight" to pledge.weight,
+            "photoUri" to pledge.photoUri,
+            "receiptUri" to pledge.receiptUri,
+            "receiptStatus" to pledge.receiptStatus,
+            "notes" to pledge.notes,
+            "createdAt" to pledge.createdAt
+        )
+    }
+
+    fun parseDocumentToPledge(doc: DocumentSnapshot): PledgeEntity? {
+        return try {
+            val d = doc.data ?: return null
+            PledgeEntity(
+                pledgeId = doc.getString("pledgeId") ?: doc.id,
+                loanId = doc.getString("loanId") ?: "",
+                assetDescription = doc.getString("assetDescription") ?: "",
+                assetType = doc.getString("assetType") ?: "OTHER",
+                estimatedValue = doc.getDouble("estimatedValue") ?: doc.getLong("estimatedValue")?.toDouble() ?: 0.0,
+                weight = doc.getDouble("weight") ?: doc.getLong("weight")?.toDouble() ?: 0.0,
+                photoUri = doc.getString("photoUri") ?: "",
+                receiptUri = doc.getString("receiptUri") ?: "",
+                receiptStatus = doc.getString("receiptStatus") ?: "PENDING",
+                notes = doc.getString("notes") ?: "",
+                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+            )
+        } catch (e: Exception) {
+            Log.w("LoanRepository", "Failed to parse pledge ${doc.id}: ${e.message}")
+            null
+        }
+    }
+
     suspend fun createPledge(pledge: PledgeEntity, actorId: String) {
         pledgeDao.insertPledge(pledge)
         auditEventDao.insertEvent(
@@ -263,6 +478,42 @@ class LoanRepository @Inject constructor(
                 description = "Pledge added: ${pledge.assetDescription} worth ₹${pledge.estimatedValue}"
             )
         )
+        try {
+            withContext(Dispatchers.IO) {
+                firebaseManager.ensureFirebaseAuthSession()
+                withTimeoutOrNull(8000L) {
+                    firestore.collection("pledges")
+                        .document(pledge.pledgeId)
+                        .set(pledgeToFirestoreMap(pledge), SetOptions.merge())
+                        .await()
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w("LoanRepository", "Cloud push for createPledge failed: ${e.message}")
+        }
+    }
+
+    suspend fun syncPledgesForLoan(loanId: String): Result<Int> = withContext(Dispatchers.IO) {
+        if (loanId.isBlank()) return@withContext Result.success(0)
+        try {
+            firebaseManager.ensureFirebaseAuthSession()
+            val snap = withTimeoutOrNull(8000L) {
+                firestore.collection("pledges")
+                    .whereEqualTo("loanId", loanId)
+                    .get()
+                    .await()
+            } ?: return@withContext Result.success(0)
+
+            val pledges = snap.documents.mapNotNull { parseDocumentToPledge(it) }
+            if (pledges.isNotEmpty()) {
+                pledgeDao.insertPledges(pledges)
+                Log.d("LoanRepository", "Synced ${pledges.size} pledges for loan $loanId into Room")
+            }
+            Result.success(pledges.size)
+        } catch (e: Exception) {
+            Log.w("LoanRepository", "Failed to sync pledges for loan $loanId: ${e.message}")
+            Result.failure(e)
+        }
     }
 
     fun getPledgesByLoan(loanId: String): Flow<List<PledgeEntity>> = pledgeDao.getPledgesByLoan(loanId)
@@ -284,6 +535,42 @@ class LoanRepository @Inject constructor(
     }
 
     // Guarantor operations
+    fun guarantorToFirestoreMap(guarantor: GuarantorEntity): Map<String, Any?> {
+        return hashMapOf(
+            "guarantorId" to guarantor.guarantorId,
+            "loanId" to guarantor.loanId,
+            "name" to guarantor.name,
+            "phone" to guarantor.phone,
+            "email" to guarantor.email,
+            "panNumber" to guarantor.panNumber,
+            "relationship" to guarantor.relationship,
+            "consentStatus" to guarantor.consentStatus,
+            "consentTimestamp" to guarantor.consentTimestamp,
+            "createdAt" to guarantor.createdAt
+        )
+    }
+
+    fun parseDocumentToGuarantor(doc: DocumentSnapshot): GuarantorEntity? {
+        return try {
+            val d = doc.data ?: return null
+            GuarantorEntity(
+                guarantorId = doc.getString("guarantorId") ?: doc.id,
+                loanId = doc.getString("loanId") ?: "",
+                name = doc.getString("name") ?: "",
+                phone = doc.getString("phone") ?: "",
+                email = doc.getString("email") ?: "",
+                panNumber = doc.getString("panNumber") ?: "",
+                relationship = doc.getString("relationship") ?: "FRIEND",
+                consentStatus = doc.getString("consentStatus") ?: "PENDING",
+                consentTimestamp = doc.getLong("consentTimestamp"),
+                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+            )
+        } catch (e: Exception) {
+            Log.w("LoanRepository", "Failed to parse guarantor ${doc.id}: ${e.message}")
+            null
+        }
+    }
+
     suspend fun createGuarantor(guarantor: GuarantorEntity, actorId: String) {
         guarantorDao.insertGuarantor(guarantor)
         auditEventDao.insertEvent(
@@ -297,6 +584,19 @@ class LoanRepository @Inject constructor(
                 description = "Guarantor added: ${guarantor.name} (${guarantor.relationship})"
             )
         )
+        try {
+            withContext(Dispatchers.IO) {
+                firebaseManager.ensureFirebaseAuthSession()
+                withTimeoutOrNull(8000L) {
+                    firestore.collection("guarantors")
+                        .document(guarantor.guarantorId)
+                        .set(guarantorToFirestoreMap(guarantor), SetOptions.merge())
+                        .await()
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w("LoanRepository", "Cloud push for createGuarantor failed: ${e.message}")
+        }
     }
 
     suspend fun updateGuarantor(guarantor: GuarantorEntity, actorId: String, eventDescription: String) {
@@ -312,6 +612,42 @@ class LoanRepository @Inject constructor(
                 description = eventDescription
             )
         )
+        try {
+            withContext(Dispatchers.IO) {
+                firebaseManager.ensureFirebaseAuthSession()
+                withTimeoutOrNull(8000L) {
+                    firestore.collection("guarantors")
+                        .document(guarantor.guarantorId)
+                        .set(guarantorToFirestoreMap(guarantor), SetOptions.merge())
+                        .await()
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w("LoanRepository", "Cloud push for updateGuarantor failed: ${e.message}")
+        }
+    }
+
+    suspend fun syncGuarantorsForLoan(loanId: String): Result<Int> = withContext(Dispatchers.IO) {
+        if (loanId.isBlank()) return@withContext Result.success(0)
+        try {
+            firebaseManager.ensureFirebaseAuthSession()
+            val snap = withTimeoutOrNull(8000L) {
+                firestore.collection("guarantors")
+                    .whereEqualTo("loanId", loanId)
+                    .get()
+                    .await()
+            } ?: return@withContext Result.success(0)
+
+            val guarantors = snap.documents.mapNotNull { parseDocumentToGuarantor(it) }
+            if (guarantors.isNotEmpty()) {
+                guarantorDao.insertGuarantors(guarantors)
+                Log.d("LoanRepository", "Synced ${guarantors.size} guarantors for loan $loanId into Room")
+            }
+            Result.success(guarantors.size)
+        } catch (e: Exception) {
+            Log.w("LoanRepository", "Failed to sync guarantors for loan $loanId: ${e.message}")
+            Result.failure(e)
+        }
     }
 
     fun getGuarantorsByLoan(loanId: String): Flow<List<GuarantorEntity>> =
@@ -319,6 +655,92 @@ class LoanRepository @Inject constructor(
 
     suspend fun getGuarantorById(id: String): GuarantorEntity? =
         guarantorDao.getGuarantorById(id)
+
+    // Co-Lender Syndicate operations
+    fun coLenderToFirestoreMap(coLender: CoLenderEntity): Map<String, Any?> {
+        return hashMapOf(
+            "coLenderId" to coLender.coLenderId,
+            "loanId" to coLender.loanId,
+            "lenderId" to coLender.lenderId,
+            "name" to coLender.name,
+            "phone" to coLender.phone,
+            "contributedAmount" to coLender.contributedAmount,
+            "sharePercentage" to coLender.sharePercentage,
+            "role" to coLender.role,
+            "status" to coLender.status,
+            "signedAt" to coLender.signedAt,
+            "createdAt" to coLender.createdAt
+        )
+    }
+
+    suspend fun createCoLender(coLender: CoLenderEntity, actorId: String) {
+        coLenderDao.insertCoLender(coLender)
+        auditEventDao.insertEvent(
+            AuditEventEntity(
+                eventId = UUID.randomUUID().toString(),
+                entityType = "CO_LENDER",
+                entityId = coLender.coLenderId,
+                actor = actorId,
+                event = "CREATED",
+                newState = coLender.status,
+                description = "Co-lender added: ${coLender.name} (₹${coLender.contributedAmount} • ${coLender.sharePercentage}%)"
+            )
+        )
+        try {
+            withContext(Dispatchers.IO) {
+                firebaseManager.ensureFirebaseAuthSession()
+                withTimeoutOrNull(8000L) {
+                    firestore.collection("co_lenders")
+                        .document(coLender.coLenderId)
+                        .set(coLenderToFirestoreMap(coLender), SetOptions.merge())
+                        .await()
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w("LoanRepository", "Cloud push for createCoLender failed: ${e.message}")
+        }
+    }
+
+    suspend fun createCoLenders(coLenders: List<CoLenderEntity>, actorId: String) {
+        coLenderDao.insertCoLenders(coLenders)
+        coLenders.forEach { coLender ->
+            auditEventDao.insertEvent(
+                AuditEventEntity(
+                    eventId = UUID.randomUUID().toString(),
+                    entityType = "CO_LENDER",
+                    entityId = coLender.coLenderId,
+                    actor = actorId,
+                    event = "CREATED",
+                    newState = coLender.status,
+                    description = "Syndicate member added: ${coLender.name} (${coLender.sharePercentage}%)"
+                )
+            )
+        }
+    }
+
+    fun getCoLendersByLoan(loanId: String): Flow<List<CoLenderEntity>> =
+        coLenderDao.getCoLendersForLoan(loanId)
+
+    suspend fun getCoLendersByLoanSync(loanId: String): List<CoLenderEntity> =
+        coLenderDao.getCoLendersForLoanSync(loanId)
+
+    fun getLoansForCoLender(lenderId: String): Flow<List<CoLenderEntity>> =
+        coLenderDao.getLoansForCoLender(lenderId)
+
+    suspend fun deleteCoLender(coLenderId: String, actorId: String) {
+        coLenderDao.deleteCoLender(coLenderId)
+        auditEventDao.insertEvent(
+            AuditEventEntity(
+                eventId = UUID.randomUUID().toString(),
+                entityType = "CO_LENDER",
+                entityId = coLenderId,
+                actor = actorId,
+                event = "DELETED",
+                newState = "WITHDRAWN",
+                description = "Co-lender participation withdrawn: $coLenderId"
+            )
+        )
+    }
 
     // Audit
     fun getAuditTrail(entityType: String, entityId: String): Flow<List<AuditEventEntity>> =
@@ -403,6 +825,14 @@ class LoanRepository @Inject constructor(
                         if (loans.isNotEmpty()) {
                             loanDao.insertLoans(loans)
                             Log.d("LoanRepository", "Synced ${loans.size} borrower loans into Room")
+                            loans.forEach { l ->
+                                try {
+                                    syncRepaymentsForLoan(l.loanId)
+                                    syncDisbursementsForLoan(l.loanId)
+                                    syncPledgesForLoan(l.loanId)
+                                    syncGuarantorsForLoan(l.loanId)
+                                } catch (_: Exception) {}
+                            }
                         }
                     }
                 }
@@ -420,6 +850,14 @@ class LoanRepository @Inject constructor(
                         if (loans.isNotEmpty()) {
                             loanDao.insertLoans(loans)
                             Log.d("LoanRepository", "Synced ${loans.size} lender loans into Room")
+                            loans.forEach { l ->
+                                try {
+                                    syncRepaymentsForLoan(l.loanId)
+                                    syncDisbursementsForLoan(l.loanId)
+                                    syncPledgesForLoan(l.loanId)
+                                    syncGuarantorsForLoan(l.loanId)
+                                } catch (_: Exception) {}
+                            }
                         }
                     }
                 }
@@ -455,13 +893,28 @@ class LoanRepository @Inject constructor(
                 if (loan != null) {
                     loanDao.insertLoan(loan)
                     Log.d("LoanRepository", "fetchAndSyncLoanById: Cached loan $loanId into Room")
+                    try {
+                        syncRepaymentsForLoan(loanId)
+                        syncDisbursementsForLoan(loanId)
+                        syncPledgesForLoan(loanId)
+                        syncGuarantorsForLoan(loanId)
+                    } catch (_: Exception) {}
                     return@withContext loan
                 }
             }
         } catch (e: Exception) {
             Log.w("LoanRepository", "fetchAndSyncLoanById failed for $loanId: ${e.message}")
         }
-        return@withContext loanDao.getLoanById(loanId)
+        val localLoan = loanDao.getLoanById(loanId)
+        if (localLoan != null) {
+            try {
+                syncRepaymentsForLoan(loanId)
+                syncDisbursementsForLoan(loanId)
+                syncPledgesForLoan(loanId)
+                syncGuarantorsForLoan(loanId)
+            } catch (_: Exception) {}
+        }
+        return@withContext localLoan
     }
 
     /**
@@ -489,6 +942,14 @@ class LoanRepository @Inject constructor(
             if (parsedLoans.isNotEmpty()) {
                 loanDao.insertLoans(parsedLoans)
                 Log.i("LoanRepository", "syncUserLoansFromCloud: Restored ${parsedLoans.size} loans into local Room database.")
+                parsedLoans.forEach { l ->
+                    try {
+                        syncRepaymentsForLoan(l.loanId)
+                        syncDisbursementsForLoan(l.loanId)
+                        syncPledgesForLoan(l.loanId)
+                        syncGuarantorsForLoan(l.loanId)
+                    } catch (_: Exception) {}
+                }
             }
             Result.success(parsedLoans.size)
         } catch (e: Exception) {

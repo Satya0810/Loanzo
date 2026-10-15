@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -96,6 +97,8 @@ fun AgreementSigningScreen(
 
     val currentUserId by userRepository.getCurrentUserId().collectAsState(initial = null)
     val isLenderSigning = currentUserId == loan.lenderId
+    val isContractFullySigned = loan.isAgreementSigned || (loan.borrowerSignedAt != null && loan.lenderSignedAt != null)
+    val isUserAlreadySigned = if (isLenderSigning) loan.lenderSignedAt != null else loan.borrowerSignedAt != null
 
     LaunchedEffect(loan.lenderId, loan.borrowerId) {
         val realLender = userRepository.getUserById(loan.lenderId)
@@ -321,13 +324,13 @@ fun AgreementSigningScreen(
                                                         }
                                                     }
                                                 },
-                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                                                 shape = RoundedCornerShape(8.dp),
                                                 colors = ButtonDefaults.filledTonalButtonColors(
                                                     containerColor = BrandRoyalBlue.copy(alpha = 0.12f),
                                                     contentColor = BrandRoyalBlue
                                                 ),
-                                                modifier = Modifier.height(30.dp)
+                                                modifier = Modifier.heightIn(min = 36.dp)
                                             ) {
                                                 if (isSimplifying) {
                                                     CircularProgressIndicator(
@@ -439,26 +442,72 @@ fun AgreementSigningScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Main Proceed Button
-                            Button(
-                                onClick = {
-                                    if (!kfsAcknowledged) {
-                                        showKfsDialog = true
-                                    } else {
-                                        currentStep = 2
+                            if (isUserAlreadySigned) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Emerald500.copy(alpha = 0.15f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Emerald500.copy(alpha = 0.4f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(14.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald500, modifier = Modifier.size(20.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = if (isContractFullySigned) "Agreement Fully Executed ✓" else "You Have Already Signed ✓",
+                                                fontWeight = FontWeight.Bold,
+                                                color = Emerald500,
+                                                fontSize = 14.sp
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        val otherParty = if (isLenderSigning) "borrower" else "lender"
+                                        Text(
+                                            text = if (isContractFullySigned)
+                                                "This digital contract is legally binding and in active execution."
+                                            else
+                                                "Your signature & biometric verification are recorded. Awaiting counter-signature from $otherParty.",
+                                            fontSize = 11.5.sp,
+                                            color = Color(0xFF334155),
+                                            textAlign = TextAlign.Center
+                                        )
                                     }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue)
-                            ) {
-                                Text(
-                                    if (!kfsAcknowledged) "Acknowledge KFS & Proceed" else "I Agree, Proceed to Sign",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
-                                )
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                OutlinedButton(
+                                    onClick = onCancel,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(48.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("Return to Loan Details", fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                // Main Proceed Button
+                                Button(
+                                    onClick = {
+                                        if (!kfsAcknowledged) {
+                                            showKfsDialog = true
+                                        } else {
+                                            currentStep = 2
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue)
+                                ) {
+                                    Text(
+                                        if (!kfsAcknowledged) "Acknowledge KFS & Proceed" else "I Agree, Proceed to Sign",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp
+                                    )
+                                }
                             }
                         }
                     }

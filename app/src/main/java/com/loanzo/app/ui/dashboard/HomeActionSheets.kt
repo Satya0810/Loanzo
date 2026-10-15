@@ -383,11 +383,11 @@ fun ReportActionBottomSheet(
             // Quick Counterparty selector chips with Golden Coin Box Coloring
             val quickTransactors = remember(counterpartyIds) {
                 val base = mutableListOf<Triple<String, String, String>>()
-                base.add(Triple("satyam0810", "👑 @satyam0810 (Admin)", "ADMIN"))
-                base.add(Triple("abhisi", "🕵️ @abhisi (Field Agent)", "AGENT"))
+                base.add(Triple("satyam0810", "@satyam0810 (Admin)", "ADMIN"))
+                base.add(Triple("abhisi", "@abhisi (Field Agent)", "AGENT"))
                 counterpartyIds.filterNot { com.loanzo.app.util.VerificationManager.isDemoAccount(it) || it in listOf("satyam0810", "abhisi") }
                     .forEach { cid ->
-                        base.add(Triple(cid, "👤 @$cid", "MEMBER"))
+                        base.add(Triple(cid, "@$cid", "MEMBER"))
                     }
                 base
             }
@@ -668,21 +668,15 @@ fun ReportActionBottomSheet(
                             adminRepository.submitComplaint(complaint)
 
                             if (requestTelegramAlert) {
-                                val alertMsg = """
-                                    🚨 <b>USER REPORT & ACTION DEMAND</b>
-                                    ━━━━━━━━━━━━━━━━━━━━
-                                    <b>Case ID:</b> ${TelegramManager.escapeHtml(complaintId)}
-                                    <b>Reporter:</b> ${TelegramManager.escapeHtml(reporterName)} (${TelegramManager.escapeHtml(reporterPhone)})
-                                    <b>Target Person:</b> ${TelegramManager.escapeHtml(targetPerson)}
-                                    <b>Category:</b> ${TelegramManager.escapeHtml(selectedCategory)}
-                                    <b>Severity:</b> ${TelegramManager.escapeHtml(severity)}
-                                    <b>Requested Action:</b> ${TelegramManager.escapeHtml(requestedActions)}
-                                    <b>Details:</b> ${TelegramManager.escapeHtml(incidentDetails.ifBlank { "N/A" })}
-                                    ━━━━━━━━━━━━━━━━━━━━
-                                    <i>Action filed from Loanzo Home Screen — Synced to Admin Hub</i>
-                                """.trimIndent()
-
-                                TelegramManager.instance.sendAdminAlert(alertMsg)
+                                TelegramManager.instance.notifyDisputeReport(
+                                    caseId = complaintId,
+                                    reporterName = reporterName,
+                                    reporterPhone = reporterPhone,
+                                    targetPerson = targetPerson,
+                                    category = selectedCategory,
+                                    severity = severity,
+                                    details = incidentDetails
+                                )
                             }
                             Toast.makeText(
                                 context,
@@ -704,7 +698,8 @@ fun ReportActionBottomSheet(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .heightIn(min = 48.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(14.dp),
                 enabled = !isSubmitting,
                 colors = ButtonDefaults.buttonColors(containerColor = Red400, contentColor = Color.White)

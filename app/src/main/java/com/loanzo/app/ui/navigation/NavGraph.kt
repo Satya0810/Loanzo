@@ -90,8 +90,21 @@ object Routes {
 
     // Feature Routes
     const val FINANCIAL_HEALTH = "financial_health"
-    const val APP_OWNER_HUB = "app_owner_hub"
-    fun appOwnerHub(tab: Int = 0) = "$APP_OWNER_HUB?tab=$tab"
+    const val REPORT_ACTION = "report_action"
+    const val ADMIN_KYC_DESK = "admin_kyc_desk"
+    fun adminKycDesk(filter: Int = 0) = "$ADMIN_KYC_DESK?filter=$filter"
+    const val ADMIN_DISPATCH = "admin_dispatch"
+    fun adminDispatch(filter: Int = 0) = "$ADMIN_DISPATCH?filter=$filter"
+    const val ADMIN_VAULT = "admin_vault"
+    fun adminVault(tab: Int = 0) = "$ADMIN_VAULT?tab=$tab"
+    const val ADMIN_REPORTS = "admin_reports"
+    const val ADMIN_TICKETS = "admin_tickets"
+    const val ADMIN_USER_DIRECTORY = "admin_user_directory"
+    const val ADMIN_USER_PROFILE_DETAIL = "admin_user_profile_detail/{userId}"
+    fun adminUserProfileDetail(userId: String) = "admin_user_profile_detail/$userId"
+    const val ADMIN_AGENT_PERFORMANCE = "admin_agent_performance"
+    const val ADMIN_MARKETPLACE_MOD = "admin_marketplace_mod"
+    const val RESEARCH_EVIDENCE = "research_evidence"
 
     fun loanDetail(loanId: String) = "loan_detail/$loanId"
     fun trancheRequest(loanId: String) = "tranche_request/$loanId"
@@ -99,8 +112,16 @@ object Routes {
     fun pledge(loanId: String) = "pledge/$loanId"
     fun auditTrail(loanId: String) = "audit_trail/$loanId"
     fun chat(channelId: String, loanId: String? = null, targetUserId: String? = null): String {
-        val builder = java.lang.StringBuilder("chat/$channelId?")
-        if (loanId != null) builder.append("loanId=$loanId&")
+        val canonicalChannelId = if (channelId.startsWith("loan_") || channelId.startsWith("direct_") || channelId.startsWith("support_")) {
+            channelId
+        } else if (loanId != null || channelId.startsWith("LZ-")) {
+            com.loanzo.app.ui.loan.ChatViewModel.getLoanChannelId(channelId)
+        } else {
+            channelId
+        }
+        val resolvedLoanId = loanId ?: if (canonicalChannelId.startsWith("loan_")) canonicalChannelId.removePrefix("loan_") else null
+        val builder = java.lang.StringBuilder("chat/$canonicalChannelId?")
+        if (resolvedLoanId != null) builder.append("loanId=$resolvedLoanId&")
         if (targetUserId != null) builder.append("targetUserId=$targetUserId&")
         return builder.toString().trimEnd('&', '?')
     }
@@ -173,12 +194,10 @@ fun LoanzoNavGraph(
                     // (loan_detail, app_owner_hub, etc.), use the root navController.
                     val innerRoutes = setOf(
                         Routes.DASHBOARD, Routes.SMART_PORTFOLIO,
-                        Routes.NOTIFICATIONS, Routes.MARKETPLACE, Routes.SUPPORT_TICKETS,
-                        Routes.FINANCIAL_HEALTH, Routes.RAISE_TICKET, Routes.CHAT_HUB
+                        Routes.NOTIFICATIONS, Routes.MARKETPLACE,
+                        Routes.FINANCIAL_HEALTH, Routes.CHAT_HUB
                     )
-                    val isInner = targetRoute in innerRoutes ||
-                            targetRoute.startsWith("ticket_detail/") ||
-                            targetRoute.startsWith("support_tickets")
+                    val isInner = targetRoute in innerRoutes
                     try {
                         if (isInner) {
                             // Navigate to MAIN if not already there; the inner NavHost
@@ -247,7 +266,7 @@ fun LoanzoNavGraph(
             val userRepository = com.loanzo.app.util.LocalUserRepository.current
 
             LaunchedEffect(Unit) {
-                val minSplashDurationMs = 1200L
+                val minSplashDurationMs = 700L
                 val splashStartTime = System.currentTimeMillis()
 
                 // Simultaneously await 3.5s animation completion and background IO database warmup
@@ -267,14 +286,21 @@ fun LoanzoNavGraph(
                     warmupDeferred.await()
                 }
 
-                // Await session checking resolution in AuthViewModel
-                while (authState.isSessionChecking) {
+                // Await session checking resolution in AuthViewModel with safety timeout (max 1.0s)
+                var sessionCheckWaitCount = 0
+                while (authState.isSessionChecking && sessionCheckWaitCount < 25) {
                     kotlinx.coroutines.delay(40)
+                    sessionCheckWaitCount++
                 }
 
                 // Deterministic Atomic Navigation — ZERO layout jump, ZERO flicker
                 val pending = activity?.consumePendingNavigation()
-                val targetDestination = if (warmupResult.isUntrustedDevice) {
+                val targetDestination = if (warmupResult.targetRoute == Routes.LOGIN) {
+                    if (authState.isLoggedIn) {
+                        authViewModel.logout()
+                    }
+                    Routes.LOGIN
+                } else if (warmupResult.isUntrustedDevice) {
                     Routes.FORGOT_PASSWORD
                 } else if (warmupResult.isSessionLocked) {
                     Routes.SESSION_LOCK
@@ -283,12 +309,10 @@ fun LoanzoNavGraph(
                         // Bug #6: Check if pending route is an inner-only route
                         val innerRoutes = setOf(
                             Routes.DASHBOARD, Routes.SMART_PORTFOLIO,
-                            Routes.NOTIFICATIONS, Routes.MARKETPLACE, Routes.SUPPORT_TICKETS,
-                            Routes.FINANCIAL_HEALTH, Routes.RAISE_TICKET
+                            Routes.NOTIFICATIONS, Routes.MARKETPLACE,
+                            Routes.FINANCIAL_HEALTH
                         )
-                        val isInner = pending in innerRoutes ||
-                                pending.startsWith("ticket_detail/") ||
-                                pending.startsWith("support_tickets")
+                        val isInner = pending in innerRoutes
                         if (isInner) {
                             // Navigate to MAIN; MainScreen will pick up the pending route
                             activity?.pendingNavigationRoute?.value = pending
@@ -325,10 +349,46 @@ fun LoanzoNavGraph(
             val currentUserId by userRepo.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
             val activeUserId = authState.currentUserId ?: currentUserId ?: ""
             val user by (if (activeUserId.isNotBlank()) userRepo.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+            val coroutineScope = rememberCoroutineScope()
 
             com.loanzo.app.ui.auth.SessionLockScreen(
+                userId = if (!user?.username.isNullOrBlank()) user?.username!! else activeUserId,
                 userName = user?.name ?: "Valued Member",
-                userRole = user?.role?.uppercase() ?: "MEMBER",
+                userRole = when {
+                    user?.role?.contains("ADMIN", ignoreCase = true) == true -> "Master Admin"
+                    user?.role?.contains("AGENT", ignoreCase = true) == true -> "Field Agent"
+                    else -> "Member"
+                },
+                onUnlockWithPassword = { enteredPass, onResult ->
+                    coroutineScope.launch {
+                        val activeUser = user ?: if (activeUserId.isNotBlank()) userRepo.getUserById(activeUserId) else null
+                        if (activeUser == null) {
+                            onResult(false, "User profile not loaded yet. Please try again.")
+                            return@launch
+                        }
+                        val userPass = activeUser.password
+                        val hashed = com.loanzo.app.util.hashPassword(enteredPass.trim())
+                        val legacy = com.loanzo.app.util.hashPassword(enteredPass)
+                        val isValid = if (userPass.isBlank()) {
+                            true
+                        } else {
+                            userPass.equals(hashed, ignoreCase = true) ||
+                            userPass.equals(legacy, ignoreCase = true) ||
+                            userPass == enteredPass.trim() ||
+                            userPass == enteredPass
+                        }
+                        if (isValid) {
+                            sessionMgr.unlockSession()
+                            onResult(true, null)
+                            navController.navigate(Routes.MAIN) {
+                                popUpTo(Routes.SESSION_LOCK) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        } else {
+                            onResult(false, "Incorrect password. Please try again.")
+                        }
+                    }
+                },
                 onUnlockSuccess = {
                     sessionMgr.unlockSession()
                     navController.navigate(Routes.MAIN) {
@@ -513,10 +573,108 @@ fun LoanzoNavGraph(
                 )
             }
 
+            if (authState.isAccountBanned) {
+                var appealStatement by remember { mutableStateOf("") }
+                AlertDialog(
+                    onDismissRequest = { authViewModel.clearBanState() },
+                    title = {
+                        Text(
+                            text = if (authState.banType == "TEMPORARY") "Account Temporarily Suspended" else "Account Permanently Terminated",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        )
+                    },
+                    text = {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "Reason: ${authState.banReason.ifBlank { "Violation of platform policies" }}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (authState.banExpiresAt > 0L) {
+                                val sdf = remember { java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault()) }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Suspension expires on: ${sdf.format(java.util.Date(authState.banExpiresAt))}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Red400,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+                            if (authState.banAppealSubmitted) {
+                                Text(
+                                    text = authState.banAppealMessage ?: "Your appeal has been received and is under review by administrator.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Emerald600,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            } else {
+                                Text(
+                                    text = "If you believe this action was made in error, you may submit a formal appeal to the moderation team:",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = appealStatement,
+                                    onValueChange = { appealStatement = it },
+                                    label = { Text("Reason for appeal / Statement") },
+                                    placeholder = { Text("Provide any explanation or context...") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 3,
+                                    maxLines = 5,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        if (!authState.banAppealSubmitted) {
+                            Button(
+                                onClick = {
+                                    val targetId = authState.bannedUserId ?: ""
+                                    if (targetId.isNotBlank() && appealStatement.isNotBlank()) {
+                                        authViewModel.submitBanAppeal(targetId, appealStatement)
+                                    }
+                                },
+                                enabled = appealStatement.isNotBlank() && !authState.isSubmittingAppeal,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                if (authState.isSubmittingAppeal) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Text("Submit Appeal")
+                                }
+                            }
+                        } else {
+                            TextButton(onClick = { authViewModel.clearBanState() }) {
+                                Text("Close")
+                            }
+                        }
+                    },
+                    dismissButton = {
+                        if (!authState.banAppealSubmitted) {
+                            TextButton(onClick = { authViewModel.clearBanState() }) {
+                                Text("Dismiss")
+                            }
+                        }
+                    }
+                )
+            }
+
             LaunchedEffect(authState.isLoggedIn) {
                 if (authState.isLoggedIn) {
-                    navController.navigate(Routes.MAIN) {
+                    val isAgent = authState.currentRole?.equals("AGENT", ignoreCase = true) == true ||
+                            com.loanzo.app.util.VerificationManager.isFieldAgent(username = null, userId = authState.currentUserId)
+                    val destination = if (isAgent) {
+                        Routes.AGENT_MAIN
+                    } else {
+                        Routes.MAIN
+                    }
+                    navController.navigate(destination) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             }
@@ -612,10 +770,7 @@ fun LoanzoNavGraph(
                         val isInnerRoute = targetRoute == Routes.DASHBOARD ||
                                 targetRoute == Routes.SMART_PORTFOLIO ||
                                 targetRoute == Routes.MARKETPLACE ||
-                                targetRoute == Routes.SUPPORT_TICKETS ||
-                                targetRoute == Routes.FINANCIAL_HEALTH ||
-                                targetRoute.startsWith("ticket_detail/") ||
-                                targetRoute.startsWith("support_tickets")
+                                targetRoute == Routes.FINANCIAL_HEALTH
                         if (isInnerRoute) {
                             navController.navigate(Routes.MAIN)
                         } else {
@@ -702,13 +857,6 @@ fun LoanzoNavGraph(
             ProfileScreen(
                 user = user,
                 onNavigateToKyc = { navController.navigate(Routes.KYC) },
-                onNavigateToAdminHub = {
-                    if (com.loanzo.app.util.VerificationManager.isEligibleAppOwner(user)) {
-                        navController.navigate(Routes.APP_OWNER_HUB) {
-                            launchSingleTop = true
-                        }
-                    }
-                },
                 currentLanguageCode = appLanguage,
                 onSelectLanguage = { code -> scope.launch { userRepository.setAppLanguage(code) } },
                 onUploadProfilePhoto = { uri -> authViewModel.uploadProfilePhoto(context, uri) },
@@ -721,10 +869,7 @@ fun LoanzoNavGraph(
                 uploadMessage = authState.error,
                 onClearUploadMessage = { authViewModel.clearError() },
                 onNavigateToAgent = {
-                    if (com.loanzo.app.util.VerificationManager.isFieldAgent(user) || user?.agentStatus == "APPROVED") {
-                        if (user != null && user!!.role != "AGENT") {
-                            scope.launch { userRepository.updateUser(user!!.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)) }
-                        }
+                    if (user?.role == "AGENT") {
                         navController.navigate(Routes.AGENT_MAIN)
                     } else if (user?.agentStatus == "PENDING") {
                         navController.navigate(Routes.AGENT_PENDING_APPROVAL)
@@ -734,6 +879,8 @@ fun LoanzoNavGraph(
                 },
                 themeMode = themeMode,
                 onSetThemeMode = { mode -> scope.launch { userRepository.setThemeMode(mode) } },
+                onNavigateToSupport = { navController.navigate(Routes.SUPPORT_TICKETS) },
+                onNavigateToEvidence = { navController.navigate(Routes.RESEARCH_EVIDENCE) },
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Routes.LOGIN) {
@@ -757,7 +904,8 @@ fun LoanzoNavGraph(
             com.loanzo.app.ui.dashboard.SmartPortfolioScreen(
                 state = state,
                 onBack = { navController.popBackStack() },
-                onNavigateToLoanDetail = { loanId -> navController.navigate(Routes.loanDetail(loanId)) }
+                onNavigateToLoanDetail = { loanId -> navController.navigate(Routes.loanDetail(loanId)) },
+                onRefresh = { dashboardViewModel.refreshDashboard() }
             )
         }
 
@@ -781,10 +929,14 @@ fun LoanzoNavGraph(
         // --- Agent Role Workflows ---
         composable(Routes.ROLE_SELECTION) {
             val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
             val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
             val activeUserId = authState.currentUserId ?: currentUserId ?: ""
             val user by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+            val agentApp by (if (activeUserId.isNotBlank()) agentRepository.getApplication(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
             val scope = rememberCoroutineScope()
+
+            val effectiveAgentStatus = user?.agentStatus?.ifBlank { null } ?: agentApp?.status
 
             RoleSelectionScreen(
                 userName = user?.name ?: "",
@@ -792,6 +944,7 @@ fun LoanzoNavGraph(
                 userPhone = user?.phone ?: "",
                 userEmail = user?.email ?: "",
                 userRole = user?.role ?: "MEMBER",
+                agentStatus = effectiveAgentStatus,
                 onSelectNormalMember = {
                     if (user != null && user!!.role == "AGENT") {
                         scope.launch { userRepository.updateUser(user!!.copy(role = "USER", isOnDuty = false)) }
@@ -801,12 +954,9 @@ fun LoanzoNavGraph(
                     }
                 },
                 onSelectAgent = {
-                    if (com.loanzo.app.util.VerificationManager.isFieldAgent(user) || user?.agentStatus == "APPROVED") {
-                        if (user != null && user!!.role != "AGENT") {
-                            scope.launch { userRepository.updateUser(user!!.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)) }
-                        }
+                    if (user?.role == "AGENT") {
                         navController.navigate(Routes.AGENT_MAIN)
-                    } else if (user?.agentStatus == "PENDING") {
+                    } else if (effectiveAgentStatus.equals("PENDING", ignoreCase = true)) {
                         navController.navigate(Routes.AGENT_PENDING_APPROVAL)
                     } else {
                         navController.navigate(Routes.AGENT_APPLICATION)
@@ -830,12 +980,15 @@ fun LoanzoNavGraph(
                 }
             }
 
+            val effectiveAgentStatus = user?.agentStatus?.ifBlank { null } ?: application?.status
+
             AgentApplicationScreen(
                 userId = activeUserId,
                 userName = user?.name?.ifBlank { null } ?: user?.username?.ifBlank { null } ?: activeUserId,
                 userPhone = user?.phone ?: "",
                 userEmail = user?.email ?: "",
                 application = application,
+                userAgentStatus = effectiveAgentStatus,
                 onNavigateBack = {
                     if (!navController.popBackStack()) {
                         navController.navigate(Routes.MAIN)
@@ -896,11 +1049,9 @@ fun LoanzoNavGraph(
 
         composable(Routes.AGENT_MAIN) {
             val userRepository = com.loanzo.app.util.LocalUserRepository.current
-            val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
             val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
             val activeUserId = authState.currentUserId ?: currentUserId ?: ""
             val user by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
-            val visits by (if (activeUserId.isNotBlank()) agentRepository.getVisitsForAgent(activeUserId) else kotlinx.coroutines.flow.flowOf(emptyList())).collectAsStateWithLifecycle(initialValue = emptyList())
             val scope = rememberCoroutineScope()
 
             LaunchedEffect(activeUserId) {
@@ -912,6 +1063,21 @@ fun LoanzoNavGraph(
 
             LaunchedEffect(user?.role, user?.agentStatus) {
                 if (user != null) {
+                    val isAppOwner = com.loanzo.app.util.VerificationManager.isEligibleAppOwner(user)
+                    if (isAppOwner) {
+                        if (user?.role.equals("ADMIN", ignoreCase = true)) {
+                            navController.navigate(Routes.MAIN) {
+                                popUpTo(Routes.AGENT_MAIN) { inclusive = true }
+                            }
+                            return@LaunchedEffect
+                        } else if (user?.role.equals("USER", ignoreCase = true) || user?.role.equals("BORROWER", ignoreCase = true) || user?.role.equals("LENDER", ignoreCase = true)) {
+                            navController.navigate(Routes.MAIN) {
+                                popUpTo(Routes.AGENT_MAIN) { inclusive = true }
+                            }
+                            return@LaunchedEffect
+                        }
+                    }
+
                     val isApprovedAgent = user?.agentStatus.equals("APPROVED", ignoreCase = true) ||
                             user?.role.equals("AGENT", ignoreCase = true) ||
                             com.loanzo.app.util.VerificationManager.isFieldAgent(user)
@@ -932,49 +1098,9 @@ fun LoanzoNavGraph(
                 }
             }
 
+            // ViewModel-driven: all state and mutations managed by AgentViewModel internally.
+            // NavGraph only provides navigation-level callbacks.
             AgentDashboardScreen(
-                user = user,
-                visits = visits,
-                onToggleDutyStatus = { isOnDuty ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        agentRepository.setDutyStatus(activeUserId, isOnDuty)
-                    }
-                },
-                onCompleteVisit = { visitId, remarks, collateralOk, borrowerOk, lenderOk, proof, appraisedVal, recommendation ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        agentRepository.completeVisit(
-                            visitId = visitId,
-                            agentRemarks = remarks,
-                            isCollateralAuthentic = collateralOk,
-                            isBorrowerIdentityVerified = borrowerOk,
-                            isLenderIdentityVerified = lenderOk,
-                            proofPhotoUris = proof,
-                            appraisedValue = appraisedVal,
-                            officerRecommendation = recommendation
-                        )
-                    }
-                },
-                onCompleteVisitDetailed = { visitId, remarks, collateralOk, borrowerOk, lenderOk, proof, appraisedVal, recommendation, lat, lng ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        agentRepository.completeVisit(
-                            visitId = visitId,
-                            agentRemarks = remarks,
-                            isCollateralAuthentic = collateralOk,
-                            isBorrowerIdentityVerified = borrowerOk,
-                            isLenderIdentityVerified = lenderOk,
-                            proofPhotoUris = proof,
-                            appraisedValue = appraisedVal,
-                            officerRecommendation = recommendation,
-                            agentLatitude = lat,
-                            agentLongitude = lng
-                        )
-                    }
-                },
-                onUpdateVisitStage = { visitId, stage ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        agentRepository.updateVisitStage(visitId, stage)
-                    }
-                },
                 onNavigateToChat = { channelId, targetLoanId, targetUserId ->
                     navController.navigate(Routes.chat(channelId, targetLoanId, targetUserId))
                 },
@@ -985,15 +1111,31 @@ fun LoanzoNavGraph(
                     navController.navigate(Routes.NOTIFICATIONS)
                 },
                 onSwitchToConsumer = {
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        if (activeUserId.isNotBlank()) {
+                            val u = userRepository.getUserById(activeUserId)
+                            if (u != null) {
+                                userRepository.updateUser(u.copy(role = "MEMBER"))
+                                userRepository.saveSession(u.userId, "MEMBER")
+                            }
+                        }
+                    }
                     navController.navigate(Routes.MAIN) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(Routes.AGENT_MAIN) { inclusive = true }
                     }
                 },
                 onSwitchToAdmin = {
-                    if (com.loanzo.app.util.VerificationManager.isAppOwner(user)) {
-                        navController.navigate(Routes.APP_OWNER_HUB) {
-                            popUpTo(0) { inclusive = true }
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        if (activeUserId.isNotBlank()) {
+                            val u = userRepository.getUserById(activeUserId)
+                            if (u != null) {
+                                userRepository.updateUser(u.copy(role = "ADMIN"))
+                                userRepository.saveSession(u.userId, "ADMIN")
+                            }
                         }
+                    }
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.AGENT_MAIN) { inclusive = true }
                     }
                 },
                 onLogout = {
@@ -1020,7 +1162,10 @@ fun LoanzoNavGraph(
             val userRepository = com.loanzo.app.util.LocalUserRepository.current
             val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
             val activeUserId = authState.currentUserId ?: currentUserId ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
-            val isLender = loanState.selectedLoan?.lenderId == activeUserId
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+            val isLender = loanState.selectedLoan?.let { l ->
+                l.lenderId == activeUserId || (currentUser != null && (l.lenderId == currentUser!!.userId || l.lenderId == currentUser!!.username))
+            } ?: false
 
             if (loanState.signUrl != null) {
                 ESignWebViewScreen(
@@ -1038,7 +1183,7 @@ fun LoanzoNavGraph(
                     onAddPledge = { navController.navigate(Routes.pledge(loanId)) },
                     onViewAuditTrail = { navController.navigate(Routes.auditTrail(loanId)) },
                     onSignAgreement = { navController.navigate(Routes.agreementSigning(loanId)) },
-                    onNavigateToChat = { navController.navigate(Routes.chat(loanId)) },
+                    onNavigateToChat = { targetUserId -> navController.navigate(Routes.chat(channelId = loanId, loanId = loanId, targetUserId = targetUserId)) },
                     onNavigateToDocument = { navController.navigate(Routes.documentViewer(loanId)) },
                     onNavigateToGuarantors = { navController.navigate(Routes.guarantors(loanId)) },
                     onSendReminder = { loanViewModel.sendPaymentReminder(context) },
@@ -1058,6 +1203,11 @@ fun LoanzoNavGraph(
                     onExportAgreementPdf = {
                         loanState.selectedLoan?.let { loan ->
                             loanViewModel.exportAgreementPdf(context, loan)
+                        }
+                    },
+                    onExportPromissoryNotePdf = {
+                        loanState.selectedLoan?.let { loan ->
+                            loanViewModel.exportPromissoryNote(context, loan)
                         }
                     },
                     onDownloadNocCertificate = {
@@ -1146,6 +1296,75 @@ fun LoanzoNavGraph(
                 onPostOffer = { _, _, _ ->
                     navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=OFFER_TO_LEND")
                 }
+            )
+        }
+
+        composable(Routes.REPORT_ACTION) {
+            com.loanzo.app.ui.dashboard.ReportActionScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Full-page Support & Help Ticket Screens (Independent of bottom bar)
+        composable(Routes.SUPPORT_TICKETS) {
+            val ticketViewModel: SupportTicketViewModel = hiltViewModel()
+            val uiState by ticketViewModel.uiState.collectAsStateWithLifecycle()
+            MyTicketsScreen(
+                tickets = ticketViewModel.getFilteredTickets(),
+                pendingFeedbackCount = uiState.pendingFeedbackCount,
+                selectedFilter = uiState.selectedFilter,
+                onFilterChange = { ticketViewModel.setFilter(it) },
+                onNavigateToRaiseTicket = { navController.navigate(Routes.RAISE_TICKET) },
+                onNavigateToTicketDetail = { ticketId -> navController.navigate(Routes.ticketDetail(ticketId)) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.RAISE_TICKET) {
+            val ticketViewModel: SupportTicketViewModel = hiltViewModel()
+            val uiState by ticketViewModel.uiState.collectAsStateWithLifecycle()
+            RaiseTicketScreen(
+                userLoans = uiState.userLoans,
+                ticketSubmitted = uiState.ticketSubmitted,
+                errorMessage = uiState.errorMessage,
+                onSubmit = { category, priority, subject, description, relatedLoanId, preferredCallbackAt ->
+                    ticketViewModel.createTicket(
+                        category = category,
+                        priority = priority,
+                        subject = subject,
+                        description = description,
+                        relatedLoanId = relatedLoanId,
+                        preferredCallbackAt = preferredCallbackAt
+                    )
+                },
+                onTicketSubmittedAck = { ticketViewModel.clearTicketSubmitted() },
+                onClearError = { ticketViewModel.clearError() },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.TICKET_DETAIL,
+            arguments = listOf(navArgument("ticketId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ticketId = backStackEntry.arguments?.getString("ticketId") ?: ""
+            val ticketViewModel: SupportTicketViewModel = hiltViewModel()
+            val uiState by ticketViewModel.uiState.collectAsStateWithLifecycle()
+
+            LaunchedEffect(ticketId) {
+                if (ticketId.isNotBlank()) {
+                    ticketViewModel.loadTicketDetail(ticketId)
+                }
+            }
+
+            TicketDetailScreen(
+                ticket = uiState.selectedTicket,
+                onSubmitFeedback = { tId, rating, comment ->
+                    ticketViewModel.submitFeedback(tId, rating, comment)
+                },
+                feedbackSubmitted = uiState.feedbackSubmitted,
+                onFeedbackSubmittedAck = { ticketViewModel.clearFeedbackSubmitted() },
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -1270,7 +1489,7 @@ fun LoanzoNavGraph(
                                 )
                             } catch (_: Exception) {}
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                android.widget.Toast.makeText(context, "✅ Agreement Digitally Signed & Ready for Tranche Disbursement!", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "Agreement Digitally Signed & Ready for Tranche Disbursement!", android.widget.Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
                             }
                         }
@@ -1382,229 +1601,208 @@ fun LoanzoNavGraph(
         }
 
         composable(
-            route = "${Routes.APP_OWNER_HUB}?tab={tab}",
-            arguments = listOf(
-                navArgument("tab") {
-                    type = NavType.IntType
-                    defaultValue = 0
-                }
-            )
+            route = "${Routes.ADMIN_KYC_DESK}?filter={filter}",
+            arguments = listOf(navArgument("filter") { type = NavType.IntType; defaultValue = 0 })
         ) { backStackEntry ->
-            val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val database = remember { com.loanzo.app.di.DatabaseModule.provideDatabase(context) }
+            val initialFilter = backStackEntry.arguments?.getInt("filter") ?: 0
             val userRepository = com.loanzo.app.util.LocalUserRepository.current
             val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
             val activeUserId = authState.currentUserId ?: currentUserId ?: ""
             val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
 
-            // Strict Owner Gate: Only satyam0810 / App Owner is allowed into AppOwnerVerificationScreen
-            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isAppOwner(currentUser)) {
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
                 LaunchedEffect(Unit) {
                     navController.navigate(Routes.MAIN) {
-                        popUpTo(Routes.APP_OWNER_HUB) { inclusive = true }
+                        popUpTo(Routes.ADMIN_KYC_DESK) { inclusive = true }
                     }
                 }
                 return@composable
             }
 
-            val verifications by database.verificationDao().getAllVerifications()
-                .collectAsStateWithLifecycle(initialValue = emptyList())
-            val scope = rememberCoroutineScope()
-
-            // Real-time Firestore listener — syncs PENDING tokens from user-side into local Room DB
-            // so they appear on the owner dashboard and can be matched by SMS/WhatsApp interceptors
-            LaunchedEffect(Unit) {
-                val db = com.loanzo.app.data.firebase.FirestoreProvider.get()
-                db.collection("verifications")
-                    .addSnapshotListener { snapshot, error ->
-                        if (error != null || snapshot == null) return@addSnapshotListener
-                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                            for (doc in snapshot.documents) {
-                                val token = doc.getString("token") ?: continue
-                                val phone = doc.getString("phone") ?: continue
-                                val status = doc.getString("status") ?: "PENDING"
-                                val username = doc.getString("username") ?: ""
-                                
-                                // Only insert if this token doesn't already exist locally
-                                val existing = database.verificationDao().getByToken(token)
-                                if (existing == null) {
-                                    database.verificationDao().insertVerification(
-                                        com.loanzo.app.data.entity.VerificationEntity(
-                                            token = token,
-                                            phone = phone,
-                                            channel = "Firestore (User Request)",
-                                            status = status,
-                                            username = username,
-                                            createdAt = doc.getLong("timestamp") ?: System.currentTimeMillis()
-                                        )
-                                    )
-                                } else if (existing.status != status && status == "VERIFIED") {
-                                    // If Firestore says VERIFIED but local says PENDING, sync it
-                                    database.verificationDao().markAsVerified(
-                                        token = token,
-                                        phone = phone,
-                                        verifiedAt = System.currentTimeMillis()
-                                    )
-                                }
-                            }
-                        }
-                    }
-            }
-
-            val allUsers by database.userDao().getAllUsers()
-                .collectAsStateWithLifecycle(initialValue = emptyList())
-            val agentApplications by database.agentDao().getAllApplications()
-                .collectAsStateWithLifecycle(initialValue = emptyList())
-            val agentRepository = com.loanzo.app.util.LocalAgentRepository.current
-            val adminRepository = com.loanzo.app.util.LocalAdminRepository.current
-
-            LaunchedEffect(Unit) {
-                adminRepository.startRealtimeAdminCloudSync(scope)
-                scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    adminRepository.refreshAgentApplicationsFromCloud()
-                    adminRepository.refreshUsersFromCloud()
-                }
-            }
-
-            com.loanzo.app.ui.admin.AppOwnerVerificationScreen(
-                allUsers = allUsers,
-                verifications = verifications,
-                agentApplications = agentApplications,
-                initialTab = initialTab,
-                onApproveVerification = { token, phone ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        database.verificationDao().markAsVerified(token = token, phone = phone)
-                        val cleanPhone = phone.replace("\\D".toRegex(), "").takeLast(10)
-                        if (cleanPhone.isNotEmpty()) {
-                            try {
-                                com.loanzo.app.data.firebase.FirestoreProvider.get()
-                                    .collection("verifications")
-                                    .document(cleanPhone)
-                                    .update("status", "VERIFIED")
-                            } catch (_: Exception) {}
-                        }
-                    }
-                },
-                onManualVerify = { input ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        database.verificationDao().markAsVerified(token = input, phone = input)
-                        val cleanPhone = input.replace("\\D".toRegex(), "").takeLast(10)
-                        if (cleanPhone.isNotEmpty()) {
-                            try {
-                                com.loanzo.app.data.firebase.FirestoreProvider.get()
-                                    .collection("verifications")
-                                    .document(cleanPhone)
-                                    .update("status", "VERIFIED")
-                            } catch (_: Exception) {}
-                        }
-                    }
-                },
-                onApproveAgentApplication = { appId ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        agentRepository.approveApplication(appId)
-                    }
-                },
-                onRejectAgentApplication = { appId, remarks ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        agentRepository.rejectApplication(appId, remarks)
-                    }
-                },
-                onVerifyUserKyc = { user, approve, notes ->
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        val updated = if (approve) {
-                            user.copy(
-                                kycStatus = "VERIFIED",
-                                aadhaarVerified = true,
-                                panVerified = true,
-                                bankVerified = true,
-                                selfieVerified = true
-                            )
-                        } else {
-                            user.copy(kycStatus = "REJECTED")
-                        }
-                        database.userDao().updateUser(updated)
-
-                        try {
-                            val userMap = hashMapOf(
-                                "userId" to updated.userId,
-                                "kycStatus" to updated.kycStatus,
-                                "aadhaarVerified" to updated.aadhaarVerified,
-                                "panVerified" to updated.panVerified,
-                                "bankVerified" to updated.bankVerified,
-                                "selfieVerified" to updated.selfieVerified,
-                                "updatedAt" to System.currentTimeMillis()
-                            )
-                            com.loanzo.app.data.firebase.FirestoreProvider.get()
-                                .collection("users")
-                                .document(user.userId)
-                                .set(userMap, com.google.firebase.firestore.SetOptions.merge())
-                        } catch (_: Exception) {}
-
-                        try {
-                            val notif = com.loanzo.app.data.entity.NotificationEntity(
-                                notificationId = "kyc_notif_" + java.util.UUID.randomUUID().toString().take(8),
-                                userId = user.userId,
-                                title = if (approve) "KYC Verification Approved! 🎉" else "KYC Action Required",
-                                message = if (approve) "Your identity, Aadhaar, PAN, and Bank details have been fully verified by the Master Admin." else "Your KYC requires re-submission: $notes",
-                                type = "KYC_STATUS",
-                                timestamp = System.currentTimeMillis(),
-                                isRead = false,
-                                actionRoute = "profile"
-                            )
-                            database.notificationDao().insertNotification(notif)
-                            val notifMap = hashMapOf(
-                                "notificationId" to notif.notificationId,
-                                "userId" to notif.userId,
-                                "title" to notif.title,
-                                "message" to notif.message,
-                                "type" to notif.type,
-                                "timestamp" to notif.timestamp,
-                                "isRead" to notif.isRead,
-                                "actionRoute" to notif.actionRoute
-                            )
-                            com.loanzo.app.data.firebase.FirestoreProvider.get()
-                                .collection("notifications")
-                                .document(notif.notificationId)
-                                .set(notifMap, com.google.firebase.firestore.SetOptions.merge())
-                        } catch (_: Exception) {}
-                    }
-                },
+            com.loanzo.app.ui.admin.AdminKycDeskScreen(
+                initialFilter = initialFilter,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
-        composable(Routes.MARKETPLACE) {
-            val marketplaceViewModel: com.loanzo.app.ui.marketplace.MarketplaceViewModel = hiltViewModel()
-            val marketState by marketplaceViewModel.uiState.collectAsStateWithLifecycle()
+        composable(
+            route = "${Routes.ADMIN_DISPATCH}?filter={filter}",
+            arguments = listOf(navArgument("filter") { type = NavType.IntType; defaultValue = 0 })
+        ) { backStackEntry ->
+            val initialFilter = backStackEntry.arguments?.getInt("filter") ?: 0
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
 
-            com.loanzo.app.ui.marketplace.MarketplaceFeedScreen(
-                state = marketState,
-                viewModel = marketplaceViewModel,
-                onTabSelected = { marketplaceViewModel.setTab(it) },
-                onSearchQueryChange = { marketplaceViewModel.setSearchQuery(it) },
-                onCategoryTagSelected = { marketplaceViewModel.setCategoryTag(it) },
-                onVouchPost = { postId, reason, note -> marketplaceViewModel.vouchForPost(postId, reason, note) },
-                onSubmitBid = { postId, amount, rate, tenure, msg ->
-                    marketplaceViewModel.submitBid(postId, amount, rate, tenure, msg) {}
-                },
-                onNavigateToCreatePost = { mode ->
-                    navController.navigate("${Routes.CREATE_MARKETPLACE_POST}?mode=$mode")
-                },
-                onNavigateToUserProfile = { uid ->
-                    navController.navigate(Routes.userProfile(uid))
-                },
-                onNavigateToChat = { channelId, loanId, targetUserId ->
-                    navController.navigate(Routes.chat(channelId, loanId, targetUserId))
-                },
-                onNavigateToLoanDetail = { loanId ->
-                    navController.navigate(Routes.loanDetail(loanId))
-                },
-                onAcceptBid = { post, bid ->
-                    marketplaceViewModel.acceptBidAndCreateLoan(post, bid) { createdLoan ->
-                        navController.navigate(Routes.loanDetail(createdLoan.loanId))
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.ADMIN_DISPATCH) { inclusive = true }
                     }
-                },
+                }
+                return@composable
+            }
+
+            com.loanzo.app.ui.admin.AdminDispatchScreen(
+                initialFilter = initialFilter,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "${Routes.ADMIN_VAULT}?tab={tab}",
+            arguments = listOf(navArgument("tab") { type = NavType.IntType; defaultValue = 0 })
+        ) { backStackEntry ->
+            val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.ADMIN_VAULT) { inclusive = true }
+                    }
+                }
+                return@composable
+            }
+
+            com.loanzo.app.ui.admin.AdminVaultScreen(
+                initialTab = initialTab,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.ADMIN_REPORTS) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.ADMIN_REPORTS) { inclusive = true }
+                    }
+                }
+                return@composable
+            }
+
+            com.loanzo.app.ui.admin.AdminReportsDeskScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.ADMIN_TICKETS) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.ADMIN_TICKETS) { inclusive = true }
+                    }
+                }
+                return@composable
+            }
+
+            com.loanzo.app.ui.admin.AdminTicketsDeskScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.ADMIN_USER_DIRECTORY) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.ADMIN_USER_DIRECTORY) { inclusive = true }
+                    }
+                }
+                return@composable
+            }
+
+            com.loanzo.app.ui.admin.AdminUserDirectoryScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToUserProfile = { targetUserId ->
+                    navController.navigate(Routes.adminUserProfileDetail(targetUserId))
+                }
+            )
+        }
+
+        composable(
+            route = Routes.ADMIN_USER_PROFILE_DETAIL,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val targetUserId = backStackEntry.arguments?.getString("userId") ?: ""
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.ADMIN_USER_DIRECTORY) { inclusive = false }
+                    }
+                }
+                return@composable
+            }
+
+            com.loanzo.app.ui.admin.AdminUserProfileDetailScreen(
+                userId = targetUserId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToChat = { chatTarget ->
+                    navController.navigate(Routes.chat(channelId = "direct_$chatTarget", targetUserId = chatTarget))
+                }
+            )
+        }
+
+        composable(Routes.ADMIN_AGENT_PERFORMANCE) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.ADMIN_AGENT_PERFORMANCE) { inclusive = true }
+                    }
+                }
+                return@composable
+            }
+
+            com.loanzo.app.ui.admin.AdminAgentPerformanceScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDispatch = { navController.navigate(Routes.ADMIN_DISPATCH) }
+            )
+        }
+
+        composable(Routes.ADMIN_MARKETPLACE_MOD) {
+            val userRepository = com.loanzo.app.util.LocalUserRepository.current
+            val currentUserId by userRepository.getCurrentUserId().collectAsStateWithLifecycle(initialValue = null)
+            val activeUserId = authState.currentUserId ?: currentUserId ?: ""
+            val currentUser by (if (activeUserId.isNotBlank()) userRepository.observeUser(activeUserId) else kotlinx.coroutines.flow.flowOf(null)).collectAsStateWithLifecycle(initialValue = null)
+
+            if (currentUser != null && !com.loanzo.app.util.VerificationManager.isEligibleAppOwner(currentUser)) {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.ADMIN_MARKETPLACE_MOD) { inclusive = true }
+                    }
+                }
+                return@composable
+            }
+
+            com.loanzo.app.ui.admin.AdminMarketplaceModScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -1672,6 +1870,12 @@ fun LoanzoNavGraph(
                 }
             )
         }
+
+        composable(Routes.RESEARCH_EVIDENCE) {
+            com.loanzo.app.ui.evidence.ResearchAndEvidenceScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
     }
 }
 
@@ -1695,12 +1899,10 @@ fun MainScaffold(
         if (!pendingInnerRoute.isNullOrBlank()) {
             val innerRoutes = setOf(
                 Routes.DASHBOARD, Routes.LOANS,
-                Routes.NOTIFICATIONS, Routes.MARKETPLACE, Routes.SUPPORT_TICKETS,
-                Routes.FINANCIAL_HEALTH, Routes.RAISE_TICKET
+                Routes.NOTIFICATIONS, Routes.MARKETPLACE,
+                Routes.FINANCIAL_HEALTH
             )
-            val isInner = pendingInnerRoute in innerRoutes ||
-                    pendingInnerRoute.startsWith("ticket_detail/") ||
-                    pendingInnerRoute.startsWith("support_tickets")
+            val isInner = pendingInnerRoute in innerRoutes
             if (isInner) {
                 val consumed = activity?.consumePendingNavigation()
                 if (!consumed.isNullOrBlank()) {
@@ -1760,8 +1962,8 @@ fun MainScaffold(
 
             // Real-time Active User Profile Synchronization from Firestore
             // Instantly elevates role to AGENT upon admin approval and updates KYC/Duty statuses
-            val db = com.loanzo.app.data.firebase.FirestoreProvider.get()
             try {
+                val db = com.loanzo.app.data.firebase.FirestoreProvider.get()
                 db.collection("users").document(activeUserId)
                     .addSnapshotListener { snapshot, error ->
                         if (error != null || snapshot == null || !snapshot.exists()) return@addSnapshotListener
@@ -1814,7 +2016,15 @@ fun MainScaffold(
 
     val userRole = currentUser?.role?.uppercase() ?: "USER"
     val isAgent = com.loanzo.app.util.VerificationManager.isFieldAgent(currentUser)
-    val isAdmin = com.loanzo.app.util.VerificationManager.isAppOwner(currentUser)
+    val isAdmin = com.loanzo.app.util.VerificationManager.isActiveAdmin(currentUser)
+
+    LaunchedEffect(isAgent) {
+        if (isAgent) {
+            navController.navigate(Routes.AGENT_MAIN) {
+                popUpTo(Routes.MAIN) { inclusive = true }
+            }
+        }
+    }
 
     var showKycRequiredDialog by remember { mutableStateOf(false) }
     var kycDialogMessage by remember { mutableStateOf("") }
@@ -1862,6 +2072,7 @@ fun MainScaffold(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (!hideBottomNav) {
                     val notifViewModel: com.loanzo.app.ui.notification.NotificationViewModel = hiltViewModel()
@@ -1896,17 +2107,21 @@ fun MainScaffold(
                             unselectedTextColor = TextSlateMuted
                         )
 
+                        val isRouteSelected: (String) -> Boolean = { route ->
+                            currentRoute == route || currentRoute?.substringBefore('?') == route
+                        }
+
                         NavigationBar(
                             containerColor = Color.Transparent,
                             tonalElevation = 0.dp
                         ) {
                             // 1. Home
                             val homeItem = bottomNavItems[0]
-                            val homeSelected = currentRoute == homeItem.route
+                            val homeSelected = isRouteSelected(homeItem.route)
                             NavigationBarItem(
                                 selected = homeSelected,
                                 onClick = {
-                                    if (currentRoute != homeItem.route) {
+                                    if (!homeSelected) {
                                         innerNavController.navigate(homeItem.route) {
                                             popUpTo(Routes.DASHBOARD) { saveState = true }
                                             launchSingleTop = true
@@ -1918,7 +2133,7 @@ fun MainScaffold(
                                 label = {
                                     Text(
                                         text = homeItem.label,
-                                        fontSize = 10.5.sp,
+                                        fontSize = 10.sp,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Ellipsis,
@@ -1931,14 +2146,14 @@ fun MainScaffold(
                             // 2. Community
                             val communityItem = bottomNavItems[1]
                             val targetRoute = communityItem.route
-                            val communitySelected = currentRoute == targetRoute
+                            val communitySelected = isRouteSelected(targetRoute)
                             val communityLabel = communityItem.label
                             val communitySelectedIcon = communityItem.selectedIcon
                             val communityUnselectedIcon = communityItem.unselectedIcon
                             NavigationBarItem(
                                 selected = communitySelected,
                                 onClick = {
-                                    if (currentRoute != targetRoute) {
+                                    if (!communitySelected) {
                                         innerNavController.navigate(targetRoute) {
                                             popUpTo(Routes.DASHBOARD) { saveState = true }
                                             launchSingleTop = true
@@ -1950,7 +2165,7 @@ fun MainScaffold(
                                 label = {
                                     Text(
                                         text = communityLabel,
-                                        fontSize = 10.5.sp,
+                                        fontSize = 10.sp,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Ellipsis,
@@ -1961,8 +2176,8 @@ fun MainScaffold(
                             )
 
                             // 3. Center Cradle Slot (aligned beneath the floating action button)
-                            val centerCradleLabel = if (isAgent) stringResource(R.string.nav_inspect) else if (isAdmin) stringResource(R.string.nav_dispatch) else stringResource(R.string.nav_post)
-                            val centerCradleColor = if (isAgent) Emerald500 else if (isAdmin) Color(0xFF6366F1) else MaterialTheme.colorScheme.primary
+                            val centerCradleLabel = if (isAdmin) stringResource(R.string.nav_dispatch) else stringResource(R.string.nav_post)
+                            val centerCradleColor = if (isAdmin) Color(0xFF6366F1) else MaterialTheme.colorScheme.primary
                             NavigationBarItem(
                                 selected = false,
                                 onClick = {
@@ -1973,7 +2188,7 @@ fun MainScaffold(
                                 label = {
                                     Text(
                                         text = centerCradleLabel,
-                                        fontSize = 10.5.sp,
+                                        fontSize = 10.sp,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Ellipsis,
@@ -1986,11 +2201,11 @@ fun MainScaffold(
 
                             // 4. Chat
                             val chatItem = bottomNavItems[2]
-                            val chatSelected = currentRoute == chatItem.route
+                            val chatSelected = isRouteSelected(chatItem.route)
                             NavigationBarItem(
                                 selected = chatSelected,
                                 onClick = {
-                                    if (currentRoute != chatItem.route) {
+                                    if (!chatSelected) {
                                         innerNavController.navigate(chatItem.route) {
                                             popUpTo(Routes.DASHBOARD) { saveState = true }
                                             launchSingleTop = true
@@ -2007,7 +2222,7 @@ fun MainScaffold(
                                 label = {
                                     Text(
                                         text = chatItem.label,
-                                        fontSize = 10.5.sp,
+                                        fontSize = 10.sp,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Ellipsis,
@@ -2019,11 +2234,11 @@ fun MainScaffold(
 
                             // 5. Notifications
                             val notifItem = bottomNavItems[3]
-                            val notifSelected = currentRoute == notifItem.route
+                            val notifSelected = isRouteSelected(notifItem.route)
                             NavigationBarItem(
                                 selected = notifSelected,
                                 onClick = {
-                                    if (currentRoute != notifItem.route) {
+                                    if (!notifSelected) {
                                         innerNavController.navigate(notifItem.route) {
                                             popUpTo(Routes.DASHBOARD) { saveState = true }
                                             launchSingleTop = true
@@ -2059,7 +2274,8 @@ fun MainScaffold(
                                 label = {
                                     Text(
                                         text = notifItem.label,
-                                        fontSize = 10.5.sp,
+                                        fontSize = 9.5.sp,
+                                        letterSpacing = (-0.3).sp,
                                         maxLines = 1,
                                         softWrap = false,
                                         overflow = TextOverflow.Ellipsis,
@@ -2072,8 +2288,8 @@ fun MainScaffold(
                     }
 
                     // Round Center Action Button with Role-Adaptive Styling
-                    val fabColor = if (isAgent) BrandRoyalBlue else if (isAdmin) Color(0xFF6366F1) else MaterialTheme.colorScheme.primary
-                    val fabIcon = if (isAgent) Icons.Default.QrCodeScanner else if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Add
+                    val fabColor = if (isAdmin) Color(0xFF6366F1) else MaterialTheme.colorScheme.primary
+                    val fabIcon = if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Add
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
@@ -2104,11 +2320,11 @@ fun MainScaffold(
                         ) {
                             Icon(
                                 imageVector = fabIcon,
-                                contentDescription = if (isAgent) "Agent Inspection" else if (isAdmin) "Admin Command" else "Quick Action",
+                                contentDescription = if (isAdmin) "Admin Command" else "Quick Action",
                                 tint = Color.White,
                                 modifier = Modifier
                                     .size(28.dp)
-                                    .rotate(if (isAgent || isAdmin) 0f else rotationAngle)
+                                    .rotate(if (isAdmin) 0f else rotationAngle)
                             )
                         }
                     }
@@ -2119,7 +2335,7 @@ fun MainScaffold(
             NavHost(
                 navController = innerNavController,
                 startDestination = Routes.DASHBOARD,
-                modifier = Modifier.padding(padding),
+                modifier = Modifier.padding(bottom = padding.calculateBottomPadding()),
                 enterTransition = { fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.97f, animationSpec = tween(220, easing = FastOutSlowInEasing)) },
                 exitTransition = { fadeOut(animationSpec = tween(180)) },
                 popEnterTransition = { fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.97f, animationSpec = tween(220, easing = FastOutSlowInEasing)) },
@@ -2170,26 +2386,40 @@ fun MainScaffold(
                     onNavigateToLoansTab = { navController.navigate(Routes.SMART_PORTFOLIO) },
                     onNavigateToCommunity = { innerNavController.navigate(Routes.MARKETPLACE) { launchSingleTop = true } },
                     onNavigateToChat = { loanId -> navController.navigate(Routes.chat(loanId)) },
-                    onNavigateToChatHub = { navController.navigate(Routes.CHAT_HUB) },
+                    onNavigateToChatHub = { innerNavController.navigate(Routes.CHAT_HUB) { launchSingleTop = true } },
                     onNavigateToKyc = { navController.navigate(Routes.KYC) },
-                    onNavigateToAdminHub = { tabIndex -> navController.navigate(Routes.appOwnerHub(tabIndex)) },
-                    onNavigateToSupport = { innerNavController.navigate(Routes.SUPPORT_TICKETS) },
+                    onNavigateToKycDesk = { filter -> navController.navigate(Routes.adminKycDesk(filter)) },
+                    onNavigateToDispatch = { filter -> navController.navigate(Routes.adminDispatch(filter)) },
+                    onNavigateToVault = { tab -> navController.navigate(Routes.adminVault(tab)) },
+                    onNavigateToReports = { navController.navigate(Routes.ADMIN_REPORTS) },
+                    onNavigateToTickets = { navController.navigate(Routes.ADMIN_TICKETS) },
+                    onNavigateToUserDirectory = { navController.navigate(Routes.ADMIN_USER_DIRECTORY) },
+                    onNavigateToAgentPerformance = { navController.navigate(Routes.ADMIN_AGENT_PERFORMANCE) },
+                    onNavigateToMarketplaceMod = { navController.navigate(Routes.ADMIN_MARKETPLACE_MOD) },
+                    onNavigateToSupport = { navController.navigate(Routes.SUPPORT_TICKETS) },
                     onNavigateToUserProfile = { uid -> navController.navigate(Routes.userProfile(uid)) },
-                    onNavigateToNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
+                    onNavigateToNotifications = { innerNavController.navigate(Routes.NOTIFICATIONS) { launchSingleTop = true } },
                     onNavigateToAgentCockpit = { navController.navigate(Routes.AGENT_MAIN) },
+                    onNavigateToReport = { navController.navigate(Routes.REPORT_ACTION) },
+                    onNavigateToEvidence = { navController.navigate(Routes.RESEARCH_EVIDENCE) },
                     onPushDemoData = { authViewModel.pushDemoData() },
                     onRefresh = { dashboardViewModel.refreshDashboard() },
                     onLogout = { authViewModel.logout() }
                 )
             }
 
-            composable(Routes.MARKETPLACE) {
+            composable(
+                "${Routes.MARKETPLACE}?targetPostId={targetPostId}",
+                arguments = listOf(navArgument("targetPostId") { defaultValue = ""; type = NavType.StringType })
+            ) { backStackEntry ->
+                val targetPostId = backStackEntry.arguments?.getString("targetPostId")?.takeIf { it.isNotBlank() }
                 val marketplaceViewModel: com.loanzo.app.ui.marketplace.MarketplaceViewModel = hiltViewModel()
                 val marketState by marketplaceViewModel.uiState.collectAsStateWithLifecycle()
 
                 com.loanzo.app.ui.marketplace.MarketplaceFeedScreen(
                     state = marketState,
                     viewModel = marketplaceViewModel,
+                    targetPostId = targetPostId,
                     onTabSelected = { marketplaceViewModel.setTab(it) },
                     onSearchQueryChange = { marketplaceViewModel.setSearchQuery(it) },
                     onCategoryTagSelected = { marketplaceViewModel.setCategoryTag(it) },
@@ -2256,11 +2486,9 @@ fun MainScaffold(
                                     targetRoute == Routes.SMART_PORTFOLIO ||
                                     targetRoute == Routes.NOTIFICATIONS ||
                                     targetRoute == Routes.MARKETPLACE ||
-                                    targetRoute == Routes.SUPPORT_TICKETS ||
+                                    targetRoute.startsWith("${Routes.MARKETPLACE}?") ||
                                     targetRoute == Routes.FINANCIAL_HEALTH ||
-                                    targetRoute == Routes.CHAT_HUB ||
-                                    targetRoute.startsWith("ticket_detail/") ||
-                                    targetRoute.startsWith("support_tickets")
+                                    targetRoute == Routes.CHAT_HUB
                             if (isInnerRoute) {
                                 innerNavController.navigate(targetRoute) {
                                     launchSingleTop = true
@@ -2320,46 +2548,17 @@ fun MainScaffold(
             }
 
             composable(Routes.SUPPORT_TICKETS) {
-                val ticketViewModel: SupportTicketViewModel = hiltViewModel()
-                val uiState by ticketViewModel.uiState.collectAsStateWithLifecycle()
-                MyTicketsScreen(
-                    tickets = ticketViewModel.getFilteredTickets(),
-                    pendingFeedbackCount = uiState.pendingFeedbackCount,
-                    selectedFilter = uiState.selectedFilter,
-                    onFilterChange = { ticketViewModel.setFilter(it) },
-                    onNavigateToRaiseTicket = { innerNavController.navigate(Routes.RAISE_TICKET) },
-                    onNavigateToTicketDetail = { ticketId -> innerNavController.navigate(Routes.ticketDetail(ticketId)) },
-                    onBack = {
-                        if (!innerNavController.popBackStack()) {
-                            innerNavController.navigate(Routes.DASHBOARD) {
-                                popUpTo(Routes.DASHBOARD) { inclusive = true }
-                            }
-                        }
-                    }
-                )
+                LaunchedEffect(Unit) {
+                    innerNavController.popBackStack()
+                    navController.navigate(Routes.SUPPORT_TICKETS)
+                }
             }
 
             composable(Routes.RAISE_TICKET) {
-                val ticketViewModel: SupportTicketViewModel = hiltViewModel()
-                val uiState by ticketViewModel.uiState.collectAsStateWithLifecycle()
-                RaiseTicketScreen(
-                    userLoans = uiState.userLoans,
-                    ticketSubmitted = uiState.ticketSubmitted,
-                    errorMessage = uiState.errorMessage,
-                    onSubmit = { category, priority, subject, description, relatedLoanId, preferredCallbackAt ->
-                        ticketViewModel.createTicket(
-                            category = category,
-                            priority = priority,
-                            subject = subject,
-                            description = description,
-                            relatedLoanId = relatedLoanId,
-                            preferredCallbackAt = preferredCallbackAt
-                        )
-                    },
-                    onTicketSubmittedAck = { ticketViewModel.clearTicketSubmitted() },
-                    onClearError = { ticketViewModel.clearError() },
-                    onBack = { innerNavController.popBackStack() }
-                )
+                LaunchedEffect(Unit) {
+                    innerNavController.popBackStack()
+                    navController.navigate(Routes.RAISE_TICKET)
+                }
             }
 
             composable(
@@ -2367,23 +2566,15 @@ fun MainScaffold(
                 arguments = listOf(navArgument("ticketId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val ticketId = backStackEntry.arguments?.getString("ticketId") ?: ""
-                val ticketViewModel: SupportTicketViewModel = hiltViewModel()
-                val uiState by ticketViewModel.uiState.collectAsStateWithLifecycle()
-
                 LaunchedEffect(ticketId) {
-                    if (ticketId.isNotBlank()) {
-                        ticketViewModel.loadTicketDetail(ticketId)
-                    }
+                    innerNavController.popBackStack()
+                    navController.navigate(Routes.ticketDetail(ticketId))
                 }
+            }
 
-                TicketDetailScreen(
-                    ticket = uiState.selectedTicket,
-                    onSubmitFeedback = { tId, rating, comment ->
-                        ticketViewModel.submitFeedback(tId, rating, comment)
-                    },
-                    feedbackSubmitted = uiState.feedbackSubmitted,
-                    onFeedbackSubmittedAck = { ticketViewModel.clearFeedbackSubmitted() },
-                    onBack = { innerNavController.popBackStack() }
+            composable(Routes.RESEARCH_EVIDENCE) {
+                com.loanzo.app.ui.evidence.ResearchAndEvidenceScreen(
+                    onBackClick = { innerNavController.popBackStack() }
                 )
             }
         }
@@ -2435,53 +2626,7 @@ fun MainScaffold(
                 .padding(bottom = 54.dp),
             contentAlignment = Alignment.BottomCenter
         ) {
-            if (isAgent) {
-                // Agent Satellite 1: Handshake PIN Authentication
-                CircularSatelliteItem(
-                    icon = Icons.Default.Pin,
-                    label = "Handshake PIN",
-                    containerColor = BrandIceBlue,
-                    iconTint = BrandRoyalBlue,
-                    progress = radialProgress,
-                    offsetX = (-90 * radialProgress).dp,
-                    offsetY = (-66 * radialProgress).dp,
-                    onClick = {
-                        isQuickActionMenuOpen = false
-                        navController.navigate(Routes.AGENT_MAIN)
-                    }
-                )
-
-                // Agent Satellite 2: Scan Vault Security Bag / Inspect
-                CircularSatelliteItem(
-                    icon = Icons.Default.QrCodeScanner,
-                    label = "Vault Scan",
-                    containerColor = GoldCoinCream,
-                    iconTint = GoldCoinAmber,
-                    size = 56.dp,
-                    progress = radialProgress,
-                    offsetX = 0.dp,
-                    offsetY = (-120 * radialProgress).dp,
-                    onClick = {
-                        isQuickActionMenuOpen = false
-                        navController.navigate(Routes.AGENT_MAIN)
-                    }
-                )
-
-                // Agent Satellite 3: Quick Photo Attestation
-                CircularSatelliteItem(
-                    icon = Icons.Default.CameraAlt,
-                    label = "Photo Attest",
-                    containerColor = EmeraldLight,
-                    iconTint = Emerald500,
-                    progress = radialProgress,
-                    offsetX = (90 * radialProgress).dp,
-                    offsetY = (-66 * radialProgress).dp,
-                    onClick = {
-                        isQuickActionMenuOpen = false
-                        navController.navigate(Routes.AGENT_MAIN)
-                    }
-                )
-            } else if (isAdmin) {
+            if (isAdmin) {
                 // Admin Satellite 1: KYC Desk
                 CircularSatelliteItem(
                     icon = Icons.Default.VerifiedUser,
@@ -2493,7 +2638,7 @@ fun MainScaffold(
                     offsetY = (-66 * radialProgress).dp,
                     onClick = {
                         isQuickActionMenuOpen = false
-                        navController.navigate(Routes.appOwnerHub(0)) {
+                        navController.navigate(Routes.ADMIN_KYC_DESK) {
                             launchSingleTop = true
                         }
                     }
@@ -2511,7 +2656,7 @@ fun MainScaffold(
                     offsetY = (-120 * radialProgress).dp,
                     onClick = {
                         isQuickActionMenuOpen = false
-                        navController.navigate(Routes.appOwnerHub(1)) {
+                        navController.navigate(Routes.ADMIN_DISPATCH) {
                             launchSingleTop = true
                         }
                     }
@@ -2528,7 +2673,7 @@ fun MainScaffold(
                     offsetY = (-66 * radialProgress).dp,
                     onClick = {
                         isQuickActionMenuOpen = false
-                        navController.navigate(Routes.appOwnerHub(2)) {
+                        navController.navigate(Routes.ADMIN_VAULT) {
                             launchSingleTop = true
                         }
                     }

@@ -44,6 +44,7 @@ data class LoanUiState(
     val repayments: List<RepaymentEntity> = emptyList(),
     val pledges: List<PledgeEntity> = emptyList(),
     val guarantors: List<GuarantorEntity> = emptyList(),
+    val coLenders: List<com.loanzo.app.data.entity.CoLenderEntity> = emptyList(),
     val totalDisbursed: Double = 0.0,
     val totalVerified: Double = 0.0,
     val utilizationPercentage: Float = 0f,
@@ -175,6 +176,12 @@ class LoanViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             // Fetch directly from Cloud Firestore in case this device hasn't cached it yet (e.g. counterparty / notification open)
             loanRepository.fetchAndSyncLoanById(loanId)
+            try {
+                loanRepository.syncRepaymentsForLoan(loanId)
+                loanRepository.syncDisbursementsForLoan(loanId)
+                loanRepository.syncPledgesForLoan(loanId)
+                loanRepository.syncGuarantorsForLoan(loanId)
+            } catch (_: Exception) {}
             loanRepository.observeLoan(loanId).collect { loan ->
                 _uiState.update { state ->
                     val schedule = if (loan != null) buildAmortizationSchedule(loan, state.repayments) else emptyList()
@@ -248,6 +255,12 @@ class LoanViewModel @Inject constructor(
         viewModelScope.launch {
             loanRepository.getGuarantorsByLoan(loanId).collect { guarantors ->
                 _uiState.update { it.copy(guarantors = guarantors) }
+            }
+        }
+        // Co-Lenders / Lending Syndicate
+        viewModelScope.launch {
+            loanRepository.getCoLendersByLoan(loanId).collect { coLenders ->
+                _uiState.update { it.copy(coLenders = coLenders) }
             }
         }
         viewModelScope.launch {
@@ -355,7 +368,9 @@ class LoanViewModel @Inject constructor(
         penaltyRate: Double = 2.0,
         penaltyModel: String = "PERCENTAGE",
         penaltyGraceDays: Int = 3,
-        isGrantMode: Boolean = false
+        isGrantMode: Boolean = false,
+        coLenderUserId: String = "",
+        coLenderSharePercent: Double = 0.0
     ) {
         viewModelScope.launch {
             try {
@@ -426,6 +441,52 @@ class LoanViewModel @Inject constructor(
 
                 loanRepository.createLoan(loan, currentUserId)
 
+                // If Co-Lender is specified, create lending syndicate records
+                if (coLenderUserId.isNotBlank() && coLenderSharePercent > 0.0) {
+                    try {
+                        val coShare = coLenderSharePercent.coerceIn(1.0, 99.0)
+                        val leadShare = 100.0 - coShare
+                        val coAmount = amount * (coShare / 100.0)
+                        val leadAmount = amount - coAmount
+
+                        val cleanCoLenderId = coLenderUserId.trim()
+                        val resolvedCoLender = userRepository.getUserById(cleanCoLenderId)
+                            ?: userRepository.getUserByUsername(cleanCoLenderId.removePrefix("@"))
+                            ?: (if (cleanCoLenderId.contains("@")) userRepository.getUserByEmail(cleanCoLenderId) else null)
+                            ?: userRepository.getUserByPhone(cleanCoLenderId)
+
+                        val leadUser = userRepository.getUserById(actualLenderId)
+
+                        val leadEntry = com.loanzo.app.data.entity.CoLenderEntity(
+                            coLenderId = "colender_${loan.loanId}_lead",
+                            loanId = loan.loanId,
+                            lenderId = actualLenderId,
+                            name = leadUser?.name ?: "Lead Lender",
+                            phone = leadUser?.phone ?: "",
+                            contributedAmount = leadAmount,
+                            sharePercentage = leadShare,
+                            role = "LEAD_LENDER",
+                            status = "ACTIVE"
+                        )
+
+                        val coEntry = com.loanzo.app.data.entity.CoLenderEntity(
+                            coLenderId = "colender_${loan.loanId}_colender",
+                            loanId = loan.loanId,
+                            lenderId = resolvedCoLender?.userId ?: cleanCoLenderId,
+                            name = resolvedCoLender?.name ?: cleanCoLenderId.removePrefix("@"),
+                            phone = resolvedCoLender?.phone ?: "",
+                            contributedAmount = coAmount,
+                            sharePercentage = coShare,
+                            role = "CO_LENDER",
+                            status = "ACTIVE"
+                        )
+
+                        loanRepository.createCoLenders(listOf(leadEntry, coEntry), currentUserId)
+                    } catch (e: Exception) {
+                        Log.w("LoanViewModel", "Failed to create co-lenders: ${e.message}")
+                    }
+                }
+
                 // Push to Firestore so both parties have cloud records
                 try {
                     firestore
@@ -469,6 +530,55 @@ class LoanViewModel @Inject constructor(
                 _uiState.update { it.copy(loanCreated = true, message = successMsg) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(message = "Loan creation failed: ${e.localizedMessage}") }
+            }
+        }
+    }
+
+    fun addCoLender(loanId: String, coLenderUserId: String, sharePercent: Double) {
+        viewModelScope.launch {
+            try {
+                val currentUserId = userRepository.getCurrentUserIdSync() ?: "current_user"
+                val loan = loanRepository.getLoanById(loanId) ?: return@launch
+                val cleanId = coLenderUserId.trim()
+                val resolvedUser = userRepository.getUserById(cleanId)
+                    ?: userRepository.getUserByUsername(cleanId.removePrefix("@"))
+                    ?: (if (cleanId.contains("@")) userRepository.getUserByEmail(cleanId) else null)
+                    ?: userRepository.getUserByPhone(cleanId)
+
+                val coShare = sharePercent.coerceIn(1.0, 99.0)
+                val coAmount = loan.sanctionedAmount * (coShare / 100.0)
+                val leadShare = 100.0 - coShare
+                val leadAmount = loan.sanctionedAmount - coAmount
+
+                val leadUser = userRepository.getUserById(loan.lenderId)
+                val leadEntry = com.loanzo.app.data.entity.CoLenderEntity(
+                    coLenderId = "colender_${loan.loanId}_lead",
+                    loanId = loan.loanId,
+                    lenderId = loan.lenderId,
+                    name = leadUser?.name ?: "Lead Lender",
+                    phone = leadUser?.phone ?: "",
+                    contributedAmount = leadAmount,
+                    sharePercentage = leadShare,
+                    role = "LEAD_LENDER",
+                    status = "ACTIVE"
+                )
+
+                val coEntry = com.loanzo.app.data.entity.CoLenderEntity(
+                    coLenderId = "colender_${loan.loanId}_co_" + UUID.randomUUID().toString().take(6),
+                    loanId = loan.loanId,
+                    lenderId = resolvedUser?.userId ?: cleanId,
+                    name = resolvedUser?.name ?: cleanId.removePrefix("@"),
+                    phone = resolvedUser?.phone ?: "",
+                    contributedAmount = coAmount,
+                    sharePercentage = coShare,
+                    role = "CO_LENDER",
+                    status = "ACTIVE"
+                )
+
+                loanRepository.createCoLenders(listOf(leadEntry, coEntry), currentUserId)
+                _uiState.update { it.copy(message = "Co-lender added successfully (${coShare.toInt()}% share)") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(message = "Failed to add co-lender: ${e.message}") }
             }
         }
     }
@@ -545,6 +655,23 @@ class LoanViewModel @Inject constructor(
                         .document(notif.notificationId)
                         .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
                 } catch (_: Exception) {}
+                // Section 133 Indian Contract Act: Notify Guarantors of tranche drawdown request
+                try {
+                    _uiState.value.guarantors.forEach { guarantor ->
+                        val gUserId = if (guarantor.email.isNotBlank()) guarantor.email else guarantor.phone
+                        val gNotif = com.loanzo.app.data.entity.NotificationEntity(
+                            notificationId = "notif_tranche_req_g_" + UUID.randomUUID().toString().take(8),
+                            userId = gUserId,
+                            title = "🛡️ Tranche Drawdown Requested",
+                            message = "Borrower requested milestone tranche of ₹${amount.toInt()} for $purpose on guaranteed facility.",
+                            type = "DISBURSEMENT",
+                            relatedLoanId = loanId,
+                            actionRoute = "loan_detail/$loanId",
+                            timestamp = System.currentTimeMillis()
+                        )
+                        firestore.collection("notifications").document(gNotif.notificationId).set(notificationToMap(gNotif), com.google.firebase.firestore.SetOptions.merge())
+                    }
+                } catch (_: Exception) {}
             }
 
             _uiState.update {
@@ -565,7 +692,7 @@ class LoanViewModel @Inject constructor(
             val updatedLoan = loan.copy(disbursedAmount = loan.disbursedAmount + disb.amount)
             loanRepository.updateLoan(updatedLoan, userId, "Tranche approved: ₹${disb.amount}")
 
-            // Bug #15: Notify borrower that tranche is approved
+            // Notify borrower that tranche is approved
             try {
                 val notif = com.loanzo.app.data.entity.NotificationEntity(
                     notificationId = "notif_tranche_appr_" + UUID.randomUUID().toString().take(8),
@@ -581,6 +708,24 @@ class LoanViewModel @Inject constructor(
                     .collection("notifications")
                     .document(notif.notificationId)
                     .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
+            } catch (_: Exception) {}
+
+            // Statutory Notice under Section 133 Indian Contract Act to all Guarantors & Co-Borrowers
+            try {
+                _uiState.value.guarantors.forEach { guarantor ->
+                    val gUserId = if (guarantor.email.isNotBlank()) guarantor.email else guarantor.phone
+                    val gNotif = com.loanzo.app.data.entity.NotificationEntity(
+                        notificationId = "notif_tranche_g_" + UUID.randomUUID().toString().take(8),
+                        userId = gUserId,
+                        title = "🛡️ Tranche Notice (Sec 133 ICA)",
+                        message = "Milestone tranche of ₹${disb.amount.toInt()} approved for ${disb.purpose}. Joint guarantee for loan ${loan.purpose} active.",
+                        type = "DISBURSEMENT",
+                        relatedLoanId = disb.loanId,
+                        actionRoute = "loan_detail/${disb.loanId}",
+                        timestamp = System.currentTimeMillis()
+                    )
+                    firestore.collection("notifications").document(gNotif.notificationId).set(notificationToMap(gNotif), com.google.firebase.firestore.SetOptions.merge())
+                }
             } catch (_: Exception) {}
 
             _uiState.update { it.copy(message = "Tranche approved") }
@@ -890,6 +1035,39 @@ class LoanViewModel @Inject constructor(
         }
     }
 
+    fun exportPromissoryNote(context: android.content.Context, loan: LoanEntity) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val lender = userRepository.getUserById(loan.lenderId)
+                ?: com.loanzo.app.data.entity.UserEntity(userId = loan.lenderId, name = "Lender", email = "", phone = "", role = "LENDER", kycStatus = "VERIFIED")
+            val borrower = userRepository.getUserById(loan.borrowerId)
+                ?: com.loanzo.app.data.entity.UserEntity(userId = loan.borrowerId, name = "Borrower", email = "", phone = "", role = "BORROWER", kycStatus = "VERIFIED")
+            val primaryGuarantor = _uiState.value.guarantors.firstOrNull()?.name
+            val file = com.loanzo.app.util.LegalDossierExportEngine.generateStandalonePromissoryNotePdf(
+                context = context,
+                loan = loan,
+                lender = lender,
+                borrower = borrower,
+                guarantorName = primaryGuarantor
+            )
+            if (file != null) {
+                documentVaultRepository.archiveDocument(
+                    userId = loan.borrowerId,
+                    loanId = loan.loanId,
+                    title = "Promissory Note (Sec 4 NI Act) - ${loan.loanId.take(8).uppercase()}",
+                    documentType = "PROMISSORY_NOTE",
+                    sourceFile = file,
+                    description = "Statutory Demand Promissory Note executed under Section 4 of the Negotiable Instruments Act 1881."
+                )
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    com.loanzo.app.util.ReportExporter.shareFile(context, file, "application/pdf")
+                    _uiState.update { it.copy(message = "Promissory Note exported & archived to Vault!") }
+                }
+            } else {
+                _uiState.update { it.copy(message = "Failed to generate Promissory Note PDF.") }
+            }
+        }
+    }
+
     fun exportPitchDeck(context: android.content.Context) {
         val file = com.loanzo.app.util.ReportExporter.generatePlatformPitchReportPdf(context)
         if (file != null) {
@@ -965,6 +1143,23 @@ class LoanViewModel @Inject constructor(
                 consentStatus = "PENDING"
             )
             loanRepository.createGuarantor(guarantor, userId)
+            try {
+                val loan = loanRepository.getLoanById(loanId)
+                if (loan != null && loan.lenderId.isNotBlank()) {
+                    val notif = com.loanzo.app.data.entity.NotificationEntity(
+                        notificationId = "notif_guar_" + UUID.randomUUID().toString().take(8),
+                        userId = if (loan.borrowerId == userId) loan.lenderId else loan.borrowerId,
+                        title = "👥 Guarantor Added",
+                        message = "${guarantor.name} ($relationship) was attached as co-signer for loan ${loan.purpose}.",
+                        type = "GUARANTOR",
+                        relatedLoanId = loanId,
+                        actionRoute = "loan_detail/$loanId",
+                        timestamp = System.currentTimeMillis()
+                    )
+                    firestore.collection("notifications").document(notif.notificationId)
+                        .set(notificationToMap(notif), com.google.firebase.firestore.SetOptions.merge())
+                }
+            } catch (_: Exception) {}
             _uiState.update { it.copy(message = "Guarantor added") }
         }
     }

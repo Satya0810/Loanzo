@@ -26,6 +26,7 @@ class MarketplaceViewModelTest {
     private val marketplaceRepository = mockk<MarketplaceRepository>(relaxed = true)
     private val userRepository = mockk<UserRepository>(relaxed = true)
     private val loanRepository = mockk<LoanRepository>(relaxed = true)
+    private val agentRepository = mockk<com.loanzo.app.data.repository.AgentRepository>(relaxed = true)
     private val agentDao = mockk<AgentDao>(relaxed = true)
 
     private val sampleUser = UserEntity(
@@ -82,6 +83,7 @@ class MarketplaceViewModelTest {
             marketplaceRepository = marketplaceRepository,
             userRepository = userRepository,
             loanRepository = loanRepository,
+            agentRepository = agentRepository,
             agentDao = agentDao
         )
     }

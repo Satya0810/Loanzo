@@ -836,9 +836,9 @@ private fun QuestStepItem(
             Button(
                 onClick = onClick,
                 shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = BrandAmberGold, contentColor = Color(0xFF0F172A)),
-                modifier = Modifier.height(32.dp)
+                modifier = Modifier.heightIn(min = 36.dp)
             ) {
                 Text(actionLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
             }
@@ -874,60 +874,7 @@ fun ContextualGuideCard(
     onDismiss: () -> Unit,
     autoDismissSeconds: Int = 8
 ) {
-    var isVisible by remember { mutableStateOf(visible) }
-
-    LaunchedEffect(visible) { isVisible = visible }
-
-    LaunchedEffect(isVisible) {
-        if (isVisible && autoDismissSeconds > 0) {
-            delay(autoDismissSeconds * 1000L)
-            isVisible = false
-            onDismiss()
-        }
-    }
-
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut()
-    ) {
-        Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                color = Color(0xFF131B2B),
-                border = BorderStroke(1.dp, BrandAmberGold.copy(alpha = 0.35f)),
-                shadowElevation = 8.dp
-            ) {
-                Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.Top) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(BrandAmberGold.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(imageVector = icon, contentDescription = null, tint = BrandAmberGold, modifier = Modifier.size(24.dp))
-                    }
-
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = body, style = MaterialTheme.typography.bodySmall, color = Gray300, lineHeight = 18.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(
-                            onClick = { isVisible = false; onDismiss() },
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("Got it ✓", color = BrandAmberGold, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-            }
-        }
-    }
+    return
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1065,7 +1012,8 @@ fun GuidedTourOverlay(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Header Tag & Close

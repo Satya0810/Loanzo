@@ -53,6 +53,8 @@ class BankingSessionManager @Inject constructor(
         val KEY_IS_SESSION_LOCKED = booleanPreferencesKey("banking_session_is_locked")
         val KEY_SESSION_USER_ID = stringPreferencesKey("banking_session_user_id")
         val KEY_SESSION_ROLE = stringPreferencesKey("banking_session_role")
+        val KEY_APP_IN_RECENTS = booleanPreferencesKey("banking_session_app_in_recents")
+        val KEY_REQUIRE_FULL_LOGIN = booleanPreferencesKey("banking_session_require_full_login")
 
         const val INACTIVITY_LOCK_TIMEOUT_MS = 3 * 60 * 1000L // 3 minutes in background -> Quick Lock
         const val HARD_EXPIRY_TIMEOUT_MS = 2 * 24 * 60 * 60 * 1000L // 2 days (48 hours) -> Hard Logout
@@ -61,20 +63,33 @@ class BankingSessionManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private val syncPrefs by lazy {
+        context.getSharedPreferences("loanzo_banking_session_prefs_sync", Context.MODE_PRIVATE)
+    }
+
     private val _sessionState = MutableStateFlow(SessionState.UNAUTHENTICATED)
     val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
+
+    @Volatile
+    private var isAppRunningInRecents: Boolean = false
 
     private var backgroundTimestamp: Long = 0L
     private var lastUserTouchTimestamp: Long = System.currentTimeMillis()
 
     init {
         scope.launch {
+            val syncRequireLogin = syncPrefs.getBoolean("banking_session_require_full_login", false)
+            val syncInRecents = syncPrefs.getBoolean("banking_session_app_in_recents", false)
             val prefs = context.bankingSessionDataStore.data.first()
             val isLocked = prefs[KEY_IS_SESSION_LOCKED] ?: false
             val lastActive = prefs[KEY_LAST_ACTIVE_TIME] ?: 0L
+            val requireFullLogin = syncRequireLogin || (prefs[KEY_REQUIRE_FULL_LOGIN] ?: false)
+            val inRecents = syncInRecents && (prefs[KEY_APP_IN_RECENTS] ?: false)
             val now = System.currentTimeMillis()
 
-            if (lastActive > 0L && (now - lastActive) > HARD_EXPIRY_TIMEOUT_MS) {
+            if (requireFullLogin || !inRecents) {
+                _sessionState.value = SessionState.UNAUTHENTICATED
+            } else if (lastActive > 0L && (now - lastActive) > HARD_EXPIRY_TIMEOUT_MS) {
                 _sessionState.value = SessionState.EXPIRED
             } else if (isLocked) {
                 _sessionState.value = SessionState.LOCKED
@@ -148,6 +163,7 @@ class BankingSessionManager @Inject constructor(
      */
     fun lockSession() {
         _sessionState.value = SessionState.LOCKED
+        syncPrefs.edit().putBoolean("banking_session_is_locked", true).apply()
         scope.launch {
             context.bankingSessionDataStore.edit { prefs ->
                 prefs[KEY_IS_SESSION_LOCKED] = true
@@ -161,13 +177,74 @@ class BankingSessionManager @Inject constructor(
     fun unlockSession() {
         val now = System.currentTimeMillis()
         lastUserTouchTimestamp = now
+        isAppRunningInRecents = true
         _sessionState.value = SessionState.ACTIVE
+        syncPrefs.edit()
+            .putBoolean("banking_session_is_locked", false)
+            .putBoolean("banking_session_app_in_recents", true)
+            .putBoolean("banking_session_require_full_login", false)
+            .apply()
         scope.launch {
             context.bankingSessionDataStore.edit { prefs ->
                 prefs[KEY_IS_SESSION_LOCKED] = false
+                prefs[KEY_APP_IN_RECENTS] = true
+                prefs[KEY_REQUIRE_FULL_LOGIN] = false
                 prefs[KEY_LAST_ACTIVE_TIME] = now
             }
         }
+    }
+
+    /**
+     * Called when the user swipes away / removes the app card from Android Recents.
+     * Enforces bank-grade policy: Removing from recents terminates session and requires full login.
+     */
+    fun onAppRemovedFromRecents() {
+        isAppRunningInRecents = false
+        _sessionState.value = SessionState.UNAUTHENTICATED
+        syncPrefs.edit()
+            .putBoolean("banking_session_app_in_recents", false)
+            .putBoolean("banking_session_require_full_login", true)
+            .putBoolean("banking_session_is_locked", false)
+            .commit()
+
+        scope.launch {
+            context.bankingSessionDataStore.edit { prefs ->
+                prefs[KEY_APP_IN_RECENTS] = false
+                prefs[KEY_REQUIRE_FULL_LOGIN] = true
+                prefs[KEY_IS_SESSION_LOCKED] = false
+            }
+        }
+    }
+
+    /**
+     * Sets whether the app is actively running / present in the Android Recents list.
+     */
+    fun setAppInRecents(inRecents: Boolean) {
+        isAppRunningInRecents = inRecents
+        syncPrefs.edit().putBoolean("banking_session_app_in_recents", inRecents).apply()
+        scope.launch {
+            context.bankingSessionDataStore.edit { prefs ->
+                prefs[KEY_APP_IN_RECENTS] = inRecents
+            }
+        }
+    }
+
+    /**
+     * Returns true if the app is currently marked as present in recents.
+     */
+    suspend fun isAppInRecents(): Boolean {
+        val syncVal = syncPrefs.getBoolean("banking_session_app_in_recents", false)
+        if (!syncVal) return false
+        return context.bankingSessionDataStore.data.first()[KEY_APP_IN_RECENTS] ?: false
+    }
+
+    /**
+     * Returns true if full login is required (e.g. app was removed from recents or expired).
+     */
+    suspend fun isFullLoginRequired(): Boolean {
+        val syncVal = syncPrefs.getBoolean("banking_session_require_full_login", false)
+        if (syncVal) return true
+        return context.bankingSessionDataStore.data.first()[KEY_REQUIRE_FULL_LOGIN] ?: false
     }
 
     /**
@@ -188,12 +265,20 @@ class BankingSessionManager @Inject constructor(
     suspend fun saveSession(userId: String, role: String) {
         val now = System.currentTimeMillis()
         lastUserTouchTimestamp = now
+        isAppRunningInRecents = true
         _sessionState.value = SessionState.ACTIVE
+        syncPrefs.edit()
+            .putBoolean("banking_session_app_in_recents", true)
+            .putBoolean("banking_session_require_full_login", false)
+            .putBoolean("banking_session_is_locked", false)
+            .commit()
         context.bankingSessionDataStore.edit { prefs ->
             prefs[KEY_SESSION_USER_ID] = userId
             prefs[KEY_SESSION_ROLE] = role
             prefs[KEY_LAST_ACTIVE_TIME] = now
             prefs[KEY_IS_SESSION_LOCKED] = false
+            prefs[KEY_APP_IN_RECENTS] = true
+            prefs[KEY_REQUIRE_FULL_LOGIN] = false
         }
     }
 
@@ -203,11 +288,19 @@ class BankingSessionManager @Inject constructor(
     suspend fun clearSession() {
         _sessionState.value = SessionState.UNAUTHENTICATED
         backgroundTimestamp = 0L
+        isAppRunningInRecents = false
+        syncPrefs.edit()
+            .putBoolean("banking_session_app_in_recents", false)
+            .putBoolean("banking_session_require_full_login", true)
+            .putBoolean("banking_session_is_locked", false)
+            .commit()
         context.bankingSessionDataStore.edit { prefs ->
             prefs.remove(KEY_SESSION_USER_ID)
             prefs.remove(KEY_SESSION_ROLE)
             prefs.remove(KEY_LAST_ACTIVE_TIME)
             prefs[KEY_IS_SESSION_LOCKED] = false
+            prefs[KEY_APP_IN_RECENTS] = false
+            prefs[KEY_REQUIRE_FULL_LOGIN] = true
         }
     }
 

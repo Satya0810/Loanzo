@@ -64,8 +64,22 @@ fun LoanzoAvatar(
     val context = LocalContext.current
     val effectivePhoto: Any? = androidx.compose.runtime.remember(avatarModel, user?.userId, user?.profilePhotoUri) {
         if (avatarModel != null) {
-            if (avatarModel is String && avatarModel.contains("drive.google.com")) {
-                com.loanzo.app.util.convertGoogleDriveUrlToDirectStream(avatarModel)
+            if (avatarModel is String) {
+                val str = avatarModel.trim()
+                val localFile = java.io.File(context.filesDir, "profile_${str}.jpg")
+                if (localFile.exists() && localFile.length() > 0) {
+                    localFile
+                } else if (str.startsWith("file:") || str.startsWith("/")) {
+                    val path = str.removePrefix("file://")
+                    val f = java.io.File(path)
+                    if (f.exists() && f.length() > 0) f else str
+                } else if (str.contains("drive.google.com")) {
+                    com.loanzo.app.util.convertGoogleDriveUrlToDirectStream(str)
+                } else if (str.startsWith("http://") || str.startsWith("https://") || str.startsWith("content://")) {
+                    str
+                } else {
+                    null
+                }
             } else {
                 avatarModel
             }
@@ -81,7 +95,7 @@ fun LoanzoAvatar(
                 user.getEffectiveAvatarUrl()
             }
         } else {
-            CartoonAvatarHelper.getCartoonAvatarUrl("guest")
+            null
         }
     }
     val cartoonRes = user?.getCartoonAvatarRes() ?: CartoonAvatarHelper.getCartoonAvatarDrawableRes(avatarModel?.toString() ?: "guest")

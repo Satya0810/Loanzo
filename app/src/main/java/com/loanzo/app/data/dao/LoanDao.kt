@@ -24,11 +24,14 @@ interface LoanDao {
     @Query("SELECT * FROM loans WHERE borrowerId = :userId ORDER BY createdAt DESC")
     fun getLoansByBorrower(userId: String): Flow<List<LoanEntity>>
 
-    @Query("SELECT * FROM loans WHERE lenderId = :userId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM loans WHERE (lenderId = :userId OR loanId IN (SELECT loanId FROM co_lenders WHERE lenderId = :userId)) ORDER BY createdAt DESC")
     fun getLoansByLender(userId: String): Flow<List<LoanEntity>>
 
-    @Query("SELECT * FROM loans WHERE (borrowerId = :userId OR lenderId = :userId) ORDER BY createdAt DESC")
+    @Query("SELECT * FROM loans WHERE (borrowerId = :userId OR lenderId = :userId OR loanId IN (SELECT loanId FROM co_lenders WHERE lenderId = :userId)) ORDER BY createdAt DESC")
     fun getAllLoansForUser(userId: String): Flow<List<LoanEntity>>
+
+    @Query("SELECT * FROM loans ORDER BY createdAt DESC")
+    fun getAllPlatformLoans(): Flow<List<LoanEntity>>
 
     @Query("SELECT * FROM loans WHERE status = :status ORDER BY createdAt DESC")
     fun getLoansByStatus(status: String): Flow<List<LoanEntity>>

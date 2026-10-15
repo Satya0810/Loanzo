@@ -9,6 +9,9 @@ interface DisbursementDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDisbursement(disbursement: DisbursementEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDisbursements(disbursements: List<DisbursementEntity>)
+
     @Update
     suspend fun updateDisbursement(disbursement: DisbursementEntity)
 

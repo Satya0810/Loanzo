@@ -7,8 +7,14 @@ import androidx.compose.ui.graphics.Color
 val BrandRoyalBlue = Color(0xFF1D4ED8) // Rich Royal Cobalt Blue (Primary CTA & Brand Anchor)
 val BrandCobalt = Color(0xFF2563EB) // Bright Cobalt (Interactive & Hover)
 val BrandSapphire = Color(0xFF0284C7) // Vibrant Sapphire Blue
+val BrandNavyMidnight = Color(0xFF1E3A8A) // Deep Navy Midnight Cobalt Anchor
+val BrandNavyBlue = BrandNavyMidnight
 val BrandIceBlue = Color(0xFFEFF6FF) // Layer-2 Pill & Tile Container
 val BrandIceBorder = Color(0xFFBFDBFE) // Layer-2 Hairline Border
+
+// Official Holographic Identity & Executive Card Gradient (Royal Cobalt -> Bright Cobalt -> Deep Navy)
+val HolographicCardGradient = listOf(BrandRoyalBlue, BrandCobalt, BrandNavyMidnight)
+
 
 // 2. Golden Coin Stack & Solar Orange (Extracted directly from App Logo app_logo.png)
 val GoldCoinBright = Color(0xFFFBBF24) // Bright Gold: High-impact numerical values, EMI, and primary stats
@@ -42,6 +48,14 @@ val Gold400 = Color(0xFFE5C07B)
 val Gold500 = Color(0xFFD4AF37) // Warm Champagne Gold (Replaces neon traffic yellow #FFC107)
 val Gold600 = Color(0xFFC59B27)
 val GoldLight = Color(0xFFFFFBEB)
+
+// 4. Weather Widget Twilight Night Blue (Agent & Admin Role Boxes)
+val TwilightWidgetBlue = Color(0xFF1F396C)        // Deep Midnight Twilight Cobalt (Exact Image Sample)
+val TwilightWidgetBlueDark = Color(0xFF182E59)    // Gradient Base Anchor
+val TwilightWidgetBlueLight = Color(0xFF264A7E)   // Gradient Highlight Anchor
+val TwilightWidgetIceBlue = Color(0xFFBCD6EF)     // Subtitle & Soft Meta Text (Exact Image Sample)
+val TwilightWidgetBorder = Color(0xFF33588A)      // Harmonious Subtle Border
+val TwilightWidgetMoon = Color(0xFFD9E8F5)        // Moon & Accent Tint
 
 // Success — Refined Emerald Mint (Positive yields, verified status, incoming payments)
 val Emerald400 = Color(0xFF10B981) // Crisp Mint (Replaces neon green #4CAF50)

@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -266,7 +267,8 @@ fun KycScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedButton(
                         onClick = onStartDigiLockerKyc,
-                        modifier = Modifier.fillMaxWidth().height(42.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Emerald500),
                         border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.5f)),
@@ -286,7 +288,8 @@ fun KycScreen(
                     Spacer(modifier = Modifier.height(18.dp))
                     Button(
                         onClick = onStartDigiLockerKyc,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Emerald400, contentColor = Navy900),
                         enabled = !isDigiLockerLoading
@@ -452,7 +455,8 @@ fun KycScreen(
                                     cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500),
                             border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
@@ -510,7 +514,8 @@ fun KycScreen(
                         Spacer(modifier = Modifier.height(6.dp))
                         OutlinedButton(
                             onClick = { panLauncher.launch("image/*") },
-                            modifier = Modifier.fillMaxWidth().height(38.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Blue400),
                             border = BorderStroke(1.dp, Blue400.copy(alpha = 0.4f)),
@@ -579,7 +584,8 @@ fun KycScreen(
                         Spacer(modifier = Modifier.height(6.dp))
                         OutlinedButton(
                             onClick = { aadhaarLauncher.launch("image/*") },
-                            modifier = Modifier.fillMaxWidth().height(38.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Blue400),
                             border = BorderStroke(1.dp, Blue400.copy(alpha = 0.4f)),
@@ -642,26 +648,28 @@ fun KycScreen(
 
         Button(
             onClick = onFinish,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
             enabled = isDigiLockerDone && isSelfieDone && isPanDone && isAadhaarDone
         ) {
-            Text(if (isReKycMode) "Update & Save Re-KYC" else "Complete KYC & Go to Dashboard", fontWeight = FontWeight.Bold)
+            Text(if (isReKycMode) "Update & Save Re-KYC" else "Complete KYC & Go to Dashboard", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
 
         if (isReKycMode) {
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(
                 onClick = { showResetDialog = true },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, Red400.copy(alpha = 0.5f)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400)
             ) {
                 Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Reset All Documents & Start Fresh", fontWeight = FontWeight.SemiBold)
+                Text("Reset All Documents & Start Fresh", fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
             }
         }
 
@@ -669,12 +677,13 @@ fun KycScreen(
 
         OutlinedButton(
             onClick = onSkip,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
             shape = RoundedCornerShape(14.dp),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
         ) {
-            Text("Skip for Now (Explore App)", fontWeight = FontWeight.SemiBold)
+            Text("Skip for Now (Explore App)", fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
         }
     }
 

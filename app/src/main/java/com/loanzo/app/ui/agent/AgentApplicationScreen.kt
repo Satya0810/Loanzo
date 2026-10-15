@@ -43,6 +43,7 @@ fun AgentApplicationScreen(
     userPhone: String,
     userEmail: String,
     application: AgentApplicationEntity? = null,
+    userAgentStatus: String? = null,
     onNavigateBack: () -> Unit,
     onEnterAgentDashboard: () -> Unit = {},
     onRefreshApplication: () -> Unit = {},
@@ -108,7 +109,9 @@ fun AgentApplicationScreen(
             operatingPincode.isNotBlank() &&
             decl1 && decl2 && decl3
 
-    val showStatusView = application != null && (application.status.equals("PENDING", ignoreCase = true) || application.status.equals("APPROVED", ignoreCase = true))
+    val isKnownDone = (application != null && (application.status.equals("PENDING", ignoreCase = true) || application.status.equals("APPROVED", ignoreCase = true))) ||
+            userAgentStatus.equals("PENDING", ignoreCase = true) || userAgentStatus.equals("APPROVED", ignoreCase = true)
+    val showStatusView = isKnownDone
 
     Scaffold(
         topBar = {
@@ -149,16 +152,31 @@ fun AgentApplicationScreen(
         containerColor = darkBg
     ) { innerPadding ->
         if (showStatusView && !isEditingReapplication) {
-            Box(modifier = Modifier.padding(innerPadding)) {
-                AgentApplicationStatusView(
-                    application = application!!,
-                    onEnterAgentDashboard = onEnterAgentDashboard,
-                    onRefreshApplication = onRefreshApplication,
-                    onNavigateBack = onNavigateBack,
-                    onReapply = {
-                        isEditingReapplication = true
+            Box(modifier = Modifier.padding(innerPadding).fillMaxSize(), contentAlignment = Alignment.Center) {
+                if (application != null) {
+                    AgentApplicationStatusView(
+                        application = application,
+                        onEnterAgentDashboard = onEnterAgentDashboard,
+                        onRefreshApplication = onRefreshApplication,
+                        onNavigateBack = onNavigateBack,
+                        onReapply = {
+                            isEditingReapplication = true
+                        }
+                    )
+                } else {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(color = goldAccent)
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "Loading empanelment dossier...",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                )
+                }
             }
         } else {
             Column(
@@ -177,7 +195,7 @@ fun AgentApplicationScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("⚠️", fontSize = 20.sp)
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Application Requires Correction",
@@ -503,17 +521,24 @@ fun AgentApplicationScreen(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Slider(
-                value = serviceRadiusKm,
-                onValueChange = { serviceRadiusKm = it },
-                valueRange = 5f..30f,
-                steps = 4,
-                colors = SliderDefaults.colors(
-                    thumbColor = goldAccent,
-                    activeTrackColor = goldAccent,
-                    inactiveTrackColor = borderColor
-                )
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf(5f, 10f, 15f, 20f, 25f, 30f).forEach { r ->
+                    val isSel = (serviceRadiusKm - r).let { it >= -1f && it <= 1f }
+                    SuggestionChip(
+                        onClick = { serviceRadiusKm = r },
+                        label = { Text("${r.toInt()} km", fontSize = 11.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = if (isSel) goldAccent else MaterialTheme.colorScheme.surface,
+                            labelColor = if (isSel) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isSel) goldAccent else borderColor),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -828,9 +853,11 @@ fun AgentApplicationStatusView(
                         .background(statusColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (isApproved) "🛡️" else if (isRejected) "⚠️" else "⏳",
-                        fontSize = 32.sp
+                    Icon(
+                        imageVector = if (isApproved) Icons.Default.VerifiedUser else if (isRejected) Icons.Default.Warning else Icons.Default.HourglassTop,
+                        contentDescription = null,
+                        tint = statusColor,
+                        modifier = Modifier.size(32.dp)
                     )
                 }
                 Spacer(modifier = Modifier.height(14.dp))
@@ -963,7 +990,7 @@ fun AgentApplicationStatusView(
                 Icon(Icons.Default.Dashboard, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Launch Field Agent Cockpit 🚀",
+                    text = "Launch Field Agent Cockpit",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = Color.White
@@ -981,7 +1008,7 @@ fun AgentApplicationStatusView(
                 Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Update & Re-Submit Application 📝",
+                    text = "Update & Re-Submit Application",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = Color.White
@@ -1002,7 +1029,7 @@ fun AgentApplicationStatusView(
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null, tint = Gold500, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Sync Status 🔄", color = Gold500, fontWeight = FontWeight.Bold)
+                    Text("Sync Status", color = Gold500, fontWeight = FontWeight.Bold)
                 }
 
                 Button(
@@ -1013,7 +1040,7 @@ fun AgentApplicationStatusView(
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("Return Home 🏠", fontWeight = FontWeight.Bold)
+                    Text("Return Home", fontWeight = FontWeight.Bold)
                 }
             }
         }

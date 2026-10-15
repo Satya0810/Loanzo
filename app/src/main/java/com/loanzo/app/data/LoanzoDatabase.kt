@@ -29,9 +29,11 @@ import com.loanzo.app.data.entity.*
         VaultDocumentEntity::class,
         MarketplaceVouchEntity::class,
         SupportTicketEntity::class,
-        AdminRequestEntity::class
+        AdminRequestEntity::class,
+        BannedCredentialEntity::class,
+        CoLenderEntity::class
     ],
-    version = 23,
+    version = 26,
     exportSchema = false
 )
 abstract class LoanzoDatabase : RoomDatabase() {
@@ -55,4 +57,6 @@ abstract class LoanzoDatabase : RoomDatabase() {
     abstract fun vaultDocumentDao(): VaultDocumentDao
     abstract fun supportTicketDao(): SupportTicketDao
     abstract fun adminRequestDao(): AdminRequestDao
+    abstract fun bannedCredentialDao(): BannedCredentialDao
+    abstract fun coLenderDao(): CoLenderDao
 }

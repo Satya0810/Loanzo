@@ -21,11 +21,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.text.input.KeyboardType
+import kotlin.math.roundToInt
 import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,15 +49,15 @@ import com.loanzo.app.util.calculateEMI
 import java.text.NumberFormat
 import java.util.Locale
 
-private data class CategoryOption(val key: String, val label: String, val iconText: String)
+private data class CategoryOption(val key: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
 
 private val PURPOSE_CATEGORIES = listOf(
-    CategoryOption("EDUCATION", "Education", "🎓"),
-    CategoryOption("MEDICAL", "Medical", "🏥"),
-    CategoryOption("BUSINESS", "Business", "💼"),
-    CategoryOption("EMERGENCY", "Emergency", "🚨"),
-    CategoryOption("PERSONAL", "Personal", "🏠"),
-    CategoryOption("AGRICULTURE", "Agriculture", "🌾")
+    CategoryOption("EDUCATION", "Education", Icons.Default.School),
+    CategoryOption("MEDICAL", "Medical", Icons.Default.LocalHospital),
+    CategoryOption("BUSINESS", "Business", Icons.Default.BusinessCenter),
+    CategoryOption("EMERGENCY", "Emergency", Icons.Default.Warning),
+    CategoryOption("PERSONAL", "Personal", Icons.Default.Home),
+    CategoryOption("AGRICULTURE", "Agriculture", Icons.Default.Agriculture)
 )
 
 private val COLLATERAL_OPTIONS = listOf(
@@ -222,7 +225,7 @@ fun CreateMarketplacePostScreen(
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
                         Text(
-                            text = if (isLenderOffer) "💰 LENDER" else "🙋 SEEKER",
+                            text = if (isLenderOffer) "LENDER" else "BORROWER",
                             color = accentColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
@@ -244,7 +247,7 @@ fun CreateMarketplacePostScreen(
         ) {
             // Segmented Switcher (Lender vs Borrower)
             SegmentedCapsuleTab(
-                tabs = listOf("💰 Offer Capital (Lend)", "🙋 Request Loan (Borrow)"),
+                tabs = listOf("Offer Capital (Lend)", "Request Loan (Borrow)"),
                 selectedIndex = if (isLenderOffer) 0 else 1,
                 onTabSelected = { idx ->
                     postType = if (idx == 0) "OFFER_TO_LEND" else "SEEKING_LOAN"
@@ -328,24 +331,24 @@ fun CreateMarketplacePostScreen(
                                     when (result) {
                                         is com.loanzo.app.data.ai.AiRaceResult.Success -> {
                                             description = result.content
-                                            pitchAiWinnerBadge = "⚡ Enhanced via ${result.providerName} in ${result.latencyMs}ms"
+                                            pitchAiWinnerBadge = "Enhanced via ${result.providerName} in ${result.latencyMs}ms"
                                         }
                                         is com.loanzo.app.data.ai.AiRaceResult.Failure -> {
                                             description = result.fallbackContent
-                                            pitchAiWinnerBadge = "ℹ️ Offline Heuristic Rulebook"
+                                            pitchAiWinnerBadge = "Offline Heuristic Rulebook"
                                         }
                                     }
                                     isEnhancingPitch = false
                                 }
                             }
                         },
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = accentColor.copy(alpha = 0.15f),
                             contentColor = secondaryAccent
                         ),
-                        modifier = Modifier.height(32.dp)
+                        modifier = Modifier.heightIn(min = 36.dp)
                     ) {
                         if (isEnhancingPitch) {
                             CircularProgressIndicator(
@@ -363,7 +366,7 @@ fun CreateMarketplacePostScreen(
                                 tint = secondaryAccent
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("✨ AI Enhance", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("AI Enhance", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -497,22 +500,22 @@ fun CreateMarketplacePostScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Interest Rate Slider
+            // Interest Rate Selector (Direct Stepper & Input)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Target Interest Rate: ${String.format("%.1f", interestRate)}% p.a.",
+                    "Target Interest Rate: ${String.format(java.util.Locale.US, "%.1f", interestRate)}% p.a.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
                 val rateBadgeText = when {
-                    interestRate < 10.0f -> "Low APR 🌟"
-                    interestRate <= 15.0f -> "Fair Rate 👍"
-                    else -> "High Yield 🔥"
+                    interestRate < 10.0f -> "Low APR"
+                    interestRate <= 15.0f -> "Market Fair"
+                    else -> "High Yield"
                 }
                 Surface(
                     shape = RoundedCornerShape(8.dp),
@@ -528,16 +531,70 @@ fun CreateMarketplacePostScreen(
                     )
                 }
             }
-            Slider(
-                value = interestRate,
-                onValueChange = { interestRate = it },
-                valueRange = 6.0f..24.0f,
-                steps = 35,
-                colors = SliderDefaults.colors(
-                    thumbColor = accentColor,
-                    activeTrackColor = accentColor
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { interestRate = (((interestRate - 0.5f) * 2).roundToInt() / 2f).coerceAtLeast(4.0f) },
+                    modifier = Modifier.size(46.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Decrease Rate", tint = secondaryAccent)
+                }
+
+                OutlinedTextField(
+                    value = if (interestRate == 0f) "" else String.format(java.util.Locale.US, "%.1f", interestRate),
+                    onValueChange = { str ->
+                        val num = str.toFloatOrNull() ?: 0f
+                        interestRate = num.coerceIn(4.0f, 36.0f)
+                    },
+                    suffix = { Text("% p.a.", fontWeight = FontWeight.Bold, color = secondaryAccent) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    shape = RoundedCornerShape(10.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
-            )
+
+                OutlinedButton(
+                    onClick = { interestRate = (((interestRate + 0.5f) * 2).roundToInt() / 2f).coerceAtMost(36.0f) },
+                    modifier = Modifier.size(46.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Increase Rate", tint = secondaryAccent)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Quick Preset Rate Chips
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf(8.0f to "8%", 10.0f to "10%", 12.0f to "12%", 15.0f to "15%", 18.0f to "18%", 24.0f to "24%").forEach { (rt, lbl) ->
+                    val isSel = (interestRate - rt).let { it >= -0.2f && it <= 0.2f }
+                    SuggestionChip(
+                        onClick = { interestRate = rt },
+                        label = { Text(lbl, fontSize = 11.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = if (isSel) accentColor else MaterialTheme.colorScheme.surface,
+                            labelColor = if (isSel) Navy900 else MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = BorderStroke(1.dp, if (isSel) accentColor else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -717,7 +774,15 @@ fun CreateMarketplacePostScreen(
                     FilterChip(
                         selected = isSelected,
                         onClick = { selectedCategory = cat.key },
-                        label = { Text("${cat.iconText} ${cat.label}", fontSize = 12.sp) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = cat.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isSelected) Navy900 else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        label = { Text(cat.label, fontSize = 12.sp) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = accentColor,
                             selectedLabelColor = Navy900
@@ -1074,9 +1139,10 @@ fun CreateMarketplacePostScreen(
                     contentColor = Navy900
                 ),
                 shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp)
+                    .heightIn(min = 50.dp)
             ) {
                 if (isPublishing) {
                     CircularProgressIndicator(
@@ -1090,7 +1156,7 @@ fun CreateMarketplacePostScreen(
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isLenderOffer) "Publish Lending Offer to Wall ➔" else "Publish Loan Request to Wall ➔",
+                        text = if (isLenderOffer) "Publish Lending Offer to Wall" else "Publish Loan Request to Wall",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
@@ -1112,7 +1178,7 @@ fun CreateMarketplacePostScreen(
                         Icon(Icons.Default.VerifiedUser, contentDescription = null, tint = Emerald400, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "⚡ One-Tap Fast-Track Verification active. Publishing will automatically verify your credentials & broadcast directly to the wall.",
+                            "Fast-Track Verification active. Publishing will automatically verify your credentials & broadcast directly to the wall.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 12.sp

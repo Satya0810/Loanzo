@@ -25,6 +25,18 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.loanzo.app.ui.theme.*
 
+data class DocumentInspectionData(
+    val title: String,
+    val category: String = "USER_KYC",
+    val subjectName: String,
+    val subjectPhone: String,
+    val documentNumber: String,
+    val issuingAuthority: String,
+    val photoUri: String?,
+    val onApprove: () -> Unit,
+    val onReject: (reason: String) -> Unit = {}
+)
+
 @Composable
 fun DocumentInspectionDialog(
     docTitle: String,

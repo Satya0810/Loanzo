@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +33,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.loanzo.app.data.entity.UserEntity
 import com.loanzo.app.ui.theme.*
+import com.loanzo.app.ui.components.LoanzoAvatar
 import com.loanzo.app.util.TelegramManager
 import java.text.SimpleDateFormat
 import java.util.*
@@ -39,7 +43,7 @@ import java.util.*
 fun ChatHubScreen(
     chatViewModel: ChatViewModel,
     currentUserId: String,
-    onBack: () -> Unit,
+    onBack: () -> Unit = {},
     onOpenChat: (channelId: String, loanId: String?, targetUserId: String?) -> Unit
 ) {
     val context = LocalContext.current
@@ -73,28 +77,20 @@ fun ChatHubScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = "Messages & Deals",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "P2P Social Lending Communications",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
+                    Text(
+                        text = "Messages & Deals",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 },
                 actions = {
-                    IconButton(onClick = { chatViewModel.loadUserConversations(currentUserId) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    IconButton(onClick = { showNewChatDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "New Chat",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                     IconButton(onClick = { TelegramManager.instance.openBotForLinking(context, currentUserId) }) {
                         Icon(Icons.Default.SupportAgent, contentDescription = "Telegram Assistant", tint = Gold500)
@@ -104,24 +100,19 @@ fun ChatHubScreen(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showNewChatDialog = true },
-                containerColor = Gold500,
-                contentColor = Navy900,
-                shape = RoundedCornerShape(16.dp),
-                icon = { Icon(Icons.Default.AddComment, contentDescription = null) },
-                text = { Text("New Chat", fontWeight = FontWeight.Bold) }
-            )
         }
     ) { padding ->
-        Column(
+        PullToRefreshBox(
+            isRefreshing = state.isLoading,
+            onRefresh = { chatViewModel.loadUserConversations(currentUserId) },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
             // Search Box
             OutlinedTextField(
                 value = state.searchQuery,
@@ -143,7 +134,7 @@ fun ChatHubScreen(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
             )
 
             // Filter Chips Row
@@ -151,7 +142,7 @@ fun ChatHubScreen(
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 10.dp)
+                modifier = Modifier.padding(bottom = 6.dp)
             ) {
                 items(filters) { (key, label) ->
                     val isSelected = state.selectedFilter == key
@@ -166,7 +157,7 @@ fun ChatHubScreen(
                             color = if (isSelected) Navy900 else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -175,76 +166,84 @@ fun ChatHubScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
             // Conversations List
-            if (state.isLoading && state.conversations.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Gold500)
-                }
-            } else if (state.filteredConversations.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Surface(
-                            shape = CircleShape,
-                            color = Gold500.copy(alpha = 0.12f),
-                            modifier = Modifier.size(72.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Forum, null, tint = Gold500, modifier = Modifier.size(36.dp))
+            PullToRefreshBox(
+                isRefreshing = state.isLoading,
+                onRefresh = { chatViewModel.loadUserConversations(currentUserId) },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (state.isLoading && state.conversations.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Gold500)
+                    }
+                } else if (state.filteredConversations.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(
+                                shape = CircleShape,
+                                color = Gold500.copy(alpha = 0.12f),
+                                modifier = Modifier.size(72.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Forum, null, tint = Gold500, modifier = Modifier.size(36.dp))
+                                }
                             }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = if (state.searchQuery.isNotBlank()) "No conversations match '${state.searchQuery}'" else "No conversations yet",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Start a 1-on-1 chat with another Loanzo member, inspect deals, or message support.",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            lineHeight = 16.sp
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = { showNewChatDialog = true },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
-                        ) {
-                            Icon(Icons.Default.AddComment, null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Start New Chat", fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = if (state.searchQuery.isNotBlank()) "No conversations match '${state.searchQuery}'" else "No conversations yet",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Start a 1-on-1 chat with another Loanzo member, inspect deals, or message support.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                lineHeight = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Button(
+                                onClick = { showNewChatDialog = true },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900)
+                            ) {
+                                Icon(Icons.Default.AddComment, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Start New Chat", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    items(state.filteredConversations, key = { it.channelId }) { conv ->
-                        ConversationItem(
-                            conversation = conv,
-                            onClick = {
-                                onOpenChat(conv.channelId, conv.loanId, conv.targetUserId)
-                            }
-                        )
-                        HorizontalDivider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            thickness = 0.5.dp,
-                            modifier = Modifier.padding(start = 76.dp)
-                        )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(state.filteredConversations, key = { it.channelId }) { conv ->
+                            ConversationItem(
+                                conversation = conv,
+                                onClick = {
+                                    onOpenChat(conv.channelId, conv.loanId, conv.targetUserId)
+                                }
+                            )
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                thickness = 0.5.dp,
+                                modifier = Modifier.padding(start = 76.dp)
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
 
     if (showNewChatDialog) {
         NewChatBottomSheet(
@@ -298,24 +297,24 @@ private fun ConversationItem(
     ) {
         // Avatar Box with Online indicator
         Box {
-            Surface(
-                shape = CircleShape,
-                color = roleColor.copy(alpha = 0.15f),
-                border = BorderStroke(1.5.dp, roleColor.copy(alpha = 0.6f)),
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (conversation.channelType == "SUPPORT") {
+            if (conversation.channelType == "SUPPORT") {
+                Surface(
+                    shape = CircleShape,
+                    color = roleColor.copy(alpha = 0.15f),
+                    border = BorderStroke(1.5.dp, roleColor.copy(alpha = 0.6f)),
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.SmartToy, null, tint = roleColor, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text(
-                            text = conversation.targetUserName.take(1).uppercase(),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = roleColor
-                        )
                     }
                 }
+            } else {
+                LoanzoAvatar(
+                    avatarModel = conversation.targetUserProfilePhotoUri.takeIf { it.isNotBlank() } ?: conversation.targetUserId,
+                    size = 48.dp,
+                    showVerifiedBadge = conversation.targetUserKycStatus == "VERIFIED",
+                    borderColor = roleColor.copy(alpha = 0.6f)
+                )
             }
             if (conversation.isOnline) {
                 Box(
@@ -576,29 +575,11 @@ private fun NewChatBottomSheet(
                                     .padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = when (user.role.uppercase()) {
-                                        "LENDER" -> Emerald400.copy(alpha = 0.15f)
-                                        "AGENT" -> Gold500.copy(alpha = 0.2f)
-                                        "ADMIN" -> Color(0xFF8B5CF6).copy(alpha = 0.15f)
-                                        else -> Gold500.copy(alpha = 0.15f)
-                                    },
-                                    modifier = Modifier.size(40.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            user.name.take(1).uppercase(),
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp,
-                                            color = when (user.role.uppercase()) {
-                                                "LENDER" -> Emerald400
-                                                "ADMIN" -> Color(0xFF8B5CF6)
-                                                else -> GoldCoinAmber
-                                            }
-                                        )
-                                    }
-                                }
+                                LoanzoAvatar(
+                                    user = user,
+                                    size = 40.dp,
+                                    showVerifiedBadge = user.kycStatus == "VERIFIED"
+                                )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {

@@ -112,21 +112,16 @@ class UserProfileViewModel @Inject constructor(
 
                 adminRepository.submitComplaint(complaint)
 
-                val alertMsg = """
-                    🚨 <b>USER PROFILE REPORTED</b>
-                    ━━━━━━━━━━━━━━━━━━━━
-                    <b>Case ID:</b> ${TelegramManager.escapeHtml(complaintId)}
-                    <b>Target User:</b> ${TelegramManager.escapeHtml(target.name)} (@${TelegramManager.escapeHtml(target.username)})
-                    <b>Target ID:</b> <code>${TelegramManager.escapeHtml(target.userId)}</code>
-                    <b>Reporter:</b> ${TelegramManager.escapeHtml(reporter?.name ?: "Member")} (${TelegramManager.escapeHtml(reporterId)})
-                    <b>Category:</b> ${TelegramManager.escapeHtml(category)}
-                    <b>Remarks:</b> ${TelegramManager.escapeHtml(details.ifBlank { "N/A" })}
-                    ━━━━━━━━━━━━━━━━━━━━
-                    <i>Reported directly from User Profile Screen</i>
-                """.trimIndent()
-
                 try {
-                    TelegramManager.instance.sendAdminAlert(alertMsg)
+                    TelegramManager.instance.notifyDisputeReport(
+                        caseId = complaintId,
+                        reporterName = reporter?.name ?: "Member",
+                        reporterPhone = reporter?.phone ?: reporterId,
+                        targetPerson = target.name,
+                        category = category,
+                        severity = "HIGH",
+                        details = details
+                    )
                 } catch (_: Exception) {}
 
                 _uiState.update {

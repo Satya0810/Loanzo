@@ -103,10 +103,18 @@ com.loanzo.app
 │   │   └── AuthViewModel.kt            # Authentication, session state, biometrics
 │   │
 │   ├── agent/                          # Dedicated Certified Field Agent Module
-│   │   ├── AgentDashboardScreen.kt     # High-tactical cockpit, on/off-duty switch, earnings, visits feed
+│   │   ├── AgentViewModel.kt           # Dedicated MVI/MVVM ViewModel & immutable AgentUiState
+│   │   ├── AgentScaffold.kt            # Root Scaffold, hardware telemetry bar, bottom nav tabs
+│   │   ├── AgentDashboardScreen.kt     # High-tactical cockpit hosting AgentScaffold & inspection sheets
 │   │   ├── AgentApplicationScreen.kt   # 4-step bank-grade empanelment application form
 │   │   ├── AgentPendingApprovalScreen.kt# 4-stage application review timeline tracker
-│   │   └── AgentInspectionSheet.kt     # Geotag check-in, asset appraisal, live photo capture
+│   │   ├── AgentInspectionSheet.kt     # 5-step guided stepper: Handshake PIN, KYC check, 5-class valuation, Sec 65B watermark, Sec 4 NI Act note
+│   │   ├── components/                 # Agent Credentials & Identity Dialog
+│   │   └── tabs/                       # 4 Bank-Grade Operational Tabs
+│   │       ├── AgentDispatchesTab.kt   # Route waypoints, turn-by-turn map launcher, itinerary stops
+│   │       ├── AgentToolsDeskTab.kt    # 5-class collateral assayer, Handshake PIN, security bag serializer
+│   │       ├── AgentCommsTab.kt        # Emergency SOS safety beacon, dispatch desk, fraud risk bulletins
+│   │       └── AgentEarningsTab.kt     # Payout wallet, IMPS withdrawal, daily travel incentives
 │   │
 │   ├── admin/                          # Master Admin Command Center (Restricted to App Owner)
 │   │   ├── AppOwnerVerificationScreen.kt# Institutional command console (8 tabs & real-time KPI ribbon)
@@ -190,3 +198,18 @@ app/src/main/java/com/loanzo/app/
     └── navigation/
         └── NavGraph.kt                    # Single-shot atomic navigation dispatch & session state watcher
 ```
+
+---
+
+## 6. Backend Microservices Architecture (`/backend`)
+
+The serverless backend microservice powers government DigiLocker KYC, Telegram command orchestration, email OTP dispatches, and online user synchronization:
+
+- **Documentation**: [`docs/Backend_Architecture_and_Operation_Guide.md`](file:///c:/AndroidProjects/loanzo/docs/Backend_Architecture_and_Operation_Guide.md)
+- **API Specification**: [`docs/API_Specification.md`](file:///c:/AndroidProjects/loanzo/docs/API_Specification.md)
+- **Production URL**: `https://backend-blond-sigma-66.vercel.app`
+- **Core Components**:
+  - `backend/server.js`: Node.js Express server handling `/api/users/sync`, Truecaller OAuth, Sandbox DigiLocker KYC, Nodemailer SMTP, and Telegram Bot webhook.
+  - `backend/bot_polling_service.js`: Long-polling daemon for `@Loanzo_bot` during local and background development.
+  - `backend/vercel.json`: Vercel `@vercel/node` serverless routing and build configuration.
+

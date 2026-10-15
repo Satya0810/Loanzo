@@ -3,6 +3,7 @@ package com.loanzo.app.ui.loan
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,7 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,11 +38,21 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.loanzo.app.ui.theme.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import com.loanzo.app.data.voice.VoiceState
+import com.loanzo.app.ui.components.VoiceAssistantBottomSheet
+import com.loanzo.app.ui.components.LoanzoAvatar
+import java.text.SimpleDateFormat
+import java.util.*
 import com.loanzo.app.util.TelegramManager
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
-import java.text.SimpleDateFormat
-import java.util.*
 
 data class ChatAction(
     val type: String,
@@ -104,6 +117,42 @@ fun ChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showDealActionsSheet by remember { mutableStateOf(false) }
 
+    val isSupport = channelId == "support_loanzo_assistant" || targetUserId == "LOANZO_BOT" || channelId.contains("support")
+
+    // AI Voice Assistant & Audio Recording State
+    val voiceState by chatViewModel.voiceState.collectAsStateWithLifecycle()
+    var showVoiceAssistantSheet by remember { mutableStateOf(false) }
+    var isRecordingVoiceNote by remember { mutableStateOf(false) }
+    var recordingSeconds by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(isRecordingVoiceNote) {
+        if (isRecordingVoiceNote) {
+            recordingSeconds = 0
+            while (isRecordingVoiceNote) {
+                delay(1000L)
+                recordingSeconds++
+            }
+        }
+    }
+
+    val audioPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            if (isSupport) {
+                showVoiceAssistantSheet = true
+                chatViewModel.startVoiceAssistant(channelId, chatState.currentUserId)
+            } else {
+                isRecordingVoiceNote = true
+            }
+        } else {
+            coroutineScope.launch {
+                val msg = if (isSupport) "Microphone permission is required to use Voice Assistant." else "Microphone permission is required to record voice notes."
+                snackbarHostState.showSnackbar(msg)
+            }
+        }
+    }
+
 
     // Hindi translation target
     val targetLanguage = "hi"
@@ -128,9 +177,20 @@ fun ChatScreen(
         }
     }
 
-    val isSupport = channelId == "support_loanzo_assistant" || targetUserId == "LOANZO_BOT" || channelId.contains("support")
-    val counterpartyName = if (isSupport) "Loanzo AI Assistant" else chatState.activeCounterparty?.name ?: chatState.activeCounterparty?.username ?: "Counterparty"
-    val counterpartyRole = if (isSupport) "OFFICIAL BOT" else chatState.activeCounterparty?.role ?: "MEMBER"
+    val counterpartyName = remember(isSupport, chatState.activeCounterparty, chatState.messages, chatState.activeLoan, chatState.currentUserId) {
+        if (isSupport) {
+            "Loanzo AI Assistant"
+        } else {
+            chatState.activeCounterparty?.name?.takeIf { it.isNotBlank() && !it.equals("counterparty", ignoreCase = true) }
+                ?: chatState.activeCounterparty?.username?.takeIf { it.isNotBlank() && !it.equals("counterparty", ignoreCase = true) }
+                ?: chatState.messages.firstOrNull { !it.isMe && it.senderName.isNotBlank() && it.senderName != "You" && !it.senderName.equals("counterparty", ignoreCase = true) }?.senderName
+                ?: if (chatState.activeLoan != null) {
+                    val isMeLender = chatState.currentUserId == chatState.activeLoan?.lenderId
+                    if (isMeLender) "Borrower" else "Lender"
+                } else "Member"
+        }
+    }
+    val counterpartyRole = if (isSupport) "OFFICIAL BOT" else chatState.activeCounterparty?.role ?: if (chatState.activeLoan != null) (if (chatState.currentUserId == chatState.activeLoan?.lenderId) "BORROWER" else "LENDER") else "MEMBER"
     val counterpartyPhone = chatState.activeCounterparty?.phone ?: ""
 
     Scaffold(
@@ -148,24 +208,24 @@ fun ChatScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box {
-                            Surface(
-                                shape = CircleShape,
-                                color = if (isSupport) Color(0xFF8B5CF6).copy(alpha = 0.15f) else Gold500.copy(alpha = 0.15f),
-                                border = BorderStroke(1.5.dp, if (isSupport) Color(0xFF8B5CF6) else Gold500),
-                                modifier = Modifier.size(38.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (isSupport) {
+                            if (isSupport) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color(0xFF8B5CF6).copy(alpha = 0.15f),
+                                    border = BorderStroke(1.5.dp, Color(0xFF8B5CF6)),
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
                                         Icon(Icons.Default.SmartToy, null, tint = Color(0xFF8B5CF6), modifier = Modifier.size(20.dp))
-                                    } else {
-                                        Text(
-                                            counterpartyName.take(1).uppercase(),
-                                            fontWeight = FontWeight.Bold,
-                                            color = Gold500,
-                                            fontSize = 16.sp
-                                        )
                                     }
                                 }
+                            } else {
+                                LoanzoAvatar(
+                                    user = chatState.activeCounterparty,
+                                    avatarModel = if (!chatState.activeCounterparty?.profilePhotoUri.isNullOrBlank()) chatState.activeCounterparty?.profilePhotoUri else targetUserId,
+                                    size = 38.dp,
+                                    showVerifiedBadge = false
+                                )
                             }
                             // Active status dot
                             Box(
@@ -275,59 +335,158 @@ fun ChatScreen(
                 }
 
                 // Input Bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Deal Action / Attachment Button
-                    IconButton(
-                        onClick = { showDealActionsSheet = true },
+                if (isRecordingVoiceNote) {
+                    Row(
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(26.dp))
+                            .padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Deal Options", tint = Gold500)
+                        val infiniteTransition = rememberInfiniteTransition(label = "rec_pulse")
+                        val pulseAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.3f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(600),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "rec_alpha"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .graphicsLayer { alpha = pulseAlpha }
+                                .clip(CircleShape)
+                                .background(Red400)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Recording audio: %02d:%02d".format(recordingSeconds / 60, recordingSeconds % 60),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(
+                            onClick = {
+                                isRecordingVoiceNote = false
+                                recordingSeconds = 0
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Cancel Recording", tint = Red400, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        IconButton(
+                            onClick = {
+                                val sec = recordingSeconds.coerceAtLeast(1)
+                                isRecordingVoiceNote = false
+                                recordingSeconds = 0
+                                chatViewModel.sendAudioMessage(channelId, sec)
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Gold500)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send Audio Note", tint = Navy900, modifier = Modifier.size(18.dp))
+                        }
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    OutlinedTextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Type a message or deal query...", fontSize = 13.sp) },
-                        maxLines = 4,
-                        shape = RoundedCornerShape(20.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Gold500,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    IconButton(
-                        onClick = {
-                            if (inputText.isNotBlank()) {
-                                chatViewModel.sendMessage(channelId, inputText.trim(), "TEXT", null)
-                                inputText = ""
-                            }
-                        },
-                        enabled = inputText.isNotBlank(),
+                } else {
+                    Row(
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .background(if (inputText.isNotBlank()) Gold500 else MaterialTheme.colorScheme.surfaceVariant)
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send",
-                            tint = if (inputText.isNotBlank()) Navy900 else Gray400,
-                            modifier = Modifier.size(18.dp)
+                        // Deal Action / Attachment Button
+                        IconButton(
+                            onClick = { showDealActionsSheet = true },
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Deal Options", tint = Gold500)
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        OutlinedTextField(
+                            value = inputText,
+                            onValueChange = { inputText = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Type a message or deal query...", fontSize = 13.sp) },
+                            maxLines = 4,
+                            shape = RoundedCornerShape(20.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Gold500,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            )
                         )
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Microphone Button
+                        IconButton(
+                            onClick = {
+                                val hasAudioPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.RECORD_AUDIO
+                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+                                if (hasAudioPermission) {
+                                    if (isSupport) {
+                                        showVoiceAssistantSheet = true
+                                        chatViewModel.startVoiceAssistant(channelId, chatState.currentUserId)
+                                    } else {
+                                        isRecordingVoiceNote = true
+                                    }
+                                } else {
+                                    audioPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                                }
+                            },
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(Gold500.copy(alpha = 0.15f))
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = if (isSupport) "Open AI Voice Assistant" else "Record Audio Message"
+                                }
+                        ) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = Gold500,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        IconButton(
+                            onClick = {
+                                if (inputText.isNotBlank()) {
+                                    chatViewModel.sendMessage(channelId, inputText.trim(), "TEXT", null)
+                                    inputText = ""
+                                }
+                            },
+                            enabled = inputText.isNotBlank(),
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(if (inputText.isNotBlank()) Gold500 else MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send",
+                                tint = if (inputText.isNotBlank()) Navy900 else Gray400,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -427,6 +586,9 @@ fun ChatScreen(
                             onTranslate = {
                                 chatViewModel.translateMessage(msg.messageId, msg.text, targetLanguage)
                             },
+                            onReadAloud = {
+                                chatViewModel.readAloudMessage(msg.text)
+                            },
                             onActionClick = { actionType ->
                                 when (actionType) {
                                     "CALCULATOR" -> onNavigateToCalculator?.invoke()
@@ -442,6 +604,37 @@ fun ChatScreen(
                 }
             }
         }
+    }
+
+    // Accessible AI Voice Assistant Bottom Sheet (restricted strictly to Support chat)
+    if (showVoiceAssistantSheet && isSupport) {
+        VoiceAssistantBottomSheet(
+            voiceState = voiceState,
+            onDismiss = {
+                showVoiceAssistantSheet = false
+                chatViewModel.resetVoiceState()
+            },
+            onMicClick = {
+                if (voiceState is VoiceState.Listening) {
+                    chatViewModel.stopVoiceListening()
+                } else {
+                    chatViewModel.startVoiceAssistant(channelId, chatState.currentUserId)
+                }
+            },
+            onStopSpeaking = {
+                chatViewModel.stopVoiceSpeaking()
+            },
+            onReplayAudio = {
+                (voiceState as? VoiceState.Speaking)?.let { state ->
+                    chatViewModel.readAloudMessage(state.spokenText.ifBlank { state.displayText })
+                }
+            },
+            onNavigateToCalculator = onNavigateToCalculator,
+            onNavigateToKyc = onNavigateToKyc,
+            onNavigateToMarketplace = onNavigateToMarketplace,
+            onNavigateToPortfolio = onNavigateToPortfolio,
+            onNavigateToCreatePost = onNavigateToCreatePost
+        )
     }
 
     // Deal Action Quick Sheet
@@ -536,6 +729,7 @@ fun ChatScreen(
 private fun RichChatBubble(
     message: FirestoreChatMessage,
     onTranslate: () -> Unit,
+    onReadAloud: (() -> Unit)? = null,
     onActionClick: (String) -> Unit = {}
 ) {
     val alignment = if (message.isMe) Alignment.CenterEnd else Alignment.CenterStart
@@ -554,10 +748,41 @@ private fun RichChatBubble(
     }
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
-        Column(
-            modifier = Modifier.fillMaxWidth(0.82f),
-            horizontalAlignment = if (message.isMe) Alignment.End else Alignment.Start
+        Row(
+            modifier = Modifier.fillMaxWidth(0.90f),
+            horizontalArrangement = if (message.isMe) Arrangement.End else Arrangement.Start,
+            verticalAlignment = Alignment.Bottom
         ) {
+            // Counterparty / Bot Avatar on the Left
+            if (!message.isMe) {
+                val isBot = message.senderId == "LOANZO_BOT" || message.senderRole == "OFFICIAL_BOT"
+                if (isBot) {
+                    Surface(
+                        shape = CircleShape,
+                        color = Color(0xFF8B5CF6).copy(alpha = 0.18f),
+                        border = BorderStroke(1.dp, Color(0xFF8B5CF6)),
+                        modifier = Modifier
+                            .size(32.dp)
+                            .padding(bottom = 2.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.SmartToy, null, tint = Color(0xFF8B5CF6), modifier = Modifier.size(16.dp))
+                        }
+                    }
+                } else {
+                    LoanzoAvatar(
+                        avatarModel = message.senderId,
+                        size = 32.dp,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+
+            Column(
+                modifier = Modifier.weight(1f, fill = false),
+                horizontalAlignment = if (message.isMe) Alignment.End else Alignment.Start
+            ) {
             if (!message.isMe) {
                 Text(
                     text = "${message.senderName} (${message.senderRole})",
@@ -592,7 +817,54 @@ private fun RichChatBubble(
                         Spacer(modifier = Modifier.height(4.dp))
                     }
 
-                    if (isThinking) {
+                    if (message.messageType == "AUDIO") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = if (message.isMe) Navy900.copy(alpha = 0.15f) else Gold500.copy(alpha = 0.2f),
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clickable { onReadAloud?.invoke() }
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.PlayArrow,
+                                        contentDescription = "Play voice message",
+                                        tint = textColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    val waveBars = listOf(8, 14, 20, 12, 18, 22, 16, 10, 18, 12, 22, 14, 8)
+                                    waveBars.forEach { h ->
+                                        Box(
+                                            modifier = Modifier
+                                                .width(3.dp)
+                                                .height(h.dp)
+                                                .clip(RoundedCornerShape(1.5.dp))
+                                                .background(textColor.copy(alpha = 0.65f))
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = displayText,
+                                    color = textColor,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    } else if (isThinking) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(vertical = 4.dp)
@@ -628,11 +900,32 @@ private fun RichChatBubble(
 
 
 
-                    // Timestamp and Ticks row
+                    // Timestamp, Ticks, and Read-Aloud Speaker row
                     Row(
                         modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        if (!isThinking && message.text.isNotBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clickable { onReadAloud?.invoke() }
+                                    .semantics {
+                                        role = Role.Button
+                                        contentDescription = "Read message aloud"
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.VolumeUp,
+                                    contentDescription = null,
+                                    tint = textColor.copy(alpha = 0.75f),
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(2.dp))
+                        }
+
                         Text(
                             text = formattedTime,
                             fontSize = 9.sp,
@@ -690,22 +983,18 @@ private fun RichChatBubble(
                 }
             }
 
-            // Translation action trigger
-            if (!message.isMe && message.translatedText == null && !isThinking) {
-                TextButton(
-                    onClick = onTranslate,
-                    enabled = !message.isTranslating,
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
-                ) {
-                    if (message.isTranslating) {
-                        CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
-                    } else {
-                        Icon(Icons.Default.Translate, contentDescription = null, modifier = Modifier.size(14.dp), tint = Gold500)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Translate to Hindi", fontSize = 10.sp, color = Gold500)
-                    }
-                }
-            }
+            // Translation button removed
+        }
+
+        // Outgoing message avatar on the right
+        if (message.isMe) {
+            Spacer(modifier = Modifier.width(6.dp))
+            LoanzoAvatar(
+                avatarModel = message.senderId,
+                size = 28.dp,
+                modifier = Modifier.padding(bottom = 2.dp)
+            )
         }
     }
+}
 }

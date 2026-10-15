@@ -9,6 +9,8 @@ import android.media.RingtoneManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import android.Manifest
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -150,35 +152,50 @@ class LoanzoMessagingService : FirebaseMessagingService() {
      * Bug #4: Called only once per message (not duplicated).
      */
     private fun sendNotification(title: String, messageBody: String, actionRoute: String? = null) {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            if (!actionRoute.isNullOrBlank()) {
-                putExtra("navigate_to", actionRoute)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    Log.w(TAG, "Cannot send notification: POST_NOTIFICATIONS permission not granted")
+                    return
+                }
             }
+
+            val intent = Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                if (!actionRoute.isNullOrBlank()) {
+                    putExtra("navigate_to", actionRoute)
+                }
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                System.currentTimeMillis().toInt(), // Unique request code per notification
+                intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            com.loanzo.app.util.NotificationChannelHelper.setupNotificationChannels(this)
+            val channelId = com.loanzo.app.util.NotificationChannelHelper.CHANNEL_ALERTS
+            val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val notificationBuilder = NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.drawable.ic_notification_logo)
+                .setContentTitle(title.replace(Regex("[⏰⚡🔔⚠️📜🚨👑⚖️]"), "").trim())
+                .setContentText(messageBody)
+                .setAutoCancel(true)
+                .setSound(defaultSoundUri)
+                .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(messageBody))
+
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+
+            notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send notification", e)
         }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            System.currentTimeMillis().toInt(), // Unique request code per notification
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        com.loanzo.app.util.NotificationChannelHelper.setupNotificationChannels(this)
-        val channelId = com.loanzo.app.util.NotificationChannelHelper.CHANNEL_ALERTS
-        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-        val notificationBuilder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(title.replace(Regex("[⏰⚡🔔⚠️📜🚨👑⚖️]"), "").trim())
-            .setContentText(messageBody)
-            .setAutoCancel(true)
-            .setSound(defaultSoundUri)
-            .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(messageBody))
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
     }
 
     companion object {
@@ -190,29 +207,33 @@ class LoanzoMessagingService : FirebaseMessagingService() {
          * and retrieve current token if none was cached.
          */
         fun registerFcmToken(context: Context, userId: String) {
-            val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
-
-            // 1. Check for cached token from onNewToken
-            val prefs = context.getSharedPreferences("loanzo_fcm_prefs", Context.MODE_PRIVATE)
-            val cachedToken = prefs.getString("pending_fcm_token", null)
-
-            if (!cachedToken.isNullOrBlank()) {
-                uploadToken(firestore, userId, cachedToken, context)
-            }
-
-            // 2. Also actively retrieve current token
             try {
-                com.google.firebase.messaging.FirebaseMessaging.getInstance().token
-                    .addOnSuccessListener { token ->
-                        if (token.isNotBlank()) {
-                            uploadToken(firestore, userId, token, context)
+                val firestore = com.loanzo.app.data.firebase.FirestoreProvider.get()
+
+                // 1. Check for cached token from onNewToken
+                val prefs = context.getSharedPreferences("loanzo_fcm_prefs", Context.MODE_PRIVATE)
+                val cachedToken = prefs.getString("pending_fcm_token", null)
+
+                if (!cachedToken.isNullOrBlank()) {
+                    uploadToken(firestore, userId, cachedToken, context)
+                }
+
+                // 2. Also actively retrieve current token
+                try {
+                    com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                        .addOnSuccessListener { token ->
+                            if (token.isNotBlank()) {
+                                uploadToken(firestore, userId, token, context)
+                            }
                         }
-                    }
-                    .addOnFailureListener { e ->
-                        Log.w(TAG, "Failed to retrieve FCM token: ${e.message}")
-                    }
+                        .addOnFailureListener { e ->
+                            Log.w(TAG, "Failed to retrieve FCM token: ${e.message}")
+                        }
+                } catch (e: Exception) {
+                    Log.w(TAG, "FirebaseMessaging not available: ${e.message}")
+                }
             } catch (e: Exception) {
-                Log.w(TAG, "FirebaseMessaging not available: ${e.message}")
+                Log.w(TAG, "Failed to register FCM token: ${e.message}")
             }
         }
 

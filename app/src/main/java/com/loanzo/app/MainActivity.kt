@@ -42,6 +42,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var warmupCoordinator: SplashWarmupCoordinator
     @Inject lateinit var supportTicketRepository: com.loanzo.app.data.repository.SupportTicketRepository
     @Inject lateinit var notificationRepository: com.loanzo.app.data.repository.NotificationRepository
+    @Inject lateinit var marketplaceRepository: com.loanzo.app.data.repository.MarketplaceRepository
     @Inject lateinit var translationHelper: com.loanzo.app.util.TranslationHelper
 
     private var currentActivityLanguage: String = ""
@@ -119,7 +120,8 @@ class MainActivity : FragmentActivity() {
                 LocalBankingSessionManager provides sessionManager,
                 LocalSplashWarmupCoordinator provides warmupCoordinator,
                 com.loanzo.app.util.LocalSupportTicketRepository provides supportTicketRepository,
-                com.loanzo.app.util.LocalNotificationRepository provides notificationRepository
+                com.loanzo.app.util.LocalNotificationRepository provides notificationRepository,
+                com.loanzo.app.util.LocalMarketplaceRepository provides marketplaceRepository
             ) {
                 LoanzoTheme(darkTheme = isDark) {
                     Surface(
@@ -135,13 +137,29 @@ class MainActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
+        try {
+            val serviceIntent = Intent(this, com.loanzo.app.data.session.BankingSessionService::class.java)
+            startService(serviceIntent)
+        } catch (e: Exception) {
+            android.util.Log.w("MainActivity", "Failed to start BankingSessionService: ${e.message}")
+        }
         val authState = authViewModel.uiState.value
+        if (authState.isLoggedIn) {
+            sessionManager.setAppInRecents(true)
+        }
         sessionManager.onAppForegrounded(authState.isLoggedIn)
     }
 
     override fun onStop() {
         super.onStop()
         sessionManager.onAppBackgrounded()
+    }
+
+    override fun onDestroy() {
+        if (isFinishing) {
+            sessionManager.onAppRemovedFromRecents()
+        }
+        super.onDestroy()
     }
 
     override fun onUserInteraction() {

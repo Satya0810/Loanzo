@@ -21,6 +21,12 @@ interface ComplaintDao {
     @Query("SELECT * FROM complaints WHERE complaintId = :complaintId")
     suspend fun getComplaintById(complaintId: String): ComplaintEntity?
 
+    @Query("SELECT * FROM complaints WHERE targetPartyId = :userId OR complainantId = :userId ORDER BY createdAt DESC")
+    fun getComplaintsForUser(userId: String): Flow<List<ComplaintEntity>>
+
+    @Query("SELECT * FROM complaints WHERE targetPartyId = :userId ORDER BY createdAt DESC")
+    fun getComplaintsAgainstUser(userId: String): Flow<List<ComplaintEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertComplaint(complaint: ComplaintEntity)
 

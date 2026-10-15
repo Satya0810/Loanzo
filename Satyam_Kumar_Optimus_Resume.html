@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Satyam Kumar - Resume | Software Engineer Trainee (Optimus)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0f2438;
+      --accent: #02538f;
+      --text: #1e293b;
+      --muted: #475569;
+      --border: #cbd5e1;
+      --bg: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f1f5f9;
+      color: var(--text);
+      line-height: 1.35;
+      font-size: 11px;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .resume-container {
+      width: 210mm;
+      min-height: 297mm;
+      background: var(--bg);
+      padding: 24px 28px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      border-radius: 4px;
+    }
+
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+      .resume-container {
+        width: 100%;
+        min-height: auto;
+        box-shadow: none;
+        padding: 16px 20px;
+        border-radius: 0;
+      }
+      @page {
+        margin: 8mm;
+        size: A4 portrait;
+      }
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .contact-info {
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .contact-info a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .contact-info a:hover {
+      text-decoration: underline;
+    }
+
+    .sep {
+      color: var(--border);
+    }
+
+    .divider {
+      height: 1.5px;
+      background: var(--primary);
+      margin: 6px 0 8px;
+    }
+
+    .section-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 2px;
+      margin: 8px 0 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .summary-p {
+      font-size: 10px;
+      color: var(--text);
+      text-align: justify;
+      line-height: 1.4;
+    }
+
+    .skills-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+
+    .skills-table td {
+      padding: 2px 0;
+      vertical-align: top;
+    }
+
+    .skills-label {
+      font-weight: 600;
+      color: var(--primary);
+      width: 175px;
+    }
+
+    .skills-value {
+      color: var(--text);
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-top: 5px;
+    }
+
+    .item-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .item-meta {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .item-sub {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 9.5px;
+      font-style: italic;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .item-sub a {
+      color: var(--accent);
+      text-decoration: none;
+      font-style: normal;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5px;
+    }
+
+    ul.bullets {
+      list-style-type: none;
+      padding-left: 0;
+      margin-bottom: 4px;
+    }
+
+    ul.bullets li {
+      position: relative;
+      padding-left: 12px;
+      font-size: 9.8px;
+      color: var(--text);
+      line-height: 1.35;
+      margin-bottom: 2px;
+    }
+
+    ul.bullets li::before {
+      content: "•";
+      position: absolute;
+      left: 2px;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .edu-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 2.5px 0;
+      font-size: 10px;
+      border-bottom: 1px dashed #f1f5f9;
+    }
+
+    .edu-degree {
+      font-weight: 600;
+      color: var(--primary);
+      width: 40%;
+    }
+
+    .edu-school {
+      color: var(--muted);
+      width: 38%;
+    }
+
+    .edu-score {
+      font-weight: 600;
+      text-align: right;
+      color: var(--text);
+      width: 22%;
+    }
+
+    b {
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<div class="resume-container">
+  <header>
+    <h1>SATYAM KUMAR</h1>
+    <div class="contact-info">
+      <span>Greater Noida (Delhi NCR), India</span>
+      <span class="sep">•</span>
+      <span>+91-7061559039</span>
+      <span class="sep">•</span>
+      <a href="mailto:satyamkumariitmgu@gmail.com">satyamkumariitmgu@gmail.com</a>
+      <span class="sep">•</span>
+      <a href="https://github.com/Satya0810" target="_blank">github.com/Satya0810</a>
+      <span class="sep">•</span>
+      <a href="https://linkedin.com/in/satyam-kumar-738465338" target="_blank">linkedin.com/in/satyam-kumar-738465338</a>
+      <span class="sep">•</span>
+      <a href="https://leetcode.com/u/SatyamKumar108" target="_blank">leetcode.com/u/SatyamKumar108</a>
+    </div>
+  </header>
+
+  <div class="divider"></div>
+
+  <!-- SUMMARY -->
+  <div class="section-title">Professional Summary</div>
+  <p class="summary-p">
+    Results-oriented <b>Software Engineer (2027 Batch)</b> with hands-on expertise building <b>AI-first, cloud-native, and data-driven systems</b>. Proficient in <b>Python, Java, and modern application development</b> with demonstrated success orchestrating Multi-LLM speculative inference pipelines, cloud integrations (AWS S3 SDK, Supabase PostgreSQL, Firebase, RESTful microservices), and real-time streaming engines. Strong foundation in Computer Science fundamentals: <b>Data Structures & Algorithms (200+ LeetCode problems solved)</b>, OOP, DBMS (Oracle SQL certified), and SDLC/Agile workflows. Proven leadership and ownership mindset, recognized among <b>Top 8 out of 400 competing teams</b> at the Smart India Hackathon (SIH).
+  </p>
+
+  <!-- TECHNICAL SKILLS -->
+  <div class="section-title">Technical Skills</div>
+  <table class="skills-table">
+    <tr>
+      <td class="skills-label">Programming Languages:</td>
+      <td class="skills-value">Python, Java, Kotlin, JavaScript/TypeScript, SQL (Oracle Certified), C++</td>
+    </tr>
+    <tr>
+      <td class="skills-label">AI & Intelligent Automation:</td>
+      <td class="skills-value">Multi-LLM Orchestration, Speculative Parallel Inference, Google Gemini API, Prompt Engineering, Stockfish AI</td>
+    </tr>
+    <tr>
+      <td class="skills-label">Cloud & Web Engineering:</td>
+      <td class="skills-value">AWS S3 SDK, Supabase (PostgreSQL), Firebase (Firestore, FCM, Auth), Node.js, Express, Next.js, REST APIs, Socket.io</td>
+    </tr>
+    <tr>
+      <td class="skills-label">Data & Systems:</td>
+      <td class="skills-value">PostgreSQL, MongoDB (Mongoose), Room/SQLite, Data Deduplication Engines, Stream Processing, SHA-256 Hashing</td>
+    </tr>
+    <tr>
+      <td class="skills-label">CS Core & Methodologies:</td>
+      <td class="skills-value">Data Structures & Algorithms (DSA), OOP, DBMS, OS Basics, Clean Architecture, SDLC, Agile/Scrum, Git/GitHub, Postman</td>
+    </tr>
+  </table>
+
+  <!-- FEATURED PROJECTS -->
+  <div class="section-title">Featured Projects</div>
+
+  <!-- ThreatLens -->
+  <div class="item-header">
+    <span class="item-title">ThreatLens — AI-Powered Threat Scanner & Security Intelligence</span>
+    <span class="item-meta">Team Lead | ELEVATE 2026</span>
+  </div>
+  <div class="item-sub">
+    <span>Tech: Java/Kotlin, Google Gemini AI, 12+ REST APIs, Firebase, Render, Python Heuristics</span>
+    <a href="https://github.com/Satya0810/ThreatLens" target="_blank">github.com/Satya0810/ThreatLens</a>
+  </div>
+  <ul class="bullets">
+    <li>Spearheaded a 3-engineer hackathon team building an AI-powered QR threat scanner with multi-signal destination analysis and recursive redirect unrolling (up to 10 hops).</li>
+    <li>Integrated 12+ cybersecurity threat intelligence APIs (VirusTotal, URLhaus, AbuseIPDB, URLScan.io) and Google Gemini AI for automated real-time site categorization.</li>
+    <li>Implemented on-device algorithmic heuristics detecting homograph spoofing, typosquatting, and credential phishing paired with a zero-trust sandbox browser.</li>
+    <li>Deployed resilient cloud microservices on Render and Firebase with real-time community threat sync and HMAC-SHA256 certificate validation.</li>
+  </ul>
+
+  <!-- Loanzo -->
+  <div class="item-header">
+    <span class="item-title">Loanzo — AI-Driven P2P Microfinance Protocol & Multi-LLM Engine</span>
+    <span class="item-meta">Lead Architect & Developer</span>
+  </div>
+  <div class="item-sub">
+    <span>Tech: Kotlin, Python, Coroutines/Channels, Room v12 (SQLite), Firebase, Telegram Bot API</span>
+    <a href="https://github.com/Satya0810/Loanzo" target="_blank">github.com/Satya0810/Loanzo</a>
+  </div>
+  <ul class="bullets">
+    <li>Architected <b>MultiAiRaceEngine</b> executing speculative parallel queries across 3 LLM providers (SambaNova, Cloudflare AI, LLM7) with channel-based winner selection and deterministic offline fallback.</li>
+    <li>Designed an ACID-compliant offline-first relational database across 13 Room entities, secured via AES-256 Android KeyStore encryption and biometric gating.</li>
+    <li>Automated loan bidding, dispute resolution, and status alerts by engineering an asynchronous Telegram Bot (@Loanzo_bot) and FCM push pipeline.</li>
+    <li>Built an automated Python data pipeline using ReportLab for dynamic generation of legal promissory notes (NI Act 1881) with cryptographic hash audit stamps.</li>
+  </ul>
+
+  <!-- Cloud Deduplication -->
+  <div class="item-header">
+    <span class="item-title">Cloud Data Deduplication & CloudVault Platform</span>
+    <span class="item-meta">Cloud & Data Systems Project</span>
+  </div>
+  <div class="item-sub">
+    <span>Tech: Node.js, Express, AWS S3 SDK, Supabase (PostgreSQL), Stream API, SHA-256</span>
+    <a href="https://github.com/Satya0810/codsoft_tasks" target="_blank">github.com/Satya0810/codsoft_tasks</a>
+  </div>
+  <ul class="bullets">
+    <li>Engineered a cloud data deduplication engine achieving up to 60% storage efficiency using deterministic canonicalization and SHA-256 cryptographic hashing.</li>
+    <li>Developed high-throughput streaming pipelines parsing multi-megabyte CSV and JSON datasets into Supabase PostgreSQL cloud database with zero memory leaks.</li>
+    <li>Integrated AWS S3 SDK (@aws-sdk/client-s3) with time-expiring pre-signed download URLs (1h, 24h, 7d), passcode protection, and automated MIME verification.</li>
+  </ul>
+
+  <!-- Shatranj -->
+  <div class="item-header">
+    <span class="item-title">Shatranj (ChessMaster) — Real-Time Web Platform & Stockfish AI Engine</span>
+    <span class="item-meta">Full-Stack Developer</span>
+  </div>
+  <div class="item-sub">
+    <span>Tech: Next.js 16 (App Router), React 19, Node.js, Socket.io, MongoDB, Stockfish.js</span>
+    <a href="https://github.com/Satya0810/Shatranj" target="_blank">github.com/Satya0810/Shatranj</a>
+  </div>
+  <ul class="bullets">
+    <li>Built full-stack platform featuring real-time multiplayer gameplay with WebSockets (Socket.io) and deep move evaluation powered by Stockfish AI engine.</li>
+    <li>Engineered secure authentication with JWT, bcryptjs password hashing, Google OAuth, and Nodemailer transactional verification.</li>
+    <li>Designed high-performance MongoDB (Mongoose) schemas for user statistics, game history persistence, and interactive tactical chess puzzle progression.</li>
+  </ul>
+
+  <!-- EDUCATION -->
+  <div class="section-title">Education</div>
+  <div class="edu-row">
+    <span class="edu-degree">B.Tech in Computer Science & Engineering</span>
+    <span class="edu-school">Galgotias University, Greater Noida, UP</span>
+    <span class="edu-score">2024 – 2027 (Exp) | CGPA: 7.84/10</span>
+  </div>
+  <div class="edu-row">
+    <span class="edu-degree">Senior Secondary (Class XII) — CBSE</span>
+    <span class="edu-school">Keshav Saraswati Vidya Mandir, Patna</span>
+    <span class="edu-score">2023 | 87.4%</span>
+  </div>
+  <div class="edu-row">
+    <span class="edu-degree">Secondary School (Class X) — CBSE</span>
+    <span class="edu-school">Keshav Saraswati Vidya Mandir, Patna</span>
+    <span class="edu-score">2021 | 79.0%</span>
+  </div>
+
+  <!-- ACHIEVEMENTS & CERTIFICATIONS -->
+  <div class="section-title">Achievements & Certifications</div>
+  <ul class="bullets" style="margin-top: 4px;">
+    <li><b>Smart India Hackathon (SIH) 2026:</b> Ranked <b>Top 8 among 400 competing teams</b> in the internal round at Galgotias University.</li>
+    <li><b>QuantCraft Hackathon 2026:</b> Ranked <b>11th place</b> in university-wide hackathon organized via Unstop.</li>
+    <li><b>Competitive Coding:</b> Solved <b>200+ DSA problems</b> on LeetCode; earned <b>200+ GitHub contributions</b> across open-source and personal repositories.</li>
+    <li><b>Professional Certifications:</b> <b>Java Backend Development</b> (GUVI / HCL) &nbsp;|&nbsp; <b>Database Management & SQL Certification</b> (Oracle).</li>
+  </ul>
+</div>
+
+</body>
+</html>

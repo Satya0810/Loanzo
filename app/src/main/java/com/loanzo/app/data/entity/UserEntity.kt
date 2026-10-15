@@ -38,5 +38,14 @@ data class UserEntity(
     val registeredDeviceId: String = "",
     val registeredDeviceModel: String = "",
     val telegramUsername: String = "",
+    val isBanned: Boolean = false,
+    val banType: String = "NONE", // NONE, TEMPORARY, PERMANENT
+    val banExpiresAt: Long = 0L,
+    val banReason: String = "",
+    val hasPendingBanAppeal: Boolean = false,
+    val banAppealText: String = "",
+    val banAppealSubmittedAt: Long = 0L,
+    val banAppealStatus: String = "NONE", // NONE, PENDING, APPROVED, REJECTED
+    val banAppealAdminNotes: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )

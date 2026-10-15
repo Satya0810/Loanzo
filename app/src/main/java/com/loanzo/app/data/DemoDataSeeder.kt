@@ -204,7 +204,8 @@ class DemoDataSeeder @Inject constructor(
                 aadhaarNumber = "5678 1234 9012",
                 upiId = "rahul.sharma@oksbi",
                 dateOfBirth = "15/11/1993",
-                address = "Flat 402, Lotus Boulevard, Sector 100, Noida, UP 201304"
+                address = "Flat 402, Lotus Boulevard, Sector 100, Noida, UP 201304",
+                profilePhotoUri = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=80"
             ),
             // Priya Patel (Lender Counterparty)
             UserEntity(
@@ -225,7 +226,8 @@ class DemoDataSeeder @Inject constructor(
                 aadhaarNumber = "8901 2345 6789",
                 upiId = "priya.invest@okicici",
                 dateOfBirth = "03/04/1990",
-                address = "A-7, Indirapuram, Ghaziabad, UP 201014"
+                address = "A-7, Indirapuram, Ghaziabad, UP 201014",
+                profilePhotoUri = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80"
             ),
             // Amit Verma (MSME Retailer - PENDING KYC for Admin Review testing)
             UserEntity(
@@ -246,7 +248,8 @@ class DemoDataSeeder @Inject constructor(
                 aadhaarNumber = "1234 5678 9012",
                 upiId = "amit.verma@okpnb",
                 dateOfBirth = "28/09/1988",
-                address = "Shop 14, Karol Bagh Market, New Delhi 110005"
+                address = "Shop 14, Karol Bagh Market, New Delhi 110005",
+                profilePhotoUri = "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=400&auto=format&fit=crop&q=80"
             ),
             // Sneha Roy (Diagnostic Clinic Partner - IN_REVIEW KYC for Admin Inspection)
             UserEntity(
@@ -429,8 +432,14 @@ class DemoDataSeeder @Inject constructor(
             } else {
                 user
             }
-            val cartoonAvatar = CartoonAvatarHelper.getCartoonAvatarUrl(userToInsert.name.ifBlank { userToInsert.userId })
-            database.userDao().insertUser(userToInsert.copy(profilePhotoUri = userToInsert.profilePhotoUri.ifBlank { cartoonAvatar }))
+            val photo = if (existing?.profilePhotoUri?.isNotBlank() == true && !existing.profilePhotoUri.contains("dicebear") && !existing.profilePhotoUri.contains("cartoon")) {
+                existing.profilePhotoUri
+            } else if (userToInsert.profilePhotoUri.isNotBlank()) {
+                userToInsert.profilePhotoUri
+            } else {
+                CartoonAvatarHelper.getCartoonAvatarUrl(userToInsert.name.ifBlank { userToInsert.userId })
+            }
+            database.userDao().insertUser(userToInsert.copy(profilePhotoUri = photo))
         }
 
         // ==========================================
@@ -1472,6 +1481,211 @@ class DemoDataSeeder @Inject constructor(
         )
         demoPosts.forEach { database.marketplaceDao().insertPost(it) }
 
+        val demoBids = listOf(
+            // Bids for post_demo_offer_1 (2 bids)
+            com.loanzo.app.data.entity.MarketplaceBidEntity(
+                bidId = "bid_demo_1",
+                postId = "post_demo_offer_1",
+                bidderId = DEMO_LENDER_ID,
+                bidderName = "Priya Sharma",
+                bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Priya Sharma"),
+                bidderKycVerified = true,
+                bidderTrustScore = 94,
+                proposedAmount = 50000.0,
+                proposedInterestRate = 11.0,
+                proposedTenureMonths = 12,
+                proposedRepaymentFrequency = "MONTHLY",
+                message = "Seeking funds for retail boutique inventory. Can share last 6 months GST returns and bank statements.",
+                status = "PENDING",
+                createdAt = now - (1 * oneDayMs)
+            ),
+            com.loanzo.app.data.entity.MarketplaceBidEntity(
+                bidId = "bid_demo_2",
+                postId = "post_demo_offer_1",
+                bidderId = DEMO_KUNAL_ID,
+                bidderName = "Kunal Rawat",
+                bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Kunal Rawat"),
+                bidderKycVerified = true,
+                bidderTrustScore = 88,
+                proposedAmount = 75000.0,
+                proposedInterestRate = 12.0,
+                proposedTenureMonths = 10,
+                proposedRepaymentFrequency = "MONTHLY",
+                message = "Applying for commercial fleet maintenance loan. Reliable daily UPI cashflows.",
+                status = "PENDING",
+                createdAt = now - (12 * 60 * 60 * 1000L)
+            ),
+            // Bid for post_demo_req_1 (1 bid)
+            com.loanzo.app.data.entity.MarketplaceBidEntity(
+                bidId = "bid_demo_3",
+                postId = "post_demo_req_1",
+                bidderId = DEMO_VIKRAM_ID,
+                bidderName = "Vikram Malhotra",
+                bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Vikram Malhotra"),
+                bidderKycVerified = true,
+                bidderTrustScore = 92,
+                proposedAmount = 40000.0,
+                proposedInterestRate = 10.0,
+                proposedTenureMonths = 8,
+                proposedRepaymentFrequency = "MONTHLY",
+                message = "Happy to fund your AWS certification! The tech career trajectory and salary slips look strong.",
+                status = "PENDING",
+                createdAt = now - (18 * 60 * 60 * 1000L)
+            ),
+            // Bids for post_demo_offer_2 (5 bids)
+            com.loanzo.app.data.entity.MarketplaceBidEntity(
+                bidId = "bid_demo_4",
+                postId = "post_demo_offer_2",
+                bidderId = DEMO_BORROWER_ID,
+                bidderName = "Rahul Sharma",
+                bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Rahul Sharma"),
+                bidderKycVerified = true,
+                bidderTrustScore = 90,
+                proposedAmount = 100000.0,
+                proposedInterestRate = 11.5,
+                proposedTenureMonths = 12,
+                proposedRepaymentFrequency = "MONTHLY",
+                message = "Expanding cloud DevOps consultancy services. Ready with full digital agreement.",
+                status = "PENDING",
+                createdAt = now - (2 * oneDayMs)
+            ),
+            com.loanzo.app.data.entity.MarketplaceBidEntity(
+                bidId = "bid_demo_5",
+                postId = "post_demo_offer_2",
+                bidderId = "demo_artisan_1",
+                bidderName = "Sunita Rao",
+                bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Sunita Rao"),
+                bidderKycVerified = true,
+                bidderTrustScore = 91,
+                proposedAmount = 80000.0,
+                proposedInterestRate = 11.0,
+                proposedTenureMonths = 14,
+                proposedRepaymentFrequency = "MONTHLY",
+                message = "Handicrafts cooperative working capital for Diwali exhibition stalls.",
+                status = "PENDING",
+                createdAt = now - (36 * 60 * 60 * 1000L)
+            ),
+            com.loanzo.app.data.entity.MarketplaceBidEntity(
+                bidId = "bid_demo_6",
+                postId = "post_demo_offer_2",
+                bidderId = "demo_tech_1",
+                bidderName = "Amitav Ghosh",
+                bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Amitav Ghosh"),
+                bidderKycVerified = true,
+                bidderTrustScore = 87,
+                proposedAmount = 150000.0,
+                proposedInterestRate = 11.5,
+                proposedTenureMonths = 18,
+                proposedRepaymentFrequency = "MONTHLY",
+                message = "Hardware lab prototype scaling. Udyam registered MSME with audited balance sheets.",
+                status = "PENDING",
+                createdAt = now - (28 * 60 * 60 * 1000L)
+            ),
+            com.loanzo.app.data.entity.MarketplaceBidEntity(
+                bidId = "bid_demo_7",
+                postId = "post_demo_offer_2",
+                bidderId = "demo_agro_1",
+                bidderName = "Balwinder Singh",
+                bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Balwinder Singh"),
+                bidderKycVerified = true,
+                bidderTrustScore = 89,
+                proposedAmount = 120000.0,
+                proposedInterestRate = 11.2,
+                proposedTenureMonths = 12,
+                proposedRepaymentFrequency = "MONTHLY",
+                message = "Organic agro-processing equipment installment. Solar-powered facility backup.",
+                status = "PENDING",
+                createdAt = now - (20 * 60 * 60 * 1000L)
+            ),
+            com.loanzo.app.data.entity.MarketplaceBidEntity(
+                bidId = "bid_demo_8",
+                postId = "post_demo_offer_2",
+                bidderId = "demo_retail_1",
+                bidderName = "Kavita Reddy",
+                bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Kavita Reddy"),
+                bidderKycVerified = true,
+                bidderTrustScore = 93,
+                proposedAmount = 60000.0,
+                proposedInterestRate = 11.0,
+                proposedTenureMonths = 9,
+                proposedRepaymentFrequency = "MONTHLY",
+                message = "Pharma store inventory replenishment. Zero debt default history.",
+                status = "PENDING",
+                createdAt = now - (10 * 60 * 60 * 1000L)
+            )
+        )
+        database.marketplaceDao().insertBids(demoBids)
+
+        // Seed Community Endorsements / Peer Vouches
+        val demoVouches = listOf(
+            com.loanzo.app.data.entity.MarketplaceVouchEntity(
+                vouchId = "vouch_demo_1",
+                postId = "post_demo_offer_1",
+                voucherUserId = DEMO_VIKRAM_ID,
+                voucherName = "Vikram Malhotra",
+                vouchReason = "BUSINESS_PEER",
+                comment = "Known Rajesh for 5+ years in wholesale commerce. Prompt payer with impeccable transaction records.",
+                createdAt = now - (1 * oneDayMs),
+                voucherAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Vikram Malhotra"),
+                voucherKycVerified = true,
+                voucherTrustScore = 95,
+                voucherRole = "Verified Capital Provider"
+            ),
+            com.loanzo.app.data.entity.MarketplaceVouchEntity(
+                vouchId = "vouch_demo_2",
+                postId = "post_demo_offer_1",
+                voucherUserId = "demo_voucher_nirmala",
+                voucherName = "Nirmala Devi",
+                vouchReason = "COMMUNITY_REFERENCE",
+                comment = "Respected neighborhood business leader. Highly trustworthy and cooperative community member.",
+                createdAt = now - (18 * 60 * 60 * 1000L),
+                voucherAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Nirmala Devi"),
+                voucherKycVerified = true,
+                voucherTrustScore = 91,
+                voucherRole = "Senior Community Member"
+            ),
+            com.loanzo.app.data.entity.MarketplaceVouchEntity(
+                vouchId = "vouch_demo_3",
+                postId = "post_demo_offer_2",
+                voucherUserId = DEMO_LENDER_ID,
+                voucherName = "Priya Sharma",
+                vouchReason = "COMMERCIAL_PEER",
+                comment = "Verified merchant with recurring GST turnover. Fully transparent bookkeeping.",
+                createdAt = now - (2 * oneDayMs),
+                voucherAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Priya Sharma"),
+                voucherKycVerified = true,
+                voucherTrustScore = 94,
+                voucherRole = "Verified NBFC Underwriter"
+            ),
+            com.loanzo.app.data.entity.MarketplaceVouchEntity(
+                vouchId = "vouch_demo_4",
+                postId = "post_demo_offer_2",
+                voucherUserId = DEMO_KUNAL_ID,
+                voucherName = "Kunal Rawat",
+                vouchReason = "PAST_REPAYMENT",
+                comment = "Completed 2 bilateral supply chain trade loans previously on time via UPI.",
+                createdAt = now - (14 * 60 * 60 * 1000L),
+                voucherAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Kunal Rawat"),
+                voucherKycVerified = true,
+                voucherTrustScore = 89,
+                voucherRole = "Trade Partner"
+            ),
+            com.loanzo.app.data.entity.MarketplaceVouchEntity(
+                vouchId = "vouch_demo_5",
+                postId = "post_demo_req_1",
+                voucherUserId = DEMO_BORROWER_ID,
+                voucherName = "Rahul Sharma",
+                vouchReason = "COMMUNITY_REFERENCE",
+                comment = "Diligent software engineer colleague. Committed to timely EMI disbursements.",
+                createdAt = now - (12 * 60 * 60 * 1000L),
+                voucherAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl("Rahul Sharma"),
+                voucherKycVerified = true,
+                voucherTrustScore = 90,
+                voucherRole = "Verified Borrower Peer"
+            )
+        )
+        database.marketplaceDao().insertVouches(demoVouches)
+
         // ==========================================
         // 10. SEED NOTIFICATIONS (10 lifecycle alerts)
         // ==========================================
@@ -1946,9 +2160,10 @@ class DemoDataSeeder @Inject constructor(
                 if (p != null) database.payeeDao().deletePayee(p)
             }
 
-            // 12. Delete demo repayments & loans
+            // 12. Delete demo repayments, loans & vouches
             database.repaymentDao().deleteDemoRepayments()
             database.loanDao().deleteDemoLoans()
+            database.marketplaceDao().deleteDemoVouches()
 
             // 13. Clear admin hub, visits & tickets
             database.complaintDao().deleteDemoComplaints()

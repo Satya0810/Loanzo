@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loanzo Protocol | UML Use Case Architecture & Software Testing Suite</title>
+  <meta name="description" content="Formal OMG UML 2.5 Use Case Diagrams, GeeksforGeeks Specifications, and Quality Assurance Verification Suite for Loanzo Peer-to-Peer Micro-Lending Platform.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #090D16;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --bg-card-hover: rgba(30, 41, 59, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(99, 102, 241, 0.4);
+      --primary: #6366F1;
+      --primary-hover: #4F46E5;
+      --primary-glow: rgba(99, 102, 241, 0.25);
+      --teal: #14B8A6;
+      --emerald: #10B981;
+      --amber: #F59E0B;
+      --rose: #F43F5E;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(20, 184, 166, 0.1) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.9) 0px, transparent 100%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #6366F1 0%, #0D9488 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-text h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-primary {
+      background: rgba(99, 102, 241, 0.15);
+      color: #A5B4FC;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .badge-teal {
+      background: rgba(20, 184, 166, 0.15);
+      color: #5EEAD4;
+      border: 1px solid rgba(20, 184, 166, 0.3);
+    }
+
+    .brand-text p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.825rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--text-muted);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, #4338CA 100%);
+      color: white;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px var(--primary-glow);
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Tabs Navigation */
+    .tab-bar {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.2);
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Diagram Section Layout */
+    .diagram-container {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .diagram-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sidebar-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .sidebar-card h3 {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin-bottom: 0.75rem;
+    }
+
+    .filter-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .filter-btn {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+
+    .filter-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .filter-btn.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .subsystem-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .subsystem-btn {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .subsystem-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .subsystem-btn.active {
+      background: rgba(20, 184, 166, 0.15);
+      border-color: var(--teal);
+      color: #5EEAD4;
+    }
+
+    /* Diagram Canvas */
+    .viewport-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      min-height: 680px;
+    }
+
+    .viewport-header {
+      padding: 0.875rem 1.25rem;
+      background: rgba(15, 23, 42, 0.6);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .viewport-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .viewport-controls {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .ctrl-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.35rem 0.7rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .diagram-body {
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      background: radial-gradient(circle at center, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%);
+    }
+
+    .mermaid {
+      width: 100%;
+      text-align: center;
+    }
+
+    .diagram-image-view {
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Specifications Accordion */
+    .specs-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .spec-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .spec-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .spec-header {
+      padding: 1rem 1.25rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .spec-title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .uc-code {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.15);
+      color: #A5B4FC;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .spec-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .spec-actor-badge {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .spec-content {
+      padding: 1.25rem;
+      border-top: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.2);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .spec-block h4 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+    }
+
+    .spec-block p, .spec-block ol, .spec-block ul {
+      font-size: 0.825rem;
+      color: var(--text-muted);
+    }
+
+    .spec-block ol, .spec-block ul {
+      padding-left: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    /* Testing Table */
+    .data-table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.825rem;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.7rem;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-muted);
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-main);
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.775rem;
+      color: #5EEAD4;
+      background: rgba(20, 184, 166, 0.1);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .status-pass {
+      background: rgba(16, 185, 129, 0.15);
+      color: #6EE7B7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 1.5rem 2rem;
+      margin-top: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      background: rgba(9, 13, 22, 0.8);
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">L</div>
+      <div class="brand-text">
+        <h1>Loanzo Protocol <span class="badge badge-primary">UML 2.5</span> <span class="badge badge-teal">GFG Standard</span></h1>
+        <p>Software Engineering Architecture, Use Case Specifications & Verification Suite</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a href="Loanzo_UML_Use_Case_Specification_Colored.docx" download class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Download Colored DOCX
+      </a>
+      <a href="Loanzo_UML_Use_Case_Specification.docx" download class="btn btn-outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Standard DOCX
+      </a>
+      <a href="Loanzo_UML_Use_Case_Specification_Report.pdf" download class="btn btn-outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PDF
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main>
+    <!-- Tab Controls -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('diagram-tab')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        Interactive UML Diagrams
+      </button>
+      <button class="tab-btn" onclick="switchTab('specs-tab')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        GFG Formal Specifications
+      </button>
+      <button class="tab-btn" onclick="switchTab('testing-tab')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.5 9.4 7.55 4.24a1.78 1.78 0 0 0-2.5 1.55v12.42a1.78 1.78 0 0 0 2.5 1.55L16.5 14.6a1.78 1.78 0 0 0 0-3.2z"/><polyline points="14 17 18 17 21 17"/><line x1="19" y1="12" x2="21" y2="12"/><line x1="17" y1="7" x2="21" y2="7"/></svg>
+        BVA & QA Test Cases
+      </button>
+      <button class="tab-btn" onclick="switchTab('rtm-tab')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Requirements Traceability (RTM)
+      </button>
+    </div>
+
+    <!-- TAB 1: INTERACTIVE UML DIAGRAM -->
+    <div id="diagram-tab" class="tab-pane active">
+      <div class="diagram-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar-card">
+          <h3>View Mode</h3>
+          <div class="filter-list">
+            <button class="filter-btn active" id="view-interactive-btn" onclick="setViewMode('interactive')">
+              <span>Interactive Mermaid SVG</span>
+              <span class="badge badge-primary">Dynamic</span>
+            </button>
+            <button class="filter-btn" id="view-rendered-btn" onclick="setViewMode('rendered')">
+              <span>High-Res Architectural Render</span>
+              <span class="badge badge-teal">Image</span>
+            </button>
+          </div>
+
+          <h3>Subsystems (UML Boundary)</h3>
+          <div class="subsystem-selector">
+            <button class="subsystem-btn active" onclick="loadDiagram('master', this)">
+              <span>Master Platform Diagram</span>
+            </button>
+            <button class="subsystem-btn" onclick="loadDiagram('auth', this)">
+              <span>1. Auth & Regulatory KYC</span>
+            </button>
+            <button class="subsystem-btn" onclick="loadDiagram('market', this)">
+              <span>2. P2P Marketplace & Bids</span>
+            </button>
+            <button class="subsystem-btn" onclick="loadDiagram('legal', this)">
+              <span>3. Statutory Contracts (§4 NI Act)</span>
+            </button>
+            <button class="subsystem-btn" onclick="loadDiagram('repay', this)">
+              <span>4. Servicing & Delinquency</span>
+            </button>
+            <button class="subsystem-btn" onclick="loadDiagram('vault', this)">
+              <span>5. Vaulting & Recovery (Order 37)</span>
+            </button>
+          </div>
+
+          <h3 style="margin-top: 1.5rem;">Line Color Guide (100% Unique)</h3>
+          <div class="filter-list">
+            <div style="font-size: 0.775rem; display: flex; flex-direction: column; gap: 0.45rem;">
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#0D47A1;margin-right:6px;vertical-align:middle;"></span><strong style="color: #60A5FA;">Borrower:</strong> Takes loan & repays EMI</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#00897B;margin-right:6px;vertical-align:middle;"></span><strong style="color: #2DD4BF;">Co-Borrower:</strong> Joint loan partner (§128 ICA)</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FF6F00;margin-right:6px;vertical-align:middle;"></span><strong style="color: #FBBF24;">Guarantor:</strong> Signs guarantee agreement</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#2E7D32;margin-right:6px;vertical-align:middle;"></span><strong style="color: #4ADE80;">Nominee:</strong> Claims gold if borrower dies (§50 CPC)</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#9C27B0;margin-right:6px;vertical-align:middle;"></span><strong style="color: #C084FC;">Lender:</strong> Bids & funds loan via escrow</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#6D4C41;margin-right:6px;vertical-align:middle;"></span><strong style="color: #D7CCC8;">Field Agent:</strong> Tests gold purity & vaults gold</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#D50000;margin-right:6px;vertical-align:middle;"></span><strong style="color: #F87171;">Platform Admin:</strong> Files court suit & audits ledgers</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#0284C7;margin-right:6px;vertical-align:middle;"></span><strong style="color: #38BDF8;">NPCI UPI Switch:</strong> AutoPay & escrow payments</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#607D8B;margin-right:6px;vertical-align:middle;"></span><strong style="color: #94A3B8;">DigiLocker:</strong> Aadhaar & PAN card checks</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#303F9F;margin-right:6px;vertical-align:middle;"></span><strong style="color: #818CF8;">NeSL Utility:</strong> Digital debt registry</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#FF5722;margin-right:6px;vertical-align:middle;"></span><strong style="color: #FB923C;">Stamp Treasury:</strong> Official e-stamps</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#263238;margin-right:6px;vertical-align:middle;"></span><strong style="color: #9CA3AF;">Civil Court:</strong> Order 37 fast-track recovery</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#00B4D8;margin-right:6px;vertical-align:middle;"></span><strong style="color: #67E8F9;">CIBIL Bureau:</strong> Credit score history</div>
+              <div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:#F57F17;margin-right:6px;vertical-align:middle;"></span><strong style="color: #FDE047;">IBJA Feed:</strong> Live gold market price</div>
+              <div><span style="display:inline-block;width:12px;height:3px;background:#E91E63;margin-right:6px;vertical-align:middle;"></span><strong style="color: #F472B6;">&lt;&lt;include&gt;&gt;:</strong> Mandatory step</div>
+              <div><span style="display:inline-block;width:12px;height:3px;background:#880E4F;margin-right:6px;vertical-align:middle;"></span><strong style="color: #FDA4AF;">&lt;&lt;extend&gt;&gt;:</strong> Conditional step</div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Diagram Viewport -->
+        <section class="viewport-card">
+          <div class="viewport-header">
+            <div class="viewport-title" id="viewport-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span>Master System Boundary UML Use Case Diagram</span>
+            </div>
+            <div class="viewport-controls">
+              <button class="ctrl-btn" onclick="zoomIn()">Zoom +</button>
+              <button class="ctrl-btn" onclick="zoomOut()">Zoom -</button>
+              <button class="ctrl-btn" onclick="resetZoom()">Reset</button>
+            </div>
+          </div>
+
+          <div class="diagram-body" id="diagram-body">
+            <!-- Mermaid SVG container -->
+            <div id="mermaid-container" style="width: 100%; transform-origin: center center; transition: transform 0.2s ease;">
+              <pre class="mermaid" id="mermaid-code">
+graph LR
+  subgraph PrimaryActors [Primary Actors]
+    B((Borrower))
+    L((Lender))
+    FA((Field Agent))
+    ADM((Platform Admin))
+  end
+
+  subgraph SystemBoundary [System Boundary: Loanzo Platform]
+    UC1([UC-01: Authenticate with StrongBox])
+    UC2([UC-02: Complete KYC Verification])
+    UC5([UC-05: Create Peer-to-Peer Listing])
+    UC7([UC-07: Calculate Collateral LTV])
+    UC8([UC-08: Browse & Bid on Marketplace])
+    UC9([UC-09: Underwrite & Disburse Funds])
+    UC11([UC-11: Execute Promissory Note])
+    UC12([UC-12: Affix Digital E-Stamp])
+    UC14([UC-14: Pay Monthly EMI Repayment])
+    UC15([UC-15: Apply Late Penalty Fee])
+    UC18([UC-18: Invoke Order 37 Legal Suit])
+    UC20([UC-20: Appraise Physical Collateral])
+  end
+
+  subgraph SecondaryActors [Secondary External Systems]
+    NPCI[NPCI UPI Switch]
+    NESL[NeSL Info Utility]
+    DL[DigiLocker / UIDAI]
+  end
+
+  B --> UC1
+  B --> UC2
+  B --> UC5
+  B --> UC11
+  B --> UC14
+
+  L --> UC1
+  L --> UC8
+  L --> UC9
+  L --> UC11
+
+  FA --> UC20
+  ADM --> UC18
+
+  UC5 -.->|&lt;&lt;include&gt;&gt;| UC2
+  UC5 -.->|&lt;&lt;include&gt;&gt;| UC7
+  UC9 -.->|&lt;&lt;include&gt;&gt;| UC11
+  UC11 -.->|&lt;&lt;include&gt;&gt;| UC12
+  UC15 -.->|&lt;&lt;extend&gt;&gt;| UC14
+
+  UC2 --- DL
+  UC9 --- NPCI
+  UC14 --- NPCI
+  UC11 --- NESL
+              </pre>
+            </div>
+
+            <!-- High-Res Image container -->
+            <div id="image-container" style="display: none; text-align: center;">
+              <img id="diagram-img" src="diagram_1_master.png" alt="Color-Coded UML Use Case Diagram" class="diagram-image-view" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+              <p id="diagram-img-caption" style="margin-top: 1rem; font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                Figure 1: Master System Boundary UML Use Case Diagram (Full Architecture with 100% Unique Line Colors)
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- TAB 2: GFG FORMAL USE CASE SPECIFICATIONS -->
+    <div id="specs-tab" class="tab-pane">
+      <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 700;">GeeksforGeeks & Cockburn Formal Use Case Specifications</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Exhaustive requirements specifications with preconditions, triggers, main success path, alternative flows, and exception handlers.</p>
+      </div>
+
+      <div class="specs-grid">
+        <!-- UC-01 -->
+        <div class="spec-card">
+          <div class="spec-header" onclick="toggleSpec(this)">
+            <div class="spec-title-group">
+              <span class="uc-code">UC-01</span>
+              <span class="spec-name">Authenticate & Register Biometrics (Android StrongBox)</span>
+            </div>
+            <span class="spec-actor-badge">Actor: PlatformMember | Priority: High</span>
+          </div>
+          <div class="spec-content">
+            <div class="spec-block">
+              <h4>Pre-Conditions & Trigger</h4>
+              <p><strong>Pre-conditions:</strong> Android device runs API 26+; hardware Keystore / StrongBox Keymaster available.</p>
+              <p><strong>Trigger:</strong> User opens application and selects 'Biometric Fast Login'.</p>
+            </div>
+            <div class="spec-block">
+              <h4>Main Success Path</h4>
+              <ol>
+                <li>App queries BiometricManager.canAuthenticate(BIOMETRIC_STRONG).</li>
+                <li>System prompts biometric sensor overlay (Fingerprint / 3D Face).</li>
+                <li>Android Keystore generates asymmetric ECDSA P-256 signature token.</li>
+                <li>App validates token against local EncryptedSharedPreferences and establishes session.</li>
+              </ol>
+            </div>
+            <div class="spec-block">
+              <h4>Alternative & Exception Flows</h4>
+              <ul>
+                <li><strong>2a. Biometric Lockout:</strong> System returns BIOMETRIC_ERROR_LOCKOUT; user falls back to 6-digit cryptographic master PIN.</li>
+                <li><strong>1a. Hardware Not Available:</strong> Enrolls software AES-GCM fallback encryption.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- UC-05 -->
+        <div class="spec-card">
+          <div class="spec-header" onclick="toggleSpec(this)">
+            <div class="spec-title-group">
+              <span class="uc-code">UC-05</span>
+              <span class="spec-name">Create Peer-to-Peer Micro-Loan Listing</span>
+            </div>
+            <span class="spec-actor-badge">Actor: Borrower | Priority: Critical</span>
+          </div>
+          <div class="spec-content">
+            <div class="spec-block">
+              <h4>Pre-Conditions & Trigger</h4>
+              <p><strong>Pre-conditions:</strong> Borrower authenticated; Tier-1 KYC active; active loan count &lt; 3.</p>
+              <p><strong>Trigger:</strong> Borrower taps 'Create Loan Request' on Marketplace.</p>
+            </div>
+            <div class="spec-block">
+              <h4>Main Success Path</h4>
+              <ol>
+                <li>Borrower inputs principal (INR 1,000 - 500,000) and tenor (1 - 36 months).</li>
+                <li>Borrower selects collateral type (Unsecured, Bullion Gold, or Vehicle).</li>
+                <li>System unconditionally invokes <code>&lt;&lt;include&gt;&gt; UC-07 (Calculate Collateral LTV)</code>.</li>
+                <li>System validates debt-to-income ratio and publishes listing to auction board.</li>
+              </ol>
+            </div>
+            <div class="spec-block">
+              <h4>Alternative & Exception Flows</h4>
+              <ul>
+                <li><strong>3a. LTV Exceeded:</strong> If LTV &gt; 75.0% for gold, listing is rejected until collateral is topped up.</li>
+                <li><strong>1a. Amount Out of Bounds:</strong> System rejects amounts &lt; INR 1,000 or &gt; INR 500,000 with validation tooltip.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- UC-11 -->
+        <div class="spec-card">
+          <div class="spec-header" onclick="toggleSpec(this)">
+            <div class="spec-title-group">
+              <span class="uc-code">UC-11</span>
+              <span class="spec-name">Execute Promissory Note & Affidavit (Sec 4 NI Act 1881)</span>
+            </div>
+            <span class="spec-actor-badge">Actor: Borrower & Lender | Priority: Critical</span>
+          </div>
+          <div class="spec-content">
+            <div class="spec-block">
+              <h4>Pre-Conditions & Trigger</h4>
+              <p><strong>Pre-conditions:</strong> Loan auction 100% funded; state is ESCROW_RESERVED.</p>
+              <p><strong>Trigger:</strong> Borrower reviews terms and taps 'Sign Promissory Agreement'.</p>
+            </div>
+            <div class="spec-block">
+              <h4>Main Success Path</h4>
+              <ol>
+                <li>LoanzoPdfEngine generates dual-party PDF with statutory repayment promise.</li>
+                <li>System invokes <code>&lt;&lt;include&gt;&gt; UC-12 (Affix Digital E-Stamp)</code>.</li>
+                <li>Borrower executes biometric digital signature with hardware presence gate.</li>
+                <li>Lender executes matching digital counter-signature.</li>
+                <li>System generates SHA-256 fingerprint and registers record in NeSL Information Utility.</li>
+              </ol>
+            </div>
+            <div class="spec-block">
+              <h4>Alternative & Exception Flows</h4>
+              <ul>
+                <li><strong>2a. E-Stamping Gateway Failure:</strong> System retries via state treasury API fallback buffer.</li>
+                <li><strong>4a. Lender Signature Timeout:</strong> If lender does not sign within 24h, funds are unreserved.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- UC-14 -->
+        <div class="spec-card">
+          <div class="spec-header" onclick="toggleSpec(this)">
+            <div class="spec-title-group">
+              <span class="uc-code">UC-14</span>
+              <span class="spec-name">Process Monthly EMI Repayment via NPCI UPI</span>
+            </div>
+            <span class="spec-actor-badge">Actor: Borrower | Priority: High</span>
+          </div>
+          <div class="spec-content">
+            <div class="spec-block">
+              <h4>Pre-Conditions & Trigger</h4>
+              <p><strong>Pre-conditions:</strong> Active loan in REPAYING state; NPCI UPI VPA registered.</p>
+              <p><strong>Trigger:</strong> Due date arrives or borrower taps 'Pay EMI Now'.</p>
+            </div>
+            <div class="spec-block">
+              <h4>Main Success Path</h4>
+              <ol>
+                <li>System generates NPCI UPI intent URL with exact installment amount.</li>
+                <li>Borrower authorizes payment via external UPI app (GPay/PhonePe).</li>
+                <li>NPCI returns payment confirmation with UTR reference number.</li>
+                <li>System splits payment: principal and interest credited to lender, platform fee retained.</li>
+              </ol>
+            </div>
+            <div class="spec-block">
+              <h4>Alternative & Exception Flows</h4>
+              <ul>
+                <li><strong>1a. Past Due Date &gt; 3 Days:</strong> System invokes <code>&lt;&lt;extend&gt;&gt; UC-15 (Apply Late Penalty Fee)</code> capped at RBI 2%/month limit.</li>
+                <li><strong>3a. UPI Network Failure:</strong> App initiates status polling against NPCI payment switch.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- UC-18 -->
+        <div class="spec-card">
+          <div class="spec-header" onclick="toggleSpec(this)">
+            <div class="spec-title-group">
+              <span class="uc-code">UC-18</span>
+              <span class="spec-name">Invoke Summary Legal Recovery under Order 37 CPC</span>
+            </div>
+            <span class="spec-actor-badge">Actor: Platform Admin / Lender | Priority: High</span>
+          </div>
+          <div class="spec-content">
+            <div class="spec-block">
+              <h4>Pre-Conditions & Trigger</h4>
+              <p><strong>Pre-conditions:</strong> Borrower overdue &gt; 90 days (NPA status); Section 4 NI Act note executed.</p>
+              <p><strong>Trigger:</strong> Admin taps 'Initiate Legal Default Packet'.</p>
+            </div>
+            <div class="spec-block">
+              <h4>Main Success Path</h4>
+              <ol>
+                <li>System compiles verified statutory evidence dossier: signed promissory PDF, UTR logs, audit hash.</li>
+                <li>System formats legal brief under Order 37 Code of Civil Procedure (Summary Suit on Negotiable Instruments).</li>
+                <li>Dossier is transmitted to legal counsel and registered with Civil Court registry.</li>
+                <li>Borrower account marked as LEGAL_ENFORCEMENT and credit bureaus notified.</li>
+              </ol>
+            </div>
+            <div class="spec-block">
+              <h4>Alternative & Exception Flows</h4>
+              <ul>
+                <li><strong>1a. Secured Collateral Present:</strong> If gold pledged, system invokes collateral liquidation auction first before civil litigation.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: SOFTWARE TESTING & BVA SUITE -->
+    <div id="testing-tab" class="tab-pane">
+      <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 700;">Boundary Value Analysis (BVA) & Equivalence Partitioning Test Suite</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Derived from use case pre-conditions and business rules. Mapped to executable unit tests in the codebase.</p>
+      </div>
+
+      <div class="data-table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Test Case ID</th>
+              <th>Use Case</th>
+              <th>Test Parameter</th>
+              <th>Boundary Evaluated</th>
+              <th>Expected Outcome</th>
+              <th>Automated Test File</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>TC-BVA-01</code></td>
+              <td>UC-05</td>
+              <td>Principal Min-1</td>
+              <td>INR 999</td>
+              <td>Validation error (Below INR 1,000 threshold)</td>
+              <td><code>MarketplaceViewModelTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-02</code></td>
+              <td>UC-05</td>
+              <td>Principal Min</td>
+              <td>INR 1,000</td>
+              <td>Accepted; listing initialized</td>
+              <td><code>MarketplaceViewModelTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-03</code></td>
+              <td>UC-05</td>
+              <td>Principal Max</td>
+              <td>INR 500,000</td>
+              <td>Accepted; maximum platform exposure permitted</td>
+              <td><code>MarketplaceViewModelTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-04</code></td>
+              <td>UC-05</td>
+              <td>Principal Max+1</td>
+              <td>INR 500,001</td>
+              <td>Validation error (Exceeds regulatory cap)</td>
+              <td><code>MarketplaceViewModelTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-05</code></td>
+              <td>UC-05</td>
+              <td>Interest Rate Min-1</td>
+              <td>5.99%</td>
+              <td>Rejected (Below minimum floor rate 6%)</td>
+              <td><code>MarketplaceViewModelTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-06</code></td>
+              <td>UC-05</td>
+              <td>Interest Rate Max+1</td>
+              <td>36.01%</td>
+              <td>Rejected (Usury regulation ceiling 36%)</td>
+              <td><code>MarketplaceViewModelTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-07</code></td>
+              <td>UC-07</td>
+              <td>Gold Collateral LTV</td>
+              <td>75.00%</td>
+              <td>Accepted (RBI maximum permitted gold LTV)</td>
+              <td><code>CollateralVaultTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-08</code></td>
+              <td>UC-07</td>
+              <td>Gold Collateral LTV</td>
+              <td>75.01%</td>
+              <td>Blocked; requires additional bullion collateral</td>
+              <td><code>CollateralVaultTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-09</code></td>
+              <td>UC-14</td>
+              <td>Repayment Grace Days</td>
+              <td>Day 3 Overdue</td>
+              <td>Standard repayment without penalty</td>
+              <td><code>RepaymentScheduleTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-10</code></td>
+              <td>UC-15</td>
+              <td>Repayment Grace Days</td>
+              <td>Day 4 Overdue</td>
+              <td>Triggers &lt;&lt;extend&gt;&gt; UC-15 penalty calculation</td>
+              <td><code>RepaymentScheduleTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+            <tr>
+              <td><code>TC-BVA-11</code></td>
+              <td>UC-11</td>
+              <td>PDF Digital Fingerprint</td>
+              <td>SHA-256 Digest</td>
+              <td>Verifies 256-bit tamper proof hash match</td>
+              <td><code>LoanzoPdfEngineTest.kt</code></td>
+              <td><span class="status-badge status-pass">PASSED</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 4: REQUIREMENTS TRACEABILITY MATRIX (RTM) -->
+    <div id="rtm-tab" class="tab-pane">
+      <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 700;">Requirements Traceability Matrix (RTM)</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Bidirectional traceability linking IEEE Std 830 Functional Requirements to Use Cases, Source Code Classes, and Unit Tests.</p>
+      </div>
+
+      <div class="data-table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Req ID</th>
+              <th>Functional Requirement</th>
+              <th>Primary Actor</th>
+              <th>Use Case</th>
+              <th>Code Implementation Class</th>
+              <th>Quality Assurance Test</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>FR-AUTH-01</code></td>
+              <td>StrongBox Hardware Keystore Biometric Authentication</td>
+              <td>PlatformMember</td>
+              <td>UC-01</td>
+              <td><code>BiometricAuthManager.kt</code></td>
+              <td><code>AuthViewModelTest.kt</code></td>
+            </tr>
+            <tr>
+              <td><code>FR-KYC-01</code></td>
+              <td>Aadhaar XML & PAN OCR Optical Identity Verification</td>
+              <td>PlatformMember</td>
+              <td>UC-02</td>
+              <td><code>KycVerificationEngine.kt</code></td>
+              <td><code>KycEngineTest.kt</code></td>
+            </tr>
+            <tr>
+              <td><code>FR-LOAN-01</code></td>
+              <td>P2P Micro-Loan Listing Creation & Validation Rules</td>
+              <td>Borrower</td>
+              <td>UC-05</td>
+              <td><code>MarketplaceRepository.kt</code></td>
+              <td><code>MarketplaceViewModelTest.kt</code></td>
+            </tr>
+            <tr>
+              <td><code>FR-VAULT-01</code></td>
+              <td>Physical Gold Bullion Appraisal & IBJA 75% LTV Cap</td>
+              <td>Field Agent</td>
+              <td>UC-07, UC-20</td>
+              <td><code>CollateralVaultDao.kt</code></td>
+              <td><code>CollateralVaultTest.kt</code></td>
+            </tr>
+            <tr>
+              <td><code>FR-LEGAL-01</code></td>
+              <td>Section 4 Negotiable Instruments Act Promissory PDF</td>
+              <td>Borrower / Lender</td>
+              <td>UC-11</td>
+              <td><code>LoanzoPdfEngine.kt</code></td>
+              <td><code>LoanzoPdfEngineTest.kt</code></td>
+            </tr>
+            <tr>
+              <td><code>FR-LEGAL-02</code></td>
+              <td>NeSL / State Treasury Digital E-Stamp Integration</td>
+              <td>Borrower / Lender</td>
+              <td>UC-12</td>
+              <td><code>EStampIntegrationService.kt</code></td>
+              <td><code>EStampServiceTest.kt</code></td>
+            </tr>
+            <tr>
+              <td><code>FR-REPAY-01</code></td>
+              <td>NPCI UPI Autopay Repayment & Escrow Split Ledger</td>
+              <td>Borrower</td>
+              <td>UC-14</td>
+              <td><code>DisbursementDao.kt</code></td>
+              <td><code>RepaymentScheduleTest.kt</code></td>
+            </tr>
+            <tr>
+              <td><code>FR-RECOVERY-01</code></td>
+              <td>Civil Order 37 CPC Summary Legal Default Recovery</td>
+              <td>Admin / Lender</td>
+              <td>UC-18</td>
+              <td><code>DisputeRecoveryEngine.kt</code></td>
+              <td><code>DisputeRecoveryTest.kt</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>
+      <strong>Loanzo Protocol</strong> | Software Engineering & Testing Documentation (OMG UML 2.5 & GeeksforGeeks Standard)
+    </div>
+    <div>
+      Artifacts: <a href="Loanzo_UML_Use_Case_Specification.docx" download>DOCX Document</a> | <a href="Loanzo_UML_Use_Case_Specification_Report.pdf">PDF Report</a> | <a href="UML_Use_Case_Diagrams_and_Specifications.md">Spec Markdown</a> | <a href="use_case_diagram_clean.png">Clean Diagram PNG</a>
+    </div>
+  </footer>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: 'transparent',
+        primaryColor: '#1E293B',
+        primaryTextColor: '#F8FAFC',
+        primaryBorderColor: '#6366F1',
+        lineColor: '#64748B',
+        secondaryColor: '#0F766E',
+        tertiaryColor: '#1E1B4B'
+      }
+    });
+
+    let currentScale = 1;
+
+    function zoomIn() {
+      currentScale += 0.15;
+      updateZoom();
+    }
+
+    function zoomOut() {
+      if (currentScale > 0.4) {
+        currentScale -= 0.15;
+        updateZoom();
+      }
+    }
+
+    function resetZoom() {
+      currentScale = 1;
+      updateZoom();
+    }
+
+    function updateZoom() {
+      const el = document.getElementById('mermaid-container');
+      if (el) el.style.transform = `scale(${currentScale})`;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+      
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const targetPane = document.getElementById(tabId);
+      if (targetPane) targetPane.classList.add('active');
+    }
+
+    function setViewMode(mode) {
+      document.getElementById('view-interactive-btn').classList.toggle('active', mode === 'interactive');
+      document.getElementById('view-rendered-btn').classList.toggle('active', mode === 'rendered');
+      
+      const mContainer = document.getElementById('mermaid-container');
+      const iContainer = document.getElementById('image-container');
+
+      if (mode === 'interactive') {
+        mContainer.style.display = 'block';
+        iContainer.style.display = 'none';
+      } else {
+        mContainer.style.display = 'none';
+        iContainer.style.display = 'block';
+      }
+    }
+
+    function toggleSpec(headerEl) {
+      const content = headerEl.nextElementSibling;
+      if (content.style.display === 'none') {
+        content.style.display = 'grid';
+      } else {
+        content.style.display = 'none';
+      }
+    }
+
+    const diagrams = {
+      master: {
+        title: "Master System Boundary UML Use Case Diagram",
+        code: `graph LR
+  subgraph PrimaryActors [Primary Actors]
+    B((Borrower))
+    L((Lender))
+    FA((Field Agent))
+    ADM((Platform Admin))
+  end
+
+  subgraph SystemBoundary [System Boundary: Loanzo Platform]
+    UC1([UC-01: Authenticate with StrongBox])
+    UC2([UC-02: Complete KYC Verification])
+    UC5([UC-05: Create Peer-to-Peer Listing])
+    UC7([UC-07: Calculate Collateral LTV])
+    UC8([UC-08: Browse & Bid on Marketplace])
+    UC9([UC-09: Underwrite & Disburse Funds])
+    UC11([UC-11: Execute Promissory Note])
+    UC12([UC-12: Affix Digital E-Stamp])
+    UC14([UC-14: Pay Monthly EMI Repayment])
+    UC15([UC-15: Apply Late Penalty Fee])
+    UC18([UC-18: Invoke Order 37 Legal Suit])
+    UC20([UC-20: Appraise Physical Collateral])
+  end
+
+  subgraph SecondaryActors [Secondary External Systems]
+    NPCI[NPCI UPI Switch]
+    NESL[NeSL Info Utility]
+    DL[DigiLocker / UIDAI]
+  end
+
+  B --> UC1
+  B --> UC2
+  B --> UC5
+  B --> UC11
+  B --> UC14
+
+  L --> UC1
+  L --> UC8
+  L --> UC9
+  L --> UC11
+
+  FA --> UC20
+  ADM --> UC18
+
+  UC5 -.->|&lt;&lt;include&gt;&gt;| UC2
+  UC5 -.->|&lt;&lt;include&gt;&gt;| UC7
+  UC9 -.->|&lt;&lt;include&gt;&gt;| UC11
+  UC11 -.->|&lt;&lt;include&gt;&gt;| UC12
+  UC15 -.->|&lt;&lt;extend&gt;&gt;| UC14
+
+  UC2 --- DL
+  UC9 --- NPCI
+  UC14 --- NPCI
+  UC11 --- NESL`
+      },
+      auth: {
+        title: "Subsystem 1: Identity & Regulatory KYC Architecture",
+        code: `graph LR
+  Borrower((Borrower))
+  Lender((Lender))
+  DigiLocker[DigiLocker API]
+  UIDAI[UIDAI Aadhaar]
+
+  subgraph AuthBoundary [Subsystem: Authentication & KYC]
+    UC1([UC-01: Authenticate with StrongBox])
+    UC2([UC-02: Complete Regulatory KYC])
+    UC3([UC-03: Query Credit Score CIBIL])
+    UC4([UC-04: Update Identity Metadata])
+  end
+
+  Borrower --> UC1
+  Borrower --> UC2
+  Lender --> UC1
+  Lender --> UC2
+
+  UC2 -.->|&lt;&lt;include&gt;&gt;| UC1
+  UC2 -.->|&lt;&lt;include&gt;&gt;| UC3
+  UC4 -.->|&lt;&lt;extend&gt;&gt;| UC2
+  UC2 --- DigiLocker
+  UC2 --- UIDAI`
+      },
+      market: {
+        title: "Subsystem 2: Peer-to-Peer Marketplace & Bidding",
+        code: `graph LR
+  Borrower((Borrower))
+  Lender((Lender))
+
+  subgraph MarketBoundary [Subsystem: P2P Marketplace]
+    UC5([UC-05: Create Loan Listing])
+    UC6([UC-06: Simulate EMI & Amortization])
+    UC7([UC-07: Calculate Collateral LTV])
+    UC8([UC-08: Browse & Submit Loan Bid])
+    UC9([UC-09: Underwrite & Disburse Funds])
+    UC10([UC-10: Prepayment Savings Calculation])
+  end
+
+  Borrower --> UC5
+  Borrower --> UC6
+  Lender --> UC8
+  Lender --> UC9
+
+  UC5 -.->|&lt;&lt;include&gt;&gt;| UC7
+  UC9 -.->|&lt;&lt;include&gt;&gt;| UC8
+  UC10 -.->|&lt;&lt;extend&gt;&gt;| UC6`
+      },
+      vault: {
+        title: "Subsystem 3: Custodial Bullion Vaulting & LTV",
+        code: `graph LR
+  Borrower((Borrower))
+  FieldAgent((Field Agent))
+  IBJA[IBJA Gold Spot Feed]
+
+  subgraph VaultBoundary [Subsystem: Collateral Vaulting]
+    UC20([UC-20: Appraise Bullion Purity])
+    UC21([UC-21: Mint Geo-tagged Vault Token])
+    UC7([UC-07: Enforce 75% LTV Cap])
+    UC13([UC-13: Margin Call Top-Up])
+  end
+
+  Borrower --> UC7
+  FieldAgent --> UC20
+  FieldAgent --> UC21
+
+  UC20 -.->|&lt;&lt;include&gt;&gt;| UC21
+  UC7 -.->|&lt;&lt;include&gt;&gt;| UC20
+  UC13 -.->|&lt;&lt;extend&gt;&gt;| UC7
+  UC7 --- IBJA`
+      },
+      legal: {
+        title: "Subsystem 4: Section 4 Negotiable Instruments Act Promissory Engine",
+        code: `graph LR
+  Borrower((Borrower))
+  Lender((Lender))
+  NeSL[NeSL Information Utility]
+  Treasury[State e-Stamp Treasury]
+
+  subgraph LegalBoundary [Subsystem: Statutory Contracting]
+    UC11([UC-11: Execute Promissory Note])
+    UC12([UC-12: Affix Digital E-Stamp])
+    UC16([UC-16: Register Debt with NeSL])
+    UC17([UC-17: Download Tamper-proof PDF])
+  end
+
+  Borrower --> UC11
+  Lender --> UC11
+  Borrower --> UC17
+  Lender --> UC17
+
+  UC11 -.->|&lt;&lt;include&gt;&gt;| UC12
+  UC11 -.->|&lt;&lt;include&gt;&gt;| UC16
+  UC12 --- Treasury
+  UC16 --- NeSL`
+      },
+      repay: {
+        title: "Subsystem 5: Repayment & UPI Automated Escrow",
+        code: `graph LR
+  Borrower((Borrower))
+  Lender((Lender))
+  NPCI[NPCI UPI Switch]
+
+  subgraph RepayBoundary [Subsystem: Servicing & Escrow]
+    UC14([UC-14: Pay Monthly EMI Repayment])
+    UC15([UC-15: Apply Late Penalty Fee])
+    UC22([UC-22: Split Escrow Settlement])
+    UC23([UC-23: Generate Repayment NOC])
+  end
+
+  Borrower --> UC14
+  Lender --> UC22
+
+  UC14 -.->|&lt;&lt;include&gt;&gt;| UC22
+  UC15 -.->|&lt;&lt;extend&gt;&gt;| UC14
+  UC23 -.->|&lt;&lt;extend&gt;&gt;| UC14
+  UC14 --- NPCI`
+      },
+      dispute: {
+        title: "Subsystem 6: Order 37 CPC Summary Legal Default Recovery",
+        code: `graph LR
+  Admin((Platform Admin))
+  Lender((Lender))
+  CivilCourt[Civil District Court Registry]
+
+  subgraph RecoveryBoundary [Subsystem: Legal Dispute & Recovery]
+    UC18([UC-18: Invoke Order 37 Legal Suit])
+    UC19([UC-19: Generate Verified Audit Dossier])
+    UC24([UC-24: Liquidate Pledged Collateral])
+  end
+
+  Admin --> UC18
+  Lender --> UC18
+
+  UC18 -.->|&lt;&lt;include&gt;&gt;| UC19
+  UC24 -.->|&lt;&lt;extend&gt;&gt;| UC18
+  UC18 --- CivilCourt`
+      }
+    };
+
+    const imgMap = {
+      master: { src: 'diagram_1_master.png', caption: 'Figure 1: Master System Boundary UML Use Case Diagram (Full Architecture with 100% Unique Line Colors)' },
+      auth: { src: 'diagram_2_auth_kyc.png', caption: 'Figure 2: Subsystem 1 - Multi-Party Identity, Biometrics & Regulatory KYC' },
+      market: { src: 'diagram_3_marketplace.png', caption: 'Figure 3: Subsystem 2 - P2P Marketplace, Co-Borrower Binding & Nominee Declaration' },
+      legal: { src: 'diagram_4_legal_contracting.png', caption: 'Figure 4: Subsystem 3 - Multi-Party Statutory Contracting & Guarantee Deeds (Sec 4 NI Act & §128 ICA)' },
+      repay: { src: 'diagram_5_repayment.png', caption: 'Figure 5: Subsystem 4 - Servicing, UPI AutoPay & Multi-Party Delinquency Escalation (Co-Borrower & Guarantor)' },
+      vault: { src: 'diagram_6_vault_recovery.png', caption: 'Figure 6: Subsystem 5 - Collateral Vaulting, Nominee Release Claim & Order 37 CPC Joint Recovery' }
+    };
+
+    function loadDiagram(key, btnEl) {
+      document.querySelectorAll('.subsystem-btn').forEach(b => b.classList.remove('active'));
+      btnEl.classList.add('active');
+
+      const data = diagrams[key];
+      if (data) {
+        document.getElementById('viewport-title').querySelector('span').innerText = data.title;
+        const mContainer = document.getElementById('mermaid-container');
+        mContainer.innerHTML = `<pre class="mermaid">${data.code}</pre>`;
+        mermaid.init(undefined, mContainer.querySelectorAll('.mermaid'));
+      }
+
+      if (imgMap[key]) {
+        const dImg = document.getElementById('diagram-img');
+        const dCap = document.getElementById('diagram-img-caption');
+        if (dImg) dImg.src = imgMap[key].src;
+        if (dCap) dCap.innerText = imgMap[key].caption;
+      }
+
+      resetZoom();
+    }
+  </script>
+</body>
+</html>

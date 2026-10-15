@@ -194,11 +194,9 @@ class UserRepository @Inject constructor(
                 }
                 user.copy(role = activeRole)
             }
-            // satyam0810 is the ONLY admin. Demote any other user with ADMIN role to USER
-            user.role.equals("ADMIN", ignoreCase = true) -> {
-                user.copy(
-                    role = "USER"
-                )
+            // Multi-Tenant RBAC: Retain authorized elevated roles (ADMIN, STAFF, AUDITOR)
+            user.role.uppercase() in listOf("ADMIN", "STAFF", "AUDITOR") -> {
+                user.copy(role = user.role.uppercase())
             }
             else -> user
         }
@@ -399,9 +397,9 @@ class UserRepository @Inject constructor(
                 )
             }
 
-            val completedLoans = loans.count { it.status == "CLOSED" }
-            val activeLoans = loans.count { it.status == "ACTIVE" }
-            val defaultedLoans = loans.count { it.status == "DEFAULTED" }
+            val completedLoans = loans.count { it.status == "CLOSED" || it.status == "COMPLETED" }
+            val activeLoans = loans.count { it.status == "ACTIVE" || it.status == "ACTIVE_SERVICING" }
+            val defaultedLoans = loans.count { it.status == "DEFAULTED" || it.status == "DELINQUENT" }
 
             val paidRepayments = repayments.filter { it.status == "PAID" }
             val totalRepaid = paidRepayments.sumOf { it.amount }

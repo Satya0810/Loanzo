@@ -18,6 +18,9 @@ interface MarketplaceDao {
     @Query("SELECT * FROM marketplace_posts WHERE authorId = :authorId ORDER BY createdAt DESC")
     fun getPostsByAuthorFlow(authorId: String): Flow<List<MarketplacePostEntity>>
 
+    @Query("SELECT * FROM marketplace_posts WHERE isAdminVerified = 0 ORDER BY createdAt DESC")
+    fun getUnverifiedPostsFlow(): Flow<List<MarketplacePostEntity>>
+
     @Query("SELECT * FROM marketplace_posts WHERE postId = :postId LIMIT 1")
     suspend fun getPostById(postId: String): MarketplacePostEntity?
 
@@ -32,6 +35,9 @@ interface MarketplaceDao {
 
     @Query("UPDATE marketplace_posts SET status = :status WHERE postId = :postId")
     suspend fun updatePostStatus(postId: String, status: String)
+
+    @Query("UPDATE marketplace_posts SET isAdminVerified = :isVerified WHERE postId = :postId")
+    suspend fun updateAdminVerification(postId: String, isVerified: Boolean)
 
     @Query("UPDATE marketplace_posts SET vouchCount = vouchCount + 1 WHERE postId = :postId")
     suspend fun incrementVouchCount(postId: String)
@@ -48,6 +54,9 @@ interface MarketplaceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVouch(vouch: MarketplaceVouchEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertVouches(vouches: List<MarketplaceVouchEntity>)
 
     @Query("DELETE FROM marketplace_vouches WHERE postId = :postId AND voucherUserId = :userId")
     suspend fun deleteVouch(postId: String, userId: String)

@@ -46,6 +46,11 @@ android {
         buildConfigField("String", "CLOUDFLARE_ACCOUNT_ID", escapeJavaString(getSecret("CLOUDFLARE_ACCOUNT_ID")))
         buildConfigField("String", "SAMBANOVA_API_KEY", escapeJavaString(getSecret("SAMBANOVA_API_KEY")))
         buildConfigField("String", "LLM7_API_KEY", escapeJavaString(getSecret("LLM7_API_KEY")))
+
+        // Target real Android devices (both 64-bit and 32-bit ARM architectures), eliminating ~35 MB of x86/x86_64 emulator binaries
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+        }
     }
 
     buildTypes {
@@ -145,7 +150,6 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation("com.google.api-client:google-api-client-android:1.33.0")
     implementation("com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0")
-    implementation("com.google.auth:google-auth-library-oauth2-http:1.16.0")
     implementation("com.google.auth:google-auth-library-oauth2-http:1.16.0")
     // Biometric Authentication
     implementation(libs.androidx.biometric)

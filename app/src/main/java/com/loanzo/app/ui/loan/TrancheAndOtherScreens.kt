@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -220,14 +221,15 @@ fun TrancheRequestScreen(
                         note
                     )
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
                 enabled = amount.isNotBlank() && payeeName.isNotBlank() && purpose.isNotBlank()
             ) {
                 Icon(Icons.Default.Send, null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.submit_tranche_request), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.submit_tranche_request), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -302,14 +304,14 @@ fun MakeRepaymentScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            GradientCard(gradientColors = listOf(Navy600, Navy700)) {
-                Text(stringResource(R.string.outstanding_balance), style = MaterialTheme.typography.labelMedium, color = Gray300)
+            GradientCard(gradientColors = HolographicCardGradient) {
+                Text(stringResource(R.string.outstanding_balance), style = MaterialTheme.typography.labelMedium, color = BrandIceBlue)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     "₹${String.format(java.util.Locale.getDefault(), "%,.2f", outstandingAmount)}",
                     style = MaterialTheme.typography.displaySmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (outstandingAmount > 0) Gold400 else Emerald400
+                    color = if (outstandingAmount > 0) GoldCoinBright else Emerald400
                 )
             }
 
@@ -374,7 +376,8 @@ fun MakeRepaymentScreen(
                             Toast.makeText(context, "No UPI app found on this device", Toast.LENGTH_SHORT).show()
                         }
                     },
-                    modifier = Modifier.weight(1f).height(50.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -383,18 +386,19 @@ fun MakeRepaymentScreen(
                 ) {
                     Icon(Icons.Default.Payment, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(stringResource(R.string.pay_directly_with_upi_app), fontSize = 12.sp, maxLines = 1)
+                    Text(stringResource(R.string.pay_directly_with_upi_app), fontSize = 12.sp, textAlign = TextAlign.Center)
                 }
 
                 OutlinedButton(
                     onClick = { showQrDialog = true },
-                    modifier = Modifier.weight(1f).height(50.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(14.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
                 ) {
                     Icon(Icons.Default.QrCodeScanner, null, modifier = Modifier.size(18.dp), tint = Emerald400)
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Show QR Code", fontSize = 12.sp, color = Color.White, maxLines = 1)
+                    Text("Show QR Code", fontSize = 12.sp, color = Color.White, textAlign = TextAlign.Center)
                 }
             }
 
@@ -411,7 +415,7 @@ fun MakeRepaymentScreen(
                 text = "Slide to Record Repayment ➔",
                 enabled = amount.isNotBlank() && transactionRef.isNotBlank(),
                 thumbColor = Emerald400,
-                trackColors = listOf(Navy700, Navy800),
+                trackColors = listOf(BrandRoyalBlue, BrandCobalt),
                 activeTrackColor = Emerald400.copy(alpha = 0.25f),
                 onConfirm = { onSubmit(amount.toDoubleOrNull() ?: 0.0, transactionRef) }
             )
@@ -635,14 +639,15 @@ fun PledgeScreen(
                         weight.toDoubleOrNull() ?: 0.0
                     )
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
                 enabled = description.isNotBlank() && value.isNotBlank()
             ) {
                 Icon(Icons.Default.Security, null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.add_pledge), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.add_pledge), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             }
 
             Spacer(modifier = Modifier.height(24.dp))

@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Clean, high-contrast monochrome shield & currency symbol for Android Status Bar notifications -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,1L3,5v6c0,5.55 3.84,10.74 9,12c5.16,-1.26 9,-6.45 9,-12V5L12,1zM12,4.18l6,2.67v4.15c0,4.42 -2.96,8.56 -6,9.88c-3.04,-1.32 -6,-5.46 -6,-9.88V6.85L12,4.18z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M13.5,8H10.5v1.2h2c0.8,0 1.5,0.7 1.5,1.5s-0.7,1.5 -1.5,1.5h-1.3l2.8,3.8h-1.6l-2.6,-3.6V12H9v-1.3h1.5V9.2H9V8h1.5V6.8h3V8z"/>
+</vector>

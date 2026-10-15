@@ -86,19 +86,24 @@ Loanzo strictly adheres to the **Model-View-ViewModel (MVVM)** architectural pat
 
 ### Backend Server (Vercel)
 Loanzo has a **Node.js/Express backend** deployed on **Vercel** at `https://backend-blond-sigma-66.vercel.app`. It handles:
-- **Telegram Bot Webhook (`/api/telegram/webhook`)**:
-  - Inbound Command Dispatcher:
-    - `/start`: Returns welcome greeting containing the complete list of all working commands (`/start`, `/myloans`, `/repay`, `/statement`, `/help`, plus Admin commands if caller is admin), and handles deep-link account binding via `user_<id>`.
-    - `/myloans`: Queries borrower loan portfolio, showing active balance and next EMI date.
-    - `/repay`: Dispatches repayment instructions and UPI payment options.
+- **Telegram Bot Webhook (`/api/telegram/webhook`) & Interactive Action Engine**:
+  - **Inbound Command & Interactive Action Dispatcher**:
+    - `/start`: Returns welcome greeting with quick action buttons (`[📊 My Portfolio]`, `[💳 Instant Repay]`, `[⭐ Get Verified]`, `[ℹ️ About Loanzo]`) and handles deep-link account binding (`user_<id>`).
+    - `/myloans`: Displays live loan portfolio with 1-tap action buttons (`[💳 Pay Next EMI]`, `[📜 Section 4 Promissory Note]`, `[🛡️ Anti-Harassment SOS]`, `[📑 Full Statement]`).
+    - `/repay`: Dispatches payment gateway details with direct UPI application launcher (`upi://pay?pa=loanzo.escrow@icici...`).
     - `/statement`: Summarizes recent repayments, on-time status, and accrued late penalties.
     - `/help`: Returns customer support contacts and platform guide.
-    - *Admin Commands* (Exclusively restricted to `@satyam_081`): `/stats` (live metrics), `/pendingkyc` (verification queue), `/admin` (control panel).
-    - Active Fallback: Handles unrecognized text gracefully by returning the available command menu so the bot never stays silent.
-  - Cryptographic Identity Verifier: Enforces role-based access based on verified `chat.id`.
+    - *Admin Commands* (Restricted to `@satyam_081` & designated admins): `/pending` (review decision queue), `/stats` (live metrics), `/demoloans` (inspect all 6 demo loans), `/agent` (assigned verification agent), `/broadcast` (system alerts), `/ban` & `/unban` (moderation), `/audit` (tamper-proof security audit log).
+    - Active Fallback: Handles unrecognized text gracefully with contextual menu.
+  - **Two-Way Actionable Callback Query Engine (`update.callback_query`)**:
+    - **KYC Verification**: Instant `[✅ Approve KYC]` / `[❌ Reject KYC]` buttons that update roles, edit message cards in-place, and notify the user immediately.
+    - **Loan Decisioning**: Direct `[✅ Approve Loan]` / `[❌ Reject Loan]` and `[💸 Authorize Disbursal]` via Telegram cards.
+    - **Emergency Anti-Harassment SOS Actions**: One-tap `[🛑 Freeze Recovery Calls]` (statutory BNS §351 freeze) and `[👮 Dispatch Field Agent]` (assigns verification officer Vikas Sharma).
+    - **Dispute Center Actions**: `[🚨 Restrict Bad Actor]` / `[✅ Resolve Dispute]`.
+  - **Cryptographic Identity Verifier**: Role-based access control (RBAC) enforced via verified Telegram `chat.id` and `@username`.
 - **Notification Router (`/api/telegram/notify`)**:
   - Routes targeted EMI reminders, disbursal notices, and overdue alerts to the recipient's authenticated `telegramChatId`.
-  - Dispatches interactive push cards to Admins with inline action buttons (`[📄 View on Google Drive]`, `[📜 View Signed Agreement]`).
+  - Dispatches interactive push cards to Admins with multi-row action buttons (`[✅ Verify / Approve]`, `[❌ Reject]`, `[📄 View Document]`, `[👤 Inspect Profile]`).
 - **Truecaller OAuth** — Token exchange and profile retrieval.
 - **User Sync** — Upsert user profiles to an online database.
 - **Email OTP** — Dispatching verification emails via Nodemailer/SMTP.
@@ -407,6 +412,89 @@ stateDiagram-v2
 | Parameter | Value | Enforcement Layer | Operational Description |
 | :--- | :--- | :--- | :--- |
 | `MIN_SPLASH_DURATION_MS` | 3,500 ms | `NavGraph.kt` & `SplashScreen.kt` | Enforces complete orbital animation playback while hiding IO warmup latency. |
-| `INACTIVITY_LOCK_TIMEOUT_MS` | 180,000 ms (3 min) | `BankingSessionManager.kt` | Seamless grace window for checking OTPs, SMS, or phone calls without annoying re-auth. |
-| `HARD_EXPIRY_TIMEOUT_MS` | 172,800,000 ms (2 days) | `BankingSessionManager.kt` | Hard invalidation threshold preventing stale credential accumulation. |
 | `FOREGROUND_IDLE_TIMEOUT_MS` | 300,000 ms (5 min) | `MainActivity.kt` & `BankingSessionManager.kt` | Screen-on idle protection against shoulder surfing or unattended unlocked devices. |
+
+---
+
+## 4. Field Operations & Attestation Architecture (Agent Suite)
+
+### 4.1 Field Operations Component Topology
+```mermaid
+graph TD
+    subgraph UI ["Presentation Layer (Jetpack Compose)"]
+        Scaffold["AgentScaffold"]
+        DispatchesTab["AgentDispatchesTab (Active Itinerary & GPS Route)"]
+        InspectionSheet["AgentInspectionSheet (5-Step Deterministic Stepper)"]
+        ToolsDeskTab["AgentToolsDeskTab (5-Class Valuator & Barcode Scanner)"]
+        CommsTab["AgentCommsTab (Central Dispatch & SOS Beacon)"]
+        EarningsTab["AgentEarningsTab (Payout Ledger & Instant IMPS)"]
+    end
+
+    subgraph StateManagement ["State & Domain Layer"]
+        VM["AgentViewModel (MVI Architecture)"]
+        UiState["AgentUiState (Immutable StateFlow)"]
+        Intents["AgentIntent Sealed Hierarchy"]
+    end
+
+    subgraph Persistence ["Data & Repository Layer"]
+        AgentRepo["AgentRepository (Single Source of Truth)"]
+        UserRepo["UserRepository (Agent Empanelment & Shift Toggle)"]
+        RoomDB["LoanzoDatabase (AgentDao, SQLite Offline-First)"]
+    end
+
+    Scaffold --> DispatchesTab
+    Scaffold --> ToolsDeskTab
+    Scaffold --> CommsTab
+    Scaffold --> EarningsTab
+    DispatchesTab --> InspectionSheet
+
+    DispatchesTab --> VM
+    InspectionSheet --> VM
+    ToolsDeskTab --> VM
+    CommsTab --> VM
+    EarningsTab --> VM
+
+    VM --> UiState
+    Intents --> VM
+    VM --> AgentRepo
+    VM --> UserRepo
+    AgentRepo --> RoomDB
+    UserRepo --> RoomDB
+```
+
+### 4.2 5-Step Deterministic Field Attestation Stepper
+```mermaid
+stateDiagram-v2
+    [*] --> Step1_Presence: Open Inspection Sheet
+    Step1_Presence: Step 1 - Proof-of-Presence & Handshake Authentication
+    Step1_Presence: GPS Geofence Check (<200m) + Mutual 4-Digit PIN
+    
+    Step1_Presence --> Step2_Identity: Handshake Authenticated
+    Step2_Identity: Step 2 - Statutory Identity & Premises Verification
+    Step2_Identity: Physical Aadhaar/PAN Masking + Residence Geotag + Utility Check
+    
+    Step2_Identity --> Step3_Valuation: Identity Attested
+    Step3_Valuation: Step 3 - Universal 5-Class Collateral Valuation
+    Step3_Valuation: Gold 916 / Vehicle RC / Invoice / Real Estate / Securities + LTV Caps
+    
+    Step3_Valuation --> Step4_Evidence: Valuation Committed
+    Step4_Evidence: Step 4 - Evidentiary Camera & Security Pouch Sealing
+    Step4_Evidence: Sec 65B Cryptographic Watermark + Tamper-Evident Bag Serial
+    
+    Step4_Evidence --> Step5_Attestation: Proof Attached & Bag Sealed
+    Step5_Attestation: Step 5 - Legal Promissory Note & Officer Sign-Off
+    Step5_Attestation: Section 4 NI Act Note Attestation + Digital Signature + Recommendation
+    
+    Step5_Attestation --> [*]: Submit Verification to Immutable Ledger
+```
+
+### 4.3 Key Architectural Invariants
+| Subsystem | Architectural Standard | Compliance Specification |
+| :--- | :--- | :--- |
+| **State Machine** | Unidirectional Data Flow (`AgentViewModel`) | Single immutable `AgentUiState` exposed via Kotlin `StateFlow`. UI dispatches sealed `AgentIntent` instances. Zero business logic inside `NavGraph.kt`. |
+| **Proof-of-Presence** | Mutual Handshake PIN + Hardware GPS | Verification blocked until officer enters 4-digit token matching borrower's loan screen (or fallback 0000) within 200m GPS radius. |
+| **Collateral Valuation** | Universal 5-Class Assayer Engine | Dynamic valuation and regulatory LTV caps across 5 asset classes (Gold 75% RBI cap, Vehicle 65%, Commercial Invoice 80%, Real Estate 60%, Demat Securities 50%). |
+| **Evidence Admissibility** | Section 65B Indian Evidence Act | Cryptographically signed photographic watermark embedded with hardware GPS lat/lng, IST timestamp, Agent ID, and SHA-256 digest. |
+| **Legal Attestation** | Section 4 Negotiable Instruments Act | Promissory note attestation binding physical borrower with personal ocular inspection under Order XXXVII CPC summary recovery protections. |
+| **Visual Aesthetics** | Institutional FinTech Standard | Zero decorative emojis. Strict institutional palette: `#0F172A` (Deep Navy), `#1E40AF` (Royal Navy), `#CBD5E1` (Slate Border), `#F8FAFC` (Canvas Porcelain). Material 3 vector tokens only. |
+

@@ -45,4 +45,6 @@ object DatabaseModule {
     @Provides fun provideVaultDocumentDao(db: LoanzoDatabase): VaultDocumentDao = db.vaultDocumentDao()
     @Provides fun provideSupportTicketDao(db: LoanzoDatabase): SupportTicketDao = db.supportTicketDao()
     @Provides fun provideAdminRequestDao(db: LoanzoDatabase): AdminRequestDao = db.adminRequestDao()
+    @Provides fun provideBannedCredentialDao(db: LoanzoDatabase): BannedCredentialDao = db.bannedCredentialDao()
+    @Provides fun provideCoLenderDao(db: LoanzoDatabase): CoLenderDao = db.coLenderDao()
 }

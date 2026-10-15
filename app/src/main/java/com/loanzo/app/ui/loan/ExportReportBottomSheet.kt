@@ -22,7 +22,8 @@ fun ExportReportBottomSheet(
     onExportLoanSummaryPdf: () -> Unit,
     onExportInterestCertPdf: () -> Unit,
     onExportRepaymentsCsv: () -> Unit,
-    onExportPitchDeckPdf: () -> Unit = {}
+    onExportPitchDeckPdf: () -> Unit = {},
+    onExportPromissoryNotePdf: () -> Unit = {}
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -46,6 +47,17 @@ fun ExportReportBottomSheet(
             )
 
             Spacer(modifier = Modifier.height(4.dp))
+
+            ExportOptionCard(
+                icon = Icons.Default.Gavel,
+                title = "Section 4 Promissory Note (PDF)",
+                subtitle = "Statutory demand promissory note under Negotiable Instruments Act 1881 with consideration receipt",
+                tint = Gold500,
+                onClick = {
+                    onExportPromissoryNotePdf()
+                    onDismiss()
+                }
+            )
 
             ExportOptionCard(
                 icon = Icons.Default.PictureAsPdf,

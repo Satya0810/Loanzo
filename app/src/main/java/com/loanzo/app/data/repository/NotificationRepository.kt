@@ -54,6 +54,9 @@ class NotificationRepository @Inject constructor(
     suspend fun markAsRead(notificationId: String) =
         notificationDao.markAsRead(notificationId)
 
+    suspend fun setReadStatus(notificationId: String, isRead: Boolean) =
+        notificationDao.setReadStatus(notificationId, isRead)
+
     suspend fun markAllAsRead(userId: String) {
         val user = userDao.getUserById(userId)
         val isDirectAdmin = com.loanzo.app.util.VerificationManager.isAppOwner(userId = userId)
@@ -93,7 +96,7 @@ class NotificationRepository @Inject constructor(
 
             // Get all active and overdue loans the user is involved in (Bug #12: include OVERDUE status)
             val allLoans = loanDao.getAllLoansForUser(userId).first()
-            val activeLoans = allLoans.filter { it.status == "ACTIVE" || it.status == "OVERDUE" || it.status == "DEFAULTED" }
+            val activeLoans = allLoans.filter { it.status == "ACTIVE" || it.status == "ACTIVE_SERVICING" || it.status == "OVERDUE" || it.status == "DEFAULTED" }
 
             val newNotifications = mutableListOf<NotificationEntity>()
 
@@ -303,10 +306,20 @@ class NotificationRepository @Inject constructor(
 
     fun postSystemNotification(title: String, body: String, actionRoute: String? = null) {
         try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    return
+                }
+            }
+
             com.loanzo.app.util.NotificationChannelHelper.setupNotificationChannels(context)
             val isAdminAlert = actionRoute?.contains("app_owner_hub") == true || actionRoute?.contains("agent_main") == true
             val channelId = if (isAdminAlert) com.loanzo.app.util.NotificationChannelHelper.CHANNEL_ADMIN else com.loanzo.app.util.NotificationChannelHelper.CHANNEL_ALERTS
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager ?: return
 
             val intent = android.content.Intent(context, com.loanzo.app.MainActivity::class.java).apply {
                 flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -322,7 +335,7 @@ class NotificationRepository @Inject constructor(
             )
 
             val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(com.loanzo.app.R.mipmap.ic_launcher)
+                .setSmallIcon(com.loanzo.app.R.drawable.ic_notification_logo)
                 .setContentTitle(title.replace(Regex("[⏰⚡🔔⚠️📜🚨👑⚖️]"), "").trim())
                 .setContentText(body)
                 .setAutoCancel(true)

@@ -43,7 +43,7 @@ fun SwipeToConfirmButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     thumbColor: Color = Gold500,
-    trackColors: List<Color> = listOf(Navy700, Navy800),
+    trackColors: List<Color> = listOf(BrandRoyalBlue, BrandCobalt),
     activeTrackColor: Color = Gold500.copy(alpha = 0.25f),
     onConfirm: () -> Unit
 ) {
@@ -76,9 +76,10 @@ fun SwipeToConfirmButton(
             )
             .border(
                 width = 1.dp,
-                color = if (enabled) GlassBorder else Gray700.copy(alpha = 0.3f),
+                color = if (enabled) GoldCoinAmber.copy(alpha = 0.5f) else Gray700.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(29.dp)
             )
+
             .onSizeChanged { totalWidthPx = it.width.toFloat() },
         contentAlignment = Alignment.CenterStart
     ) {

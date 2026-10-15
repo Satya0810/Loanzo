@@ -12,10 +12,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.text.input.KeyboardType
 import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -237,28 +239,28 @@ fun LoanCalculatorScreen(
                 }
             }
 
-            // 2. Executive Obsidian Dark Hero Result Box
+            // 2. Executive Hero Result Box (Luminous Crisp Card)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .shadow(
-                        elevation = 8.dp,
+                        elevation = 4.dp,
                         shape = RoundedCornerShape(24.dp),
-                        ambientColor = Color(0x33000000),
-                        spotColor = Color(0x400B0F19)
+                        ambientColor = Color(0x0A0F172A),
+                        spotColor = Color(0x181D4ED8)
                     ),
                 shape = RoundedCornerShape(24.dp),
-                border = BorderStroke(1.dp, Color(0xFF334155)),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.outlineVariant),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier
                         .background(
                             Brush.verticalGradient(
                                 listOf(
-                                    Color(0xFF0F172A),
-                                    Color(0xFF1E293B),
-                                    Color(0xFF0B0F19)
+                                    MaterialTheme.colorScheme.surface,
+                                    MaterialTheme.colorScheme.surface,
+                                    BrandIceBlue.copy(alpha = 0.35f)
                                 )
                             )
                         )
@@ -273,10 +275,10 @@ fun LoanCalculatorScreen(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(20.dp),
-                            color = if (perspective == SimulatorPerspective.BORROWER) Color(0x263B82F6) else Color(0x2610B981),
+                            color = if (perspective == SimulatorPerspective.BORROWER) BrandIceBlue else EmeraldLight,
                             border = BorderStroke(
                                 1.dp,
-                                if (perspective == SimulatorPerspective.BORROWER) Color(0x4D3B82F6) else Color(0x4D10B981)
+                                if (perspective == SimulatorPerspective.BORROWER) BrandIceBorder else Emerald400.copy(alpha = 0.4f)
                             )
                         ) {
                             Text(
@@ -284,21 +286,21 @@ fun LoanCalculatorScreen(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (perspective == SimulatorPerspective.BORROWER) Color(0xFF93C5FD) else Color(0xFF6EE7B7)
+                                color = if (perspective == SimulatorPerspective.BORROWER) BrandRoyalBlue else Emerald600
                             )
                         }
 
                         Surface(
                             shape = RoundedCornerShape(20.dp),
-                            color = Color(0x26FBBF24),
-                            border = BorderStroke(1.dp, Color(0x4DFBBF24))
+                            color = GoldCoinCream,
+                            border = BorderStroke(1.dp, GoldCoinBorder)
                         ) {
                             Text(
                                 text = if (interestEngine == SimulatorInterestEngine.REDUCING) "REDUCING BAL" else "FLAT RATE",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = GoldCoinBright
+                                color = GoldCoinAmber
                             )
                         }
                     }
@@ -310,7 +312,7 @@ fun LoanCalculatorScreen(
                         text = if (perspective == SimulatorPerspective.BORROWER) "EQUATED MONTHLY INSTALLMENT (EMI)" else "MONTHLY INFLOW (PRINCIPAL + PROFIT)",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF94A3B8),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 0.8.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -318,7 +320,7 @@ fun LoanCalculatorScreen(
                         text = emi.toInrString(),
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = if (perspective == SimulatorPerspective.BORROWER) GoldCoinBright else Emerald400
+                        color = if (perspective == SimulatorPerspective.BORROWER) BrandRoyalBlue else Emerald600
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -347,7 +349,7 @@ fun LoanCalculatorScreen(
                         Canvas(modifier = Modifier.size(130.dp)) {
                             // Principal Arc (Emerald Mint)
                             drawArc(
-                                color = Emerald400,
+                                color = Emerald500,
                                 startAngle = -90f,
                                 sweepAngle = animatedPrincipalAngle,
                                 useCenter = false,
@@ -355,7 +357,7 @@ fun LoanCalculatorScreen(
                             )
                             // Interest / Profit Arc (Warm Gold)
                             drawArc(
-                                color = GoldCoinBright,
+                                color = GoldCoinRich,
                                 startAngle = -90f + animatedPrincipalAngle,
                                 sweepAngle = animatedInterestAngle,
                                 useCenter = false,
@@ -367,14 +369,14 @@ fun LoanCalculatorScreen(
                             Text(
                                 text = if (perspective == SimulatorPerspective.BORROWER) "NET PAYABLE" else "TOTAL MATURITY",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF94A3B8),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 10.sp
                             )
                             Text(
                                 text = totalPayment.toInrString(),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -392,13 +394,13 @@ fun LoanCalculatorScreen(
                             modifier = Modifier
                                 .size(10.dp)
                                 .clip(CircleShape)
-                                .background(Emerald400)
+                                .background(Emerald500)
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = "Principal ($principalPct%)",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFE2E8F0),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(Modifier.width(16.dp))
@@ -406,13 +408,13 @@ fun LoanCalculatorScreen(
                             modifier = Modifier
                                 .size(10.dp)
                                 .clip(CircleShape)
-                                .background(GoldCoinBright)
+                                .background(GoldCoinRich)
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = if (perspective == SimulatorPerspective.BORROWER) "Interest ($interestPct%)" else "Profit Yield ($interestPct%)",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFE2E8F0),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -422,8 +424,8 @@ fun LoanCalculatorScreen(
                     // 3-Column Detailed Breakdown Strip
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFF1E293B).copy(alpha = 0.8f),
-                        border = BorderStroke(1.dp, Color(0xFF334155))
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Row(
                             modifier = Modifier
@@ -435,13 +437,13 @@ fun LoanCalculatorScreen(
                                 Text(
                                     text = if (perspective == SimulatorPerspective.BORROWER) "Principal" else "Capital Lent",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF94A3B8)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = principalDouble.toInrString(),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Emerald400,
+                                    color = Emerald600,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -450,13 +452,13 @@ fun LoanCalculatorScreen(
                                 Text(
                                     text = if (perspective == SimulatorPerspective.BORROWER) "Total Interest" else "Total Profit",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF94A3B8)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = totalInterest.toInrString(),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = GoldCoinBright,
+                                    color = GoldCoinAmber,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -465,13 +467,13 @@ fun LoanCalculatorScreen(
                                 Text(
                                     text = if (perspective == SimulatorPerspective.BORROWER) "Total Payable" else "Maturity Total",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF94A3B8)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = totalPayment.toInrString(),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -489,7 +491,7 @@ fun LoanCalculatorScreen(
                         Icon(
                             Icons.Default.Info,
                             contentDescription = null,
-                            tint = Color(0xFF94A3B8),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(Modifier.width(4.dp))
@@ -500,7 +502,7 @@ fun LoanCalculatorScreen(
                                 "Flat Rate ${String.format(java.util.Locale.getDefault(), "%.1f", rateDouble)}% = Effective ${String.format(java.util.Locale.getDefault(), "%.1f", effectiveApr)}% APR"
                             },
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFCBD5E1),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
                     }
@@ -622,7 +624,24 @@ fun LoanCalculatorScreen(
                             }
                         }
 
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
+
+                        // Direct Editable Numeric Input (Full-Width, Self-Filled)
+                        OutlinedTextField(
+                            value = if (principal == 0f) "" else principal.toInt().toString(),
+                            onValueChange = { str ->
+                                val num = str.filter { it.isDigit() }.toFloatOrNull() ?: 0f
+                                principal = num.coerceIn(0f, 10000000f)
+                            },
+                            prefix = { Text("₹ ", fontWeight = FontWeight.Bold, color = BrandRoyalBlue) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        Spacer(Modifier.height(10.dp))
 
                         // Quick Preset Chips for Amount
                         Row(
@@ -659,22 +678,13 @@ fun LoanCalculatorScreen(
                             }
                         }
 
-                        Slider(
-                            value = principal,
-                            onValueChange = { principal = (it / 1000).roundToInt() * 1000f },
-                            valueRange = 10000f..1000000f,
-                            colors = SliderDefaults.colors(
-                                thumbColor = BrandRoyalBlue,
-                                activeTrackColor = BrandRoyalBlue,
-                                inactiveTrackColor = BrandIceBorder
-                            )
-                        )
+                        Spacer(Modifier.height(4.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("₹10,000", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
-                            Text("₹10,00,000", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
+                            Text("Min: ₹10,000", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
+                            Text("Max: ₹1,00,00,000", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
                         }
                     }
 
@@ -707,7 +717,24 @@ fun LoanCalculatorScreen(
                             }
                         }
 
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
+
+                        // Direct Editable Numeric Input (Full-Width, Self-Filled)
+                        OutlinedTextField(
+                            value = if (interestRate == 0f) "" else String.format(java.util.Locale.US, "%.1f", interestRate),
+                            onValueChange = { str ->
+                                val num = str.toFloatOrNull() ?: 0f
+                                interestRate = num.coerceIn(0.5f, 36.0f)
+                            },
+                            suffix = { Text("% p.a.", fontWeight = FontWeight.Bold, color = GoldCoinAmber) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+
+                        Spacer(Modifier.height(10.dp))
 
                         // Quick Rate Presets
                         Row(
@@ -744,22 +771,13 @@ fun LoanCalculatorScreen(
                             }
                         }
 
-                        Slider(
-                            value = interestRate,
-                            onValueChange = { interestRate = (it * 2).roundToInt() / 2f },
-                            valueRange = 1f..36f,
-                            colors = SliderDefaults.colors(
-                                thumbColor = GoldCoinRich,
-                                activeTrackColor = GoldCoinRich,
-                                inactiveTrackColor = GoldCoinBorder
-                            )
-                        )
+                        Spacer(Modifier.height(4.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("1% Prime", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
-                            Text("36% Max", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
+                            Text("1.0% Prime Rate", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
+                            Text("36.0% Maximum Cap", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
                         }
                     }
 
@@ -794,7 +812,24 @@ fun LoanCalculatorScreen(
                             }
                         }
 
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
+
+                        // Direct Editable Numeric Input (Full-Width, Self-Filled)
+                        OutlinedTextField(
+                            value = if (tenureMonths == 0) "" else tenureMonths.toString(),
+                            onValueChange = { str ->
+                                val num = str.filter { it.isDigit() }.toIntOrNull() ?: 1
+                                tenureMonths = num.coerceIn(1, 120)
+                            },
+                            suffix = { Text("Months", fontWeight = FontWeight.Bold, color = Emerald600) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            shape = RoundedCornerShape(12.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        Spacer(Modifier.height(10.dp))
 
                         // Quick Tenure Presets
                         Row(
@@ -832,22 +867,13 @@ fun LoanCalculatorScreen(
                             }
                         }
 
-                        Slider(
-                            value = tenureMonths.toFloat(),
-                            onValueChange = { tenureMonths = it.roundToInt() },
-                            valueRange = 1f..60f,
-                            colors = SliderDefaults.colors(
-                                thumbColor = Emerald500,
-                                activeTrackColor = Emerald500,
-                                inactiveTrackColor = EmeraldLight
-                            )
-                        )
+                        Spacer(Modifier.height(4.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("1 Month", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
-                            Text("60 Months (5 Yrs)", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
+                            Text("120 Months (10 Yrs)", style = MaterialTheme.typography.bodySmall, color = Gray400, fontSize = 11.sp)
                         }
                     }
                 }
@@ -914,6 +940,57 @@ fun LoanCalculatorScreen(
                         exit = shrinkVertically() + fadeOut()
                     ) {
                         Column(modifier = Modifier.padding(top = 16.dp)) {
+                            // Payoff Ratio Progress Visualizer
+                            val principalRatio = if (totalPayment > 0) (principalDouble / totalPayment).toFloat() else 1f
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Principal Payoff Ratio",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "${(principalRatio * 100).roundToInt()}% Principal • ${(100 - (principalRatio * 100).roundToInt())}% Interest",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(principalRatio.coerceAtLeast(0.01f))
+                                                .fillMaxHeight()
+                                                .background(Emerald500)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .weight((1f - principalRatio).coerceAtLeast(0.01f))
+                                                .fillMaxHeight()
+                                                .background(GoldCoinAmber)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
+
                             // Table Header
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
@@ -926,7 +1003,7 @@ fun LoanCalculatorScreen(
                                         .padding(horizontal = 8.dp, vertical = 8.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Mo", modifier = Modifier.weight(0.7f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                                    Text("Month", modifier = Modifier.weight(0.8f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
                                     Text("Principal", modifier = Modifier.weight(1.3f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
                                     Text("Interest", modifier = Modifier.weight(1.2f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
                                     Text("Balance", modifier = Modifier.weight(1.4f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
@@ -935,9 +1012,9 @@ fun LoanCalculatorScreen(
 
                             Spacer(Modifier.height(6.dp))
 
-                            // Rows (Preview first 6 or all)
-                            val displayRows = if (showFullAmortization) amortizationRows else amortizationRows.take(6)
-                            displayRows.forEachIndexed { idx, row ->
+                            // Rows Preview (First 5 months)
+                            val previewRows = amortizationRows.take(5)
+                            previewRows.forEachIndexed { idx, row ->
                                 val isEven = idx % 2 == 0
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
@@ -951,12 +1028,20 @@ fun LoanCalculatorScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = "#${row.month}",
-                                            modifier = Modifier.weight(0.7f),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.Medium
-                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = BrandIceBlue,
+                                            border = BorderStroke(0.5.dp, BrandIceBorder)
+                                        ) {
+                                            Text(
+                                                text = "M${row.month}",
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = BrandRoyalBlue,
+                                                fontSize = 10.sp
+                                            )
+                                        }
                                         Text(
                                             text = row.principalPaid.toInrString(),
                                             modifier = Modifier.weight(1.3f),
@@ -978,25 +1063,38 @@ fun LoanCalculatorScreen(
                                             modifier = Modifier.weight(1.4f),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.Medium,
                                             textAlign = TextAlign.End
                                         )
                                     }
                                 }
                             }
 
-                            if (amortizationRows.size > 6) {
-                                Spacer(Modifier.height(8.dp))
-                                TextButton(
-                                    onClick = { showFullAmortization = !showFullAmortization },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = if (showFullAmortization) "Collapse to First 6 Months" else "Show All ${amortizationRows.size} Months Schedule",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = BrandRoyalBlue
-                                    )
-                                }
+                            Spacer(Modifier.height(10.dp))
+
+                            // Dedicated Action Button to launch full interactive amortization sheet
+                            OutlinedButton(
+                                onClick = { showFullAmortization = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, BrandCobalt.copy(alpha = 0.5f)),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = BrandRoyalBlue,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "View Full ${amortizationRows.size}-Month Schedule ➔",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandRoyalBlue
+                                )
                             }
                         }
                     }
@@ -1018,7 +1116,7 @@ fun LoanCalculatorScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Request Loan with These Terms ➔",
+                            text = "Request Loan with These Terms",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleSmall
                         )
@@ -1029,16 +1127,18 @@ fun LoanCalculatorScreen(
                         onClick = { onPostOffer(principalDouble, rateDouble, tenureInt) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
+                            .heightIn(min = 48.dp),
                         shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, BrandCobalt)
+                        border = BorderStroke(1.dp, BrandCobalt),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                     ) {
-                        Icon(Icons.Default.TrendingUp, contentDescription = null, tint = BrandRoyalBlue)
+                        Icon(Icons.Default.TrendingUp, contentDescription = null, tint = BrandRoyalBlue, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "Publish Loan Request on Community Wall",
                             fontWeight = FontWeight.SemiBold,
-                            color = BrandRoyalBlue
+                            color = BrandRoyalBlue,
+                            style = MaterialTheme.typography.titleSmall
                         )
                     }
                 } else {
@@ -1047,40 +1147,250 @@ fun LoanCalculatorScreen(
                         onClick = { onPostOffer(principalDouble, rateDouble, tenureInt) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp),
+                            .heightIn(min = 50.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
+                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                     ) {
-                        Icon(Icons.Default.TrendingUp, contentDescription = null)
+                        Icon(Icons.Default.TrendingUp, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Post Capital Offer on Community Wall ➔",
+                            text = "Post Capital Offer on Community Wall",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleSmall
                         )
                     }
 
-                    // Lender Secondary: Create Direct Loan Agreement
+                    // Lender Secondary: Create Direct Loan Agreement (Clean, unclipped, responsive)
                     OutlinedButton(
                         onClick = { onRequestLoan(principalDouble, rateDouble, tenureInt) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
+                            .heightIn(min = 48.dp),
                         shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, Emerald500)
+                        border = BorderStroke(1.dp, Emerald500),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                     ) {
-                        Icon(Icons.Default.AccountBalance, contentDescription = null, tint = Emerald600)
+                        Icon(Icons.Default.AccountBalance, contentDescription = null, tint = Emerald600, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Create Direct Loan Agreement with Counterparty",
+                            text = "Create Direct Loan Agreement",
                             fontWeight = FontWeight.SemiBold,
-                            color = Emerald600
+                            color = Emerald600,
+                            style = MaterialTheme.typography.titleSmall
                         )
                     }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
+        }
+
+        // Full Amortization Schedule Bottom Sheet
+        if (showFullAmortization) {
+            AmortizationScheduleBottomSheet(
+                amortizationRows = amortizationRows,
+                principal = principalDouble,
+                totalInterest = totalInterest,
+                totalPayment = totalPayment,
+                tenureMonths = tenureInt,
+                onDismiss = { showFullAmortization = false }
+            )
+        }
+    }
+}
+
+/**
+ * Dedicated Full Amortization Bottom Sheet with interactive filter tabs and detailed schedule.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AmortizationScheduleBottomSheet(
+    amortizationRows: List<AmortizationScheduleRow>,
+    principal: Double,
+    totalInterest: Double,
+    totalPayment: Double,
+    tenureMonths: Int,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Amortization Schedule",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "$tenureMonths Months Complete Payoff Journey",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = BrandIceBlue,
+                    border = BorderStroke(1.dp, BrandIceBorder)
+                ) {
+                    Text(
+                        text = "$tenureMonths Months",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = BrandRoyalBlue
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Executive Summary Metric Strip
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Principal", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(principal.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald600)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Total Interest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(totalInterest.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinAmber)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Total Payable", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(totalPayment.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Table Header (Fixed)
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Mo", modifier = Modifier.weight(0.7f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                    Text("Principal", modifier = Modifier.weight(1.3f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
+                    Text("Interest", modifier = Modifier.weight(1.2f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
+                    Text("Balance", modifier = Modifier.weight(1.4f), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // Full Scrollable Schedule
+            androidx.compose.foundation.lazy.LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                items(amortizationRows.size, key = { amortizationRows[it].month }) { idx ->
+                    val row = amortizationRows[idx]
+                    val isEven = idx % 2 == 0
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (isEven) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f) else Color.Transparent,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 7.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = BrandIceBlue,
+                                border = BorderStroke(0.5.dp, BrandIceBorder)
+                            ) {
+                                Text(
+                                    text = "#${row.month}",
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = BrandRoyalBlue,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            Text(
+                                text = row.principalPaid.toInrString(),
+                                modifier = Modifier.weight(1.3f),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Emerald600,
+                                textAlign = TextAlign.End
+                            )
+                            Text(
+                                text = row.interestPaid.toInrString(),
+                                modifier = Modifier.weight(1.2f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = GoldCoinAmber,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = TextAlign.End
+                            )
+                            Text(
+                                text = row.remainingBalance.toInrString(),
+                                modifier = Modifier.weight(1.4f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.End
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Button(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Close Schedule", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

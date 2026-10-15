@@ -296,10 +296,10 @@ fun UserPickerDropdown(
                                 Text(
                                     text = when (role) {
                                         "ALL" -> "All Members"
-                                        "LENDER" -> "💼 Lenders"
-                                        "BORROWER" -> "🤝 Borrowers"
-                                        "AGENT" -> "🕵️ Agents"
-                                        "ADMIN" -> "👑 Admins"
+                                        "LENDER" -> "Lenders"
+                                        "BORROWER" -> "Borrowers"
+                                        "AGENT" -> "Agents"
+                                        "ADMIN" -> "Admins"
                                         else -> role
                                     },
                                     fontSize = 10.5.sp,

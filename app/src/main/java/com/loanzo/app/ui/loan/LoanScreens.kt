@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -194,7 +195,7 @@ fun CreateLoanScreen(
 
             // 1. DYNAMIC LIVE CALCULATOR PREVIEW CARD
             GradientCard(
-                gradientColors = listOf(Navy700, Navy900),
+                gradientColors = HolographicCardGradient,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -214,7 +215,7 @@ fun CreateLoanScreen(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text("Live Loan Simulator", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
-                                Text("Real-time repayment calculation", style = MaterialTheme.typography.labelSmall, color = Gray400)
+                                Text("Real-time repayment calculation", style = MaterialTheme.typography.labelSmall, color = BrandIceBlue.copy(alpha = 0.85f))
                             }
                         }
                         Surface(
@@ -246,7 +247,7 @@ fun CreateLoanScreen(
                                     else -> "Estimated Monthly EMI"
                                 },
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Gray300
+                                color = BrandIceBlue
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -281,12 +282,12 @@ fun CreateLoanScreen(
                                     style = Stroke(width = 16f, cap = StrokeCap.Round)
                                 )
                             }
-                            Icon(Icons.Default.PieChart, null, tint = Gray400, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.PieChart, null, tint = GoldCoinRich, modifier = Modifier.size(20.dp))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Gray700.copy(alpha = 0.5f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f), thickness = 0.8.dp)
                     Spacer(modifier = Modifier.height(14.dp))
 
                     Row(
@@ -297,7 +298,7 @@ fun CreateLoanScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(Emerald400))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Principal", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                                Text("Principal", style = MaterialTheme.typography.labelSmall, color = BrandIceBlue, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                             }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(principalNum.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Emerald400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
@@ -307,20 +308,21 @@ fun CreateLoanScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(GoldCoinRich))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Total Interest", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                                Text("Total Interest", style = MaterialTheme.typography.labelSmall, color = BrandIceBlue, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                             }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(totalInterest.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = GoldCoinAmber, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
 
                         Column(modifier = Modifier.weight(1.1f), horizontalAlignment = Alignment.End) {
-                            Text("Total Payable", style = MaterialTheme.typography.labelSmall, color = Gray400, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                            Text("Total Payable", style = MaterialTheme.typography.labelSmall, color = BrandIceBlue, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(totalPayment.toInrString(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
             }
+
 
             // 2. COUNTERPARTY & DETAILS
             GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -350,7 +352,7 @@ fun CreateLoanScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (showManualEntry) "▲ Hide manual ID input" else "✎ Or enter custom ID / phone manually",
+                        text = if (showManualEntry) "Hide manual ID input" else "Or enter custom ID / phone manually",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
@@ -389,7 +391,7 @@ fun CreateLoanScreen(
                     )
                     if (counterpartyUserId.isNotBlank()) {
                         Text(
-                            text = "Clear ✕",
+                            text = "Clear",
                             style = MaterialTheme.typography.labelSmall,
                             color = Red400,
                             fontWeight = FontWeight.Bold,
@@ -409,12 +411,12 @@ fun CreateLoanScreen(
                             label = {
                                 Text(
                                     when (rRole) {
-                                        "ADMIN" -> "👑 Admin"
-                                        "AGENT" -> "🕵️ Agent"
-                                        "MEMBER" -> "👤 Member"
+                                        "ADMIN" -> "Admin"
+                                        "AGENT" -> "Agent"
+                                        "MEMBER" -> "Member"
                                         "BORROWER" -> "Borrower"
                                         "LENDER" -> "Lender"
-                                        else -> "🌟 All Roles"
+                                        else -> "All Roles"
                                     },
                                     fontSize = 11.sp,
                                     fontWeight = if (isRoleSelected) FontWeight.Bold else FontWeight.Normal,
@@ -449,8 +451,8 @@ fun CreateLoanScreen(
                     items(filteredTransactors) { user ->
                         val isUserSelected = counterpartyUserId == user.userId || counterpartyUserId == user.username
                         val roleTag = when (user.role.uppercase()) {
-                            "ADMIN" -> "👑 Admin"
-                            "AGENT" -> "🕵️ Agent"
+                            "ADMIN" -> "Admin"
+                            "AGENT" -> "Agent"
                             "BORROWER" -> "Borrower"
                             "LENDER" -> "Lender"
                             else -> "Member"
@@ -535,7 +537,7 @@ fun CreateLoanScreen(
                                     shape = RoundedCornerShape(6.dp),
                                     color = Emerald400.copy(alpha = 0.15f)
                                 ) {
-                                    Text("✓ KYC Verified", color = Emerald400, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                    Text("KYC Verified", color = Emerald400, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                 }
                             }
                         }
@@ -557,7 +559,7 @@ fun CreateLoanScreen(
                     )
                     if (coBorrowerUserId.isNotBlank()) {
                         Text(
-                            text = "Remove ✕",
+                            text = "Remove",
                             style = MaterialTheme.typography.labelSmall,
                             color = Red400,
                             fontWeight = FontWeight.Bold,
@@ -716,19 +718,9 @@ fun CreateLoanScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Interactive Amount Slider
-                Slider(
-                    value = principalNum.toFloat().coerceIn(5000f, 1000000f),
-                    onValueChange = { amount = it.roundToInt().toString() },
-                    valueRange = 5000f..1000000f,
-                    steps = 199,
-                    colors = SliderDefaults.colors(thumbColor = Emerald400, activeTrackColor = Emerald400)
-                )
             }
 
-            // 4. INTEREST RATE & TENURE SLIDERS
+            // 4. INTEREST RATE & TENURE
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text("Interest Rate & Tenure", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -754,22 +746,37 @@ fun CreateLoanScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Interest Rate Slider
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Interest Rate Slider", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("${String.format(java.util.Locale.getDefault(), "%.1f", rateNum)}%", fontWeight = FontWeight.Bold, color = Gold500)
+                // Quick Select Interest Rate Chips
+                Text("Quick Select Rate (% p.a.)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(8.0, 10.0, 12.0, 15.0, 18.0, 24.0).forEach { r ->
+                        val isSelected = rateNum == r
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) Gold500 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            contentColor = if (isSelected) Navy900 else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { interestRate = r.toString() }
+                        ) {
+                            Text(
+                                "${r.toInt()}%",
+                                modifier = Modifier.padding(vertical = 7.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
-                Slider(
-                    value = rateNum.toFloat().coerceIn(0f, 36f),
-                    onValueChange = { interestRate = String.format(java.util.Locale.getDefault(), "%.1f", it) },
-                    valueRange = 0f..36f,
-                    steps = 71,
-                    colors = SliderDefaults.colors(thumbColor = Gold500, activeTrackColor = Gold500)
-                )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Quick Tenure Chips
                 Text("Quick Select Tenure", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -927,7 +934,7 @@ fun CreateLoanScreen(
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                         ) {
-                            Text("Wall ➔", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Community Wall", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -937,67 +944,68 @@ fun CreateLoanScreen(
 
             // 7. SUBMIT BUTTON
             val context = androidx.compose.ui.platform.LocalContext.current
-            Button(
+            var isCreatingLoan by remember { mutableStateOf(false) }
+
+            val submitBtnText = if (!isKycCompleted) {
+                "Complete KYC to ${if (isGrantMode) "Grant" else "Request"} Loan"
+            } else if (isGrantMode) {
+                if (principalNum > 0) "Grant ${principalNum.toInrString()} Loan" else "Grant Loan"
+            } else {
+                if (principalNum > 0) "Request ${principalNum.toInrString()} Loan" else "Request Loan"
+            }
+
+            com.loanzo.app.ui.components.LoanzoActionButton(
+                text = submitBtnText,
                 onClick = {
                     if (!isKycCompleted) {
                         onNavigateToKyc()
-                        return@Button
+                        return@LoanzoActionButton
                     }
                     if (principalNum <= 0.0) {
                         android.widget.Toast.makeText(context, "Please enter an amount greater than ₹0", android.widget.Toast.LENGTH_SHORT).show()
-                        return@Button
+                        return@LoanzoActionButton
                     }
-                    val effectiveCounterparty = counterpartyUserId.trim().ifBlank {
-                        registeredUsers.firstOrNull()?.userId ?: "counterparty_user"
+                    if (!isCreatingLoan) {
+                        isCreatingLoan = true
+                        hasSubmittedLoan = true
+                        val effectiveCounterparty = counterpartyUserId.trim().ifBlank {
+                            registeredUsers.firstOrNull()?.userId ?: "counterparty_user"
+                        }
+                        val effectivePurpose = purpose.trim().ifBlank { "Personal Loan" }
+
+                        val coBorrower = allCandidateUsers.find { it.userId == coBorrowerUserId }
+                        val effectiveNotes = if (coBorrower != null) {
+                            val tag = "Co-Borrower/Guarantor: ${coBorrower.name} (@${coBorrower.username}, ${coBorrower.phone})"
+                            if (notes.isNotBlank()) "$tag | $notes" else tag
+                        } else notes
+
+                        onCreateLoan(
+                            effectiveCounterparty,
+                            principalNum,
+                            effectivePurpose,
+                            selectedLoanType,
+                            rateNum,
+                            selectedInterestModel,
+                            tenureNum,
+                            selectedFrequency,
+                            effectiveNotes,
+                            penaltyRate.toDoubleOrNull() ?: 2.0,
+                            selectedPenaltyModel,
+                            penaltyGraceDays.toIntOrNull() ?: 3
+                        )
                     }
-                    val effectivePurpose = purpose.trim().ifBlank { "Personal Loan" }
-
-                    val coBorrower = allCandidateUsers.find { it.userId == coBorrowerUserId }
-                    val effectiveNotes = if (coBorrower != null) {
-                        val tag = "Co-Borrower/Guarantor: ${coBorrower.name} (@${coBorrower.username}, ${coBorrower.phone})"
-                        if (notes.isNotBlank()) "$tag | $notes" else tag
-                    } else notes
-
-                    hasSubmittedLoan = true
-                    onCreateLoan(
-                        effectiveCounterparty,
-                        principalNum,
-                        effectivePurpose,
-                        selectedLoanType,
-                        rateNum,
-                        selectedInterestModel,
-                        tenureNum,
-                        selectedFrequency,
-                        effectiveNotes,
-                        penaltyRate.toDoubleOrNull() ?: 2.0,
-                        selectedPenaltyModel,
-                        penaltyGraceDays.toIntOrNull() ?: 3
-                    )
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
+                isLoading = isCreatingLoan,
+                loadingText = if (isGrantMode) "Granting Loan Contract..." else "Creating Loan Request...",
+                enabled = !isCreatingLoan,
+                icon = if (!isKycCompleted) Icons.Default.Lock else (if (isGrantMode) Icons.Default.Upload else Icons.Default.Send),
+                containerColor = if (!isKycCompleted) Red400 else (if (isGrantMode) Gold500 else Emerald400),
+                contentColor = if (!isKycCompleted) Color.White else Navy900,
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!isKycCompleted) Red400 else (if (isGrantMode) Gold500 else Emerald400),
-                    contentColor = if (!isKycCompleted) Color.White else Navy900
-                ),
-                enabled = true
-            ) {
-                Icon(if (!isKycCompleted) Icons.Default.Lock else (if (isGrantMode) Icons.Default.Upload else Icons.Default.Send), null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    if (!isKycCompleted) {
-                        "Complete KYC to ${if (isGrantMode) "Grant" else "Request"} Loan"
-                    } else if (isGrantMode) {
-                        if (principalNum > 0) "Grant ${principalNum.toInrString()} Loan" else "Grant Loan"
-                    } else {
-                        if (principalNum > 0) "Request ${principalNum.toInrString()} Loan" else "Request Loan"
-                    },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            }
+                height = 56.dp,
+                fontSize = 16.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -1015,7 +1023,7 @@ fun LoanDetailScreen(
     onAddPledge: () -> Unit,
     onViewAuditTrail: () -> Unit,
     onSignAgreement: (String) -> Unit,
-    onNavigateToChat: () -> Unit,
+    onNavigateToChat: (String?) -> Unit,
     onNavigateToDocument: () -> Unit,
     onNavigateToGuarantors: () -> Unit = {},
     onSendReminder: () -> Unit = {},
@@ -1032,6 +1040,7 @@ fun LoanDetailScreen(
     onRejectDisbursement: (String) -> Unit = {},
     onDownloadNocCertificate: () -> Unit = {},
     onExportAgreementPdf: () -> Unit = {},
+    onExportPromissoryNotePdf: () -> Unit = {},
     onPublishToWall: () -> Unit = {},
     onRequestFieldVerification: () -> Unit = {}
 ) {
@@ -1039,6 +1048,8 @@ fun LoanDetailScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    var selectedDashboardTab by remember { mutableIntStateOf(0) }
+    val dashboardTabs = remember { listOf("Overview", "Schedule", "Legal & Vault", "Audit") }
     var showAllSchedule by remember { mutableStateOf(false) }
     var showAllDisbursements by remember { mutableStateOf(false) }
     var showExportSheet by remember { mutableStateOf(false) }
@@ -1047,6 +1058,13 @@ fun LoanDetailScreen(
     var showQrDialog by remember { mutableStateOf(false) }
     var showDisburseDialog by remember { mutableStateOf(false) }
     var utrText by remember { mutableStateOf("") }
+    var isActionProcessing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading) {
+            isActionProcessing = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -1063,7 +1081,7 @@ fun LoanDetailScreen(
                         loan?.let { l ->
                             val emi = calculateEMI(l.sanctionedAmount, l.interestRate, l.tenureMonths)
                             val shareText = buildString {
-                                appendLine("🤝 Loanzo Direct Loan Summary")
+                                appendLine("Loanzo Direct Loan Summary")
                                 appendLine("• Loan ID: #${l.loanId.take(8).uppercase()}")
                                 appendLine("• Principal: ${l.sanctionedAmount.toInrString()}")
                                 appendLine("• Outstanding: ${l.outstandingAmount.toInrString()}")
@@ -1072,7 +1090,7 @@ fun LoanDetailScreen(
                                 appendLine("• Purpose: ${l.purpose}")
                                 appendLine("• Tenure: ${l.tenureMonths} Months")
                                 appendLine("• Repayment: ${l.repaymentFrequency} (EMI: ${emi.toInrString()})")
-                                appendLine("\n🛡️ Track, repay & view legally binding contracts securely on Loanzo.")
+                                appendLine("\nTrack, repay & view legally binding contracts securely on Loanzo.")
                             }
                             val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                 putExtra(android.content.Intent.EXTRA_SUBJECT, "Loanzo Loan Details - #${l.loanId.take(8).uppercase()}")
@@ -1113,13 +1131,21 @@ fun LoanDetailScreen(
             return@Scaffold
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        val canBroadcastToWall = loan.status == "REQUESTED" && loan.lenderId.isBlank()
+
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (state.isLoading || isActionProcessing) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+                    color = Gold500
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // 0A. PROPOSAL REVIEW GATE (DRAFT / BID_ACCEPTED)
             if (loan.status == "DRAFT" || loan.status == "PROPOSED" || loan.status == "BID_ACCEPTED") {
                 item {
@@ -1211,7 +1237,7 @@ fun LoanDetailScreen(
                             ) {
                                 Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("View Valuer Progress / Handshake PIN ➔", fontWeight = FontWeight.Bold)
+                                Text("View Valuer Progress / Handshake PIN", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -1219,41 +1245,81 @@ fun LoanDetailScreen(
             }
 
             // 0A-3. CONTRACT SIGNING GATE
-            if (loan.status == "CONTRACT_SIGNING" || (!loan.isAgreementSigned && loan.status !in listOf("CLOSED", "COMPLETED", "DRAFT", "PROPOSED", "BID_ACCEPTED", "COLLATERAL_VALUATION"))) {
+            val isContractFullySigned = loan.isAgreementSigned || (loan.borrowerSignedAt != null && loan.lenderSignedAt != null)
+            val hasUserSignedAgreement = if (isLender) loan.lenderSignedAt != null else loan.borrowerSignedAt != null
+
+            if (!isContractFullySigned && (loan.status == "CONTRACT_SIGNING" || (!loan.isAgreementSigned && loan.status !in listOf("CLOSED", "COMPLETED", "DRAFT", "PROPOSED", "BID_ACCEPTED", "COLLATERAL_VALUATION")))) {
                 item {
                     Card(
                         shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = Blue400.copy(alpha = 0.10f)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Blue400.copy(alpha = 0.45f)),
+                        colors = CardDefaults.cardColors(containerColor = if (hasUserSignedAgreement) Emerald400.copy(alpha = 0.10f) else Blue400.copy(alpha = 0.10f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, if (hasUserSignedAgreement) Emerald400.copy(alpha = 0.45f) else Blue400.copy(alpha = 0.45f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Draw, contentDescription = null, tint = Blue400, modifier = Modifier.size(24.dp))
+                                Icon(
+                                    imageVector = if (hasUserSignedAgreement) Icons.Default.CheckCircle else Icons.Default.Draw,
+                                    contentDescription = null,
+                                    tint = if (hasUserSignedAgreement) Emerald400 else Blue400,
+                                    modifier = Modifier.size(24.dp)
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "Stage 5: DigiLocker & Biometric e-Sign Required",
+                                    if (hasUserSignedAgreement) "Stage 5: You Have Digitally Signed" else "Stage 5: DigiLocker & Biometric e-Sign Required",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Spacer(modifier = Modifier.height(6.dp))
+                            val otherParty = if (isLender) "borrower" else "lender"
                             Text(
-                                "Both parties must execute the digital e-signature and biometric selfie verification to generate the legally binding contract.",
+                                if (hasUserSignedAgreement)
+                                    "Your digital signature and biometric verification are recorded. Awaiting counter-signature from the $otherParty to finalize the legal contract."
+                                else
+                                    "Both parties must execute the digital e-signature and biometric selfie verification to generate the legally binding contract.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = { onSignAgreement(loan.loanId) },
-                                colors = ButtonDefaults.buttonColors(containerColor = Blue400, contentColor = Color.White),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth().height(46.dp)
-                            ) {
-                                Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Sign Digital Agreement Now ➔", fontWeight = FontWeight.Bold)
+                            if (hasUserSignedAgreement) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { onSignAgreement(loan.loanId) },
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("View Contract", fontWeight = FontWeight.Bold)
+                                    }
+                                    Button(
+                                        onClick = onExportAgreementPdf,
+                                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Export PDF", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            } else {
+                                Button(
+                                    onClick = { onSignAgreement(loan.loanId) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Blue400, contentColor = Color.White),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                ) {
+                                    Icon(Icons.Default.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Sign Digital Agreement Now", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                }
                             }
                         }
                     }
@@ -1283,7 +1349,7 @@ fun LoanDetailScreen(
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 if (isLender) "Digital e-Sign completed. Transfer ${loan.sanctionedAmount.toInrString()} via UPI to disburse tranche and initialize active servicing."
-                                else "Digital e-Sign completed. Awaiting capital provider (${loan.lenderId.take(8)}) to transfer ${loan.sanctionedAmount.toInrString()} via UPI.",
+                                else "Digital e-Sign completed. Awaiting capital provider to transfer ${loan.sanctionedAmount.toInrString()} via UPI escrow.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1293,11 +1359,12 @@ fun LoanDetailScreen(
                                     onClick = { showDisburseDialog = true },
                                     colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
                                     shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                 ) {
                                     Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Disburse ${loan.sanctionedAmount.toInrString()} via UPI ➔", fontWeight = FontWeight.Bold)
+                                    Text("Disburse ${loan.sanctionedAmount.toInrString()} via UPI", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                                 }
                             } else {
                                 Surface(
@@ -1340,7 +1407,7 @@ fun LoanDetailScreen(
                                 Icon(Icons.Default.Warning, contentDescription = null, tint = Red400, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "⚠️ Status: DELINQUENT (Grace Period Expired)",
+                                    "Status: DELINQUENT (Grace Period Expired)",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Red400
@@ -1357,11 +1424,12 @@ fun LoanDetailScreen(
                                 onClick = onMakeRepayment,
                                 colors = ButtonDefaults.buttonColors(containerColor = Red500, contentColor = Color.White),
                                 shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth().height(46.dp)
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                             ) {
                                 Icon(Icons.Default.Payment, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Clear Overdue EMI Now ➔", fontWeight = FontWeight.Bold)
+                                Text("Clear Overdue EMI Now", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                             }
                         }
                     }
@@ -1382,7 +1450,7 @@ fun LoanDetailScreen(
                                 Icon(Icons.Default.Gavel, contentDescription = null, tint = Red400, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "⚖️ Formal Legal Dispute & Arbitration",
+                                    "Formal Legal Dispute & Arbitration",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -1425,11 +1493,12 @@ fun LoanDetailScreen(
                                             },
                                             colors = ButtonDefaults.buttonColors(containerColor = Blue500, contentColor = Color.White),
                                             shape = RoundedCornerShape(8.dp),
-                                            modifier = Modifier.fillMaxWidth().height(42.dp)
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                                         ) {
                                             Icon(Icons.Default.VideoCall, contentDescription = null, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Join Virtual Tribunal (Google Meet) ➔", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            Text("Join Virtual Tribunal (Google Meet)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                         }
                                     }
                                 }
@@ -1466,7 +1535,7 @@ fun LoanDetailScreen(
                                 Icon(Icons.Default.Verified, contentDescription = null, tint = Gold500, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "🎉 Loan Fully Settled & Cleared (COMPLETED)",
+                                    "Loan Fully Settled & Cleared (COMPLETED)",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -1480,27 +1549,25 @@ fun LoanDetailScreen(
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
-                                onClick = onDownloadNocCertificate,
+                                onClick = {
+                                    if (!isActionProcessing && !state.isLoading) {
+                                        isActionProcessing = true
+                                        android.widget.Toast.makeText(context, "Generating NOC Certificate...", android.widget.Toast.LENGTH_SHORT).show()
+                                        onDownloadNocCertificate()
+                                    }
+                                },
+                                enabled = !isActionProcessing && !state.isLoading,
                                 colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
                                 shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth().height(46.dp)
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Download Tamper-Proof Digital NOC (PDF) 📜", fontWeight = FontWeight.Bold)
+                                Text("Download Tamper-Proof Digital NOC (PDF)", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                             }
                         }
                     }
-                }
-            }
-
-            // 0D. DOORSTEP FIELD VERIFICATION TRACKER (LIVE OFFICER STATUS & HANDSHAKE PIN)
-            item {
-                val activeVisit = state.activeFieldVisit
-                if (activeVisit != null) {
-                    FieldInspectionTrackerCard(visit = activeVisit)
-                } else if (loan.status != "CLOSED" && loan.status != "REJECTED") {
-                    FieldInspectionRequestCard(onRequest = onRequestFieldVerification)
                 }
             }
 
@@ -1509,7 +1576,7 @@ fun LoanDetailScreen(
             if (nextDue != null) {
                 item {
                     val isOverdue = state.daysUntilNextDue < 0
-                    val gradientColors = if (isOverdue) listOf(Red500, Red400) else listOf(Navy700, Navy900)
+                    val gradientColors = if (isOverdue) listOf(Red500, Red400) else HolographicCardGradient
                     GradientCard(gradientColors = gradientColors) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1524,7 +1591,7 @@ fun LoanDetailScreen(
                                 Text(
                                     if (isOverdue) "Payment Overdue" else "Next Payment Due",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = if (isOverdue) Color.White.copy(alpha = 0.8f) else Gray300
+                                    color = if (isOverdue) Color.White.copy(alpha = 0.8f) else BrandIceBlue
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -1574,7 +1641,7 @@ fun LoanDetailScreen(
                 val repaidRatio = if (loan.sanctionedAmount > 0) (state.totalPaid / loan.sanctionedAmount).toFloat() else 0f
                 val progressPercent = (repaidRatio * 100).toInt().coerceIn(0, 100)
 
-                GradientCard(gradientColors = listOf(Navy700, Navy900)) {
+                GradientCard(gradientColors = HolographicCardGradient) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1621,7 +1688,8 @@ fun LoanDetailScreen(
                             }
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(stringResource(R.string.sanctioned), style = MaterialTheme.typography.labelSmall, color = Gray400)
+                            Text(stringResource(R.string.sanctioned), style = MaterialTheme.typography.labelSmall, color = BrandIceBlue.copy(alpha = 0.85f))
+
                             Text(
                                 loan.sanctionedAmount.toInrString(),
                                 style = MaterialTheme.typography.titleLarge,
@@ -1679,6 +1747,141 @@ fun LoanDetailScreen(
                     }
                 }
             }
+
+            // 2. TACTILE SECTION TABS (Capsule Tab Selector)
+            item {
+                SegmentedCapsuleTab(
+                    tabs = dashboardTabs,
+                    selectedIndex = selectedDashboardTab,
+                    onTabSelected = { selectedDashboardTab = it },
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+
+            // ─── TAB 0: OVERVIEW ───
+            if (selectedDashboardTab == 0) {
+                // Immediate Action Buttons
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Button(
+                                onClick = onRequestTranche,
+                                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                enabled = loan.status in listOf("ACTIVE", "ACTIVE_SERVICING", "RESTRUCTURED", "DELINQUENT")
+                            ) {
+                                Icon(Icons.Default.Send, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.tranche), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                            }
+                            OutlinedButton(
+                                onClick = onMakeRepayment,
+                                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = loan.status in listOf("ACTIVE", "ACTIVE_SERVICING", "RESTRUCTURED", "DELINQUENT")
+                            ) {
+                                Icon(Icons.Default.Payment, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.repay), textAlign = TextAlign.Center)
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = onAddPledge,
+                                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Security, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(stringResource(R.string.pledge), textAlign = TextAlign.Center)
+                            }
+                            OutlinedButton(
+                                onClick = { onNavigateToChat(if (isLender) loan.borrowerId else loan.lenderId) },
+                                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Chat, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(if (isLender) "Chat Borrower" else "Chat Lender", textAlign = TextAlign.Center, maxLines = 1)
+                            }
+                        }
+
+                        if (canBroadcastToWall) {
+                            OutlinedButton(
+                                onClick = {
+                                    if (!isActionProcessing && !state.isLoading) {
+                                        isActionProcessing = true
+                                        android.widget.Toast.makeText(context, "Broadcasting loan to community wall...", android.widget.Toast.LENGTH_SHORT).show()
+                                        onPublishToWall()
+                                    }
+                                },
+                                enabled = !isActionProcessing && !state.isLoading,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500)
+                            ) {
+                                if (isActionProcessing) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Gold500)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Broadcasting...", fontWeight = FontWeight.Bold)
+                                } else {
+                                    Icon(Icons.Default.Campaign, null, modifier = Modifier.size(16.dp), tint = Gold500)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Broadcast to Community Wall", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                                }
+                            }
+                        }
+
+                        if (isLender) {
+                            OutlinedButton(
+                                onClick = { showRestructureDialog = true },
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500)
+                            ) {
+                                Icon(Icons.Default.Tune, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Restructure Loan / Moratorium", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                            }
+                        }
+                    }
+                }
+
+                // Loan Terms Summary
+                item {
+                    GlassCard {
+                        Text(stringResource(R.string.loan_terms), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        LoanTermRow("Type", loan.loanType)
+                        LoanTermRow("Interest", "${loan.interestRate}% (${loan.interestModel})")
+                        LoanTermRow("Tenure", "${loan.tenureMonths} months" + if (loan.originalTenureMonths > 0) " (Orig: ${loan.originalTenureMonths}m)" else "")
+                        if (loan.moratoriumMonths > 0) {
+                            LoanTermRow("Moratorium", "${loan.moratoriumMonths} months")
+                        }
+                        LoanTermRow("Repayment", loan.repaymentFrequency)
+                        LoanTermRow("Created", loan.createdAt.toDateString())
+                        if (loan.penaltyModel != "NONE") {
+                            LoanTermRow("Penalty", "${loan.penaltyRate}%/mo (${loan.penaltyModel}, ${loan.penaltyGraceDays}d grace)")
+                        }
+                        if (loan.notes.isNotBlank()) {
+                            LoanTermRow("Notes", loan.notes)
+                        }
+                    }
+                }
 
             // 2.1. PREPAYMENT & FORECLOSURE SIMULATOR (Jupiter & Cred inspired)
             if (loan.outstandingAmount > 0) {
@@ -1819,6 +2022,26 @@ fun LoanDetailScreen(
                     }
                 }
             }
+            } // End of Tab 0: Overview
+
+            // ─── TAB 1: SCHEDULE & REPAYMENTS ───
+            if (selectedDashboardTab == 1) {
+                if (state.amortizationSchedule.isEmpty() && state.disbursements.isEmpty() && state.repayments.isEmpty()) {
+                    item {
+                        GlassCard {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(Icons.Default.Schedule, contentDescription = null, tint = Gray400, modifier = Modifier.size(40.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("No Schedule Generated Yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Repayment schedule and disbursement tranches will appear once the loan is fully disbursed.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                            }
+                        }
+                    }
+                }
 
             //  4. REPAYMENT SCHEDULE / AMORTIZATION TIMELINE 
             if (state.amortizationSchedule.isNotEmpty()) {
@@ -2022,6 +2245,10 @@ fun LoanDetailScreen(
                     }
                 }
             }
+            } // End of Tab 1: Schedule & Repayments
+
+            // ─── TAB 2: LEGAL & VAULT ───
+            if (selectedDashboardTab == 2) {
 
             //  7. COLLATERAL & PLEDGES OVERVIEW 
             item {
@@ -2264,150 +2491,144 @@ fun LoanDetailScreen(
                         accentColor = Gold500,
                         onClick = onNavigateToDocument
                     )
-                    DocumentVaultItem(
-                        icon = Icons.Default.Campaign,
-                        title = "Broadcast to Community Wall",
-                        subtitle = "Publish loan to peer marketplace for backers & co-lenders",
-                        accentColor = Gold500,
-                        onClick = onPublishToWall
-                    )
-                }
-            }
-
-            //  9. LOAN TERMS 
-            item {
-                GlassCard {
-                    Text(stringResource(R.string.loan_terms), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    LoanTermRow("Type", loan.loanType)
-                    LoanTermRow("Interest", "${loan.interestRate}% (${loan.interestModel})")
-                    LoanTermRow("Tenure", "${loan.tenureMonths} months" + if (loan.originalTenureMonths > 0) " (Orig: ${loan.originalTenureMonths}m)" else "")
-                    if (loan.moratoriumMonths > 0) {
-                        LoanTermRow("Moratorium", "${loan.moratoriumMonths} months")
-                    }
-                    LoanTermRow("Repayment", loan.repaymentFrequency)
-                    LoanTermRow("Created", loan.createdAt.toDateString())
-                    if (loan.penaltyModel != "NONE") {
-                        LoanTermRow("Penalty", "${loan.penaltyRate}%/mo (${loan.penaltyModel}, ${loan.penaltyGraceDays}d grace)")
-                    }
-                    if (loan.notes.isNotBlank()) {
-                        LoanTermRow("Notes", loan.notes)
+                    if (canBroadcastToWall) {
+                        DocumentVaultItem(
+                            icon = Icons.Default.Campaign,
+                            title = "Broadcast to Community Wall",
+                            subtitle = "Publish loan to peer marketplace for backers & co-lenders",
+                            accentColor = Gold500,
+                            onClick = {
+                                if (!isActionProcessing && !state.isLoading) {
+                                    isActionProcessing = true
+                                    android.widget.Toast.makeText(context, "Broadcasting loan to community wall...", android.widget.Toast.LENGTH_SHORT).show()
+                                    onPublishToWall()
+                                }
+                            }
+                        )
                     }
                 }
             }
+            } // End of Tab 2: Legal & Vault
 
-            //  10. ACTION BUTTONS 
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = onRequestTranche,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
-                        enabled = loan.status in listOf("ACTIVE", "ACTIVE_SERVICING", "RESTRUCTURED", "DELINQUENT")
-                    ) {
-                        Icon(Icons.Default.Send, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.tranche), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                    }
-                    OutlinedButton(
-                        onClick = onMakeRepayment,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = loan.status in listOf("ACTIVE", "ACTIVE_SERVICING", "RESTRUCTURED", "DELINQUENT")
-                    ) {
-                        Icon(Icons.Default.Payment, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.repay), maxLines = 1, softWrap = false)
-                    }
+            // ─── TAB 3: AUDIT TRAIL ───
+            if (selectedDashboardTab == 3) {
+                item {
+                    SectionHeader(title = " Cryptographic Audit Trail")
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onAddPledge,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Security, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.pledge), maxLines = 1, softWrap = false)
-                    }
-                    OutlinedButton(
-                        onClick = onViewAuditTrail,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.History, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.audit), maxLines = 1, softWrap = false)
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onNavigateToChat,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Chat, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isLender) "Chat with Borrower" else "Chat with Lender", maxLines = 1, softWrap = false)
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onPublishToWall,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500)
-                    ) {
-                        Icon(Icons.Default.Campaign, null, modifier = Modifier.size(16.dp), tint = Gold500)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Broadcast Loan to Community Wall ➔", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                    }
-                }
-                if (isLender) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { showRestructureDialog = true },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold500)
-                        ) {
-                            Icon(Icons.Default.Tune, null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Restructure Loan / Moratorium", fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                item {
+                    GlassCard {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Emerald400.copy(alpha = 0.15f),
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.VerifiedUser,
+                                            contentDescription = null,
+                                            tint = Emerald400,
+                                            modifier = Modifier.padding(8.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            "Tamper-Proof Ledger",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            "SHA-256 Chained Event Logs",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Emerald400
+                                        )
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Emerald400.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        "ACTIVE LEDGER",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Emerald400
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                "Every lifecycle event—including proposal acceptance, digital agreement signatures, tranche disbursement proofs, and repayment receipts—is permanently hashed and chained to guarantee non-repudiation and regulatory compliance under the Indian IT Act 2000 Section 65B.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 18.sp
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Loan Ref ID", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(loan.loanId.take(12), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Agreement Status", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    if (loan.isAgreementSigned) "Signed & Verified (IT Act 65B)" else "Pending Execution",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (loan.isAgreementSigned) Emerald400 else Gray400
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Status", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(loan.status, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = Gold500)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = onViewAuditTrail,
+                                colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            ) {
+                                Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("View Full Cryptographic Audit Logs", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
-            }
+            } // End of Tab 3: Audit Trail
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
+    }
 
         if (showExportSheet) {
             ExportReportBottomSheet(
                 onDismiss = { showExportSheet = false },
                 onExportLoanSummaryPdf = onExportLoanSummaryPdf,
                 onExportInterestCertPdf = onExportInterestCertPdf,
-                onExportRepaymentsCsv = onExportRepaymentsCsv
+                onExportRepaymentsCsv = onExportRepaymentsCsv,
+                onExportPitchDeckPdf = onExportPitchDeckPdf,
+                onExportPromissoryNotePdf = onExportPromissoryNotePdf
             )
         }
 
@@ -2483,15 +2704,21 @@ fun LoanDetailScreen(
                     }
                 },
                 confirmButton = {
-                    Button(
+                    var isDisbursing by remember { mutableStateOf(false) }
+                    com.loanzo.app.ui.components.LoanzoActionButton(
+                        text = "Confirm Disbursal",
                         onClick = {
-                            onDisburseLoan(loan.sanctionedAmount, utrText.ifBlank { "MANUAL_UPI_DISBURSE" })
-                            showDisburseDialog = false
+                            if (!isDisbursing) {
+                                isDisbursing = true
+                                onDisburseLoan(loan.sanctionedAmount, utrText.ifBlank { "MANUAL_UPI_DISBURSE" })
+                                showDisburseDialog = false
+                            }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500)
-                    ) {
-                        Text("Confirm Disbursal")
-                    }
+                        isLoading = isDisbursing,
+                        loadingText = "Disbursing...",
+                        enabled = !isDisbursing,
+                        containerColor = Emerald500
+                    )
                 },
                 dismissButton = {
                     TextButton(onClick = { showDisburseDialog = false }) {
@@ -2722,10 +2949,10 @@ fun FieldInspectionTrackerCard(
                 ) {
                     Text(
                         text = when (stageStatus) {
-                            "COMPLETED" -> "✅ Completed"
-                            "ARRIVED" -> "📍 At Doorstep"
-                            "EN_ROUTE" -> "🛵 En Route (${visit.distanceKm ?: 3.5} km)"
-                            else -> "📋 Dispatched"
+                            "COMPLETED" -> "Completed"
+                            "ARRIVED" -> "At Doorstep"
+                            "EN_ROUTE" -> "En Route (${visit.distanceKm ?: 3.5} km)"
+                            else -> "Dispatched"
                         },
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -2855,7 +3082,7 @@ fun FieldInspectionTrackerCard(
                             Icon(Icons.Default.VpnKey, null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "DOORSTEP HANDSHAKE SECURITY PIN",
+                                text = "DOORSTEP VERIFICATION OTP",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFFB45309)
@@ -2883,7 +3110,7 @@ fun FieldInspectionTrackerCard(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "🔒 Share this 4-digit PIN ONLY in person with your field officer when they arrive. They will enter it into their device to verify physical presence.",
+                            text = "Share this 4-digit OTP ONLY in person with your field officer when they arrive. They will enter it into their device to verify physical presence.",
                             fontSize = 11.sp,
                             color = Color(0xFF64748B),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -3027,11 +3254,12 @@ fun FieldInspectionRequestCard(
                 onClick = onRequest,
                 colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().height(46.dp)
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) {
                 Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Request Doorstep Verification Officer ➔", fontWeight = FontWeight.Bold)
+                Text("Request Doorstep Verification Officer", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             }
         }
     }

@@ -60,41 +60,43 @@ fun GlassCard(
 }
 
 /**
- * Gradient header card for dashboard summaries (Obsidian Dark Hero Card).
+ * Holographic Royal Cobalt Gradient Card for dashboard summaries and hero displays.
+ * Employs vibrant royal cobalt-to-deep navy linear grading with amber hairline border and cobalt shadow.
  */
 @Composable
 fun GradientCard(
     modifier: Modifier = Modifier,
-    gradientColors: List<Color> = listOf(Navy700, Navy900),
+    gradientColors: List<Color> = HolographicCardGradient,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         modifier = modifier
             .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(22.dp),
-                ambientColor = Color(0x33000000),
-                spotColor = Color(0x400B0F19)
+                elevation = 8.dp,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = Color(0x181D4ED8),
+                spotColor = Color(0x381D4ED8)
             ),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, GoldCoinAmber.copy(alpha = 0.5f)),
+        colors = CardDefaults.cardColors(containerColor = BrandRoyalBlue)
     ) {
         Column(
             modifier = Modifier
                 .background(Brush.linearGradient(gradientColors))
-                .padding(22.dp),
+                .padding(20.dp),
             content = content
         )
     }
 }
 
 /**
- * Executive Obsidian Dark Hero Box (Signature top box matching Live Loan Simulator).
+ * Executive Holographic Hero Box (Signature top box matching Official Identity and Portfolio Cockpit).
  */
 @Composable
 fun ExecutiveHeroCard(
     modifier: Modifier = Modifier,
-    gradientColors: List<Color> = listOf(Navy700, Navy900),
+    gradientColors: List<Color> = HolographicCardGradient,
     content: @Composable ColumnScope.() -> Unit
 ) {
     GradientCard(
@@ -103,6 +105,7 @@ fun ExecutiveHeroCard(
         content = content
     )
 }
+
 
 /**
  * Golden Coin Category FilterChip colors (Cream background, Gold border, Deep Amber text when selected).

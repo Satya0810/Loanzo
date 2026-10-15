@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loanzo | GeeksforGeeks UML Activity Diagram & System Flow</title>
+  <meta name="description" content="Formal GeeksforGeeks (GFG) compliant UML Activity Diagram with swimlanes, fork/join parallel threads, decision diamonds, and plain-English glossary for Loanzo P2P Lending.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0A0E1A;
+      --bg-panel: rgba(16, 23, 42, 0.85);
+      --bg-card: rgba(30, 41, 59, 0.7);
+      --border: rgba(255, 255, 255, 0.1);
+      --primary: #4F46E5;
+      --primary-glow: rgba(79, 70, 229, 0.25);
+      --accent-teal: #0D9488;
+      --accent-emerald: #10B981;
+      --accent-amber: #D97706;
+      --accent-rose: #E11D48;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --font: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(13, 148, 136, 0.15) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: rgba(10, 14, 26, 0.9);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .badge-gfg {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .title-area h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      color: #FFFFFF;
+    }
+
+    .title-area p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .actions-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #FFF;
+      box-shadow: 0 0 16px var(--primary-glow);
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 75px);
+      overflow: hidden;
+    }
+
+    .canvas-panel {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #060911;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-toolbar {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 20;
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .tool-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tool-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+    }
+
+    .viewport {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .viewport:active {
+      cursor: grabbing;
+    }
+
+    .diagram-img {
+      max-width: 95%;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transform-origin: center center;
+    }
+
+    .mermaid-container {
+      display: none;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      padding: 40px;
+      background: #FFFFFF;
+      color: #0F172A;
+      justify-content: center;
+    }
+
+    .side-panel {
+      width: 440px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-header h2 {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-box {
+      margin-top: 12px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px 9px 34px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .glossary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .glossary-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+    }
+
+    .glossary-term {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .term-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: #38BDF8;
+    }
+
+    .term-tag {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .term-full {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .term-desc {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    .swimlane-legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 8px 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+    }
+
+    .dot-borrower { background: #4F46E5; }
+    .dot-core { background: #0D9488; }
+    .dot-agent { background: #D97706; }
+    .dot-lender { background: #10B981; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand-wrap">
+      <div class="title-area">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h1>Loanzo Protocol | UML Activity Architecture</h1>
+          <span class="badge-gfg">GFG Standard</span>
+        </div>
+        <p>Complete End-to-End P2P Micro-Lending Journey with 4 Swimlanes & Synchronized Fork/Join</p>
+      </div>
+    </div>
+
+    <div class="actions-bar">
+      <button class="tab-btn active" id="tabHiRes" onclick="switchView('hires')">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        300 DPI Official Diagram
+      </button>
+      <button class="tab-btn" id="tabMermaid" onclick="switchView('mermaid')">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        Interactive Mermaid
+      </button>
+      <a href="activity_diagram_gfg.png" download="Loanzo_UML_Activity_Diagram_GFG.png" class="tab-btn" style="text-decoration:none;">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Export PNG
+      </a>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <div class="canvas-panel">
+      <div class="canvas-toolbar" id="zoomToolbar">
+        <button class="tool-btn" onclick="adjustZoom(0.15)">Zoom In (+)</button>
+        <button class="tool-btn" onclick="adjustZoom(-0.15)">Zoom Out (-)</button>
+        <button class="tool-btn" onclick="resetZoom()">Reset 100%</button>
+      </div>
+
+      <div class="viewport" id="viewport">
+        <img src="activity_diagram_gfg.png" alt="Loanzo GFG UML Activity Diagram" class="diagram-img" id="diagramImg">
+        <div class="mermaid-container" id="mermaidContainer">
+          <div class="mermaid">
+flowchart TD
+    subgraph Borrower_Lane ["1. Borrower (Loan Applicant)"]
+        StartNode((●)) --> A1["1. Mobile & OTP Login"]
+        A1 --> A2["Simulate Loan & EMI Schedule"]
+        A2 --> A3["Submit Loan Request"]
+        A3 --> D1{"Collateral<br/>Pledged?"}
+        A6["Dual OTP e-Sign Agreement"]
+        A8["Pay Monthly EMI via UPI"]
+        A11["Receive Digital NOC & Collateral"]
+        FinalNode(((◉)))
+    end
+
+    subgraph Core_Lane ["2. Loanzo App & Core Engine (AI & Protocol)"]
+        B1["Verify Identity (Aadhaar & PAN)"]
+        B2["₹1 Test Bank Verification"]
+        B3["Calculate Trust Score (0-1000)"]
+        Fork1[("━━━━ FORK: Parallel Verification ━━━━")]
+        Join1[("━━━━ JOIN: Both Checks Passed ━━━━")]
+        D2{"Match Type?"}
+        B4["Publish to Peer Marketplace"]
+        B5["Generate Promissory Note (Sec 4 NI Act)"]
+        D3{"On-Time<br/>Payment?"}
+        B6["3-Day Grace & Penalty Notice"]
+        B7["Distribute Funds to Lender Account"]
+        D4{"All EMIs<br/>Paid?"}
+        B8["Generate Digital NOC Certificate"]
+        B9["Civil Mediation & Legal Notice"]
+        FailNode((⊗))
+    end
+
+    subgraph Agent_Lane ["3. Field Agent / Valuer (Doorstep Assayer)"]
+        C1["Doorstep Gold / Asset Assay & Vault Deposit"]
+        C2["Release Asset to Borrower"]
+    end
+
+    subgraph Lender_Lane ["4. Lender / Investor (Peer Capital Provider)"]
+        D5["Browse Marketplace & Review Score"]
+        D6["Accept Offer & Lock Capital"]
+        D7["Instant UPI Disbursement"]
+    end
+
+    A1 -.-> B1
+    B1 --> B2
+    B2 --> B3
+    B3 -.-> A2
+    D1 -- "[Yes: Asset Pledged]" --> Fork1
+    D1 -- "[No: Unsecured Loan]" --> Fork1
+    Fork1 --> C1
+    Fork1 --> Join1
+    C1 --> Join1
+    Join1 --> D2
+    D2 -- "[Marketplace Deal]" --> B4
+    D2 -- "[Direct Counterparty]" --> B5
+    B4 --> D5
+    D5 --> D6
+    D6 --> B5
+    B5 --> A6
+    A6 --> D7
+    D7 --> A8
+    A8 --> D3
+    D3 -- "[Yes: On-Time]" --> B7
+    D3 -- "[No: Default]" --> B6
+    B6 --> D3
+    B7 --> D4
+    D4 -- "[No: Remaining EMIs]" --> A8
+    D4 -- "[Yes: Fully Paid]" --> B8
+    D4 -- "[Irrecoverable Default]" --> B9
+    B8 --> C2
+    C2 --> A11
+    A11 --> FinalNode
+    B9 --> FailNode
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDE PANEL: PLAIN ENGLISH GLOSSARY -->
+    <div class="side-panel">
+      <div class="panel-header">
+        <h2>
+          <span>Plain-English Glossary</span>
+        </h2>
+        <div style="margin-top:10px;">
+          <div class="swimlane-legend">
+            <div class="legend-item"><div class="legend-dot dot-borrower"></div>Borrower</div>
+            <div class="legend-item"><div class="legend-dot dot-core"></div>Loanzo Engine</div>
+            <div class="legend-item"><div class="legend-dot dot-agent"></div>Field Assayer</div>
+            <div class="legend-item"><div class="legend-dot dot-lender"></div>Peer Lender</div>
+          </div>
+        </div>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="glossarySearch" placeholder="Search terms (e.g. EMI, NOC, Fork)..." oninput="filterGlossary()">
+        </div>
+      </div>
+
+      <div class="panel-body" id="glossaryList">
+        <div class="glossary-card" data-term="emi equated monthly installment">
+          <div class="glossary-term">
+            <span class="term-name">EMI</span>
+            <span class="term-tag">FINANCE</span>
+          </div>
+          <div class="term-full">Equated Monthly Installment</div>
+          <div class="term-desc">A fixed monthly payment made by the borrower to the lender on a specified date each month until the entire loan is paid off.</div>
+        </div>
+
+        <div class="glossary-card" data-term="kyc know your customer aadhaar pan">
+          <div class="glossary-term">
+            <span class="term-name">KYC</span>
+            <span class="term-tag">SECURITY</span>
+          </div>
+          <div class="term-full">Know Your Customer</div>
+          <div class="term-desc">The legal identity verification process where a user's Aadhaar and PAN cards are verified to ensure they are a real person and prevent fraud.</div>
+        </div>
+
+        <div class="glossary-card" data-term="upi unified payments interface gpay phonepe">
+          <div class="glossary-term">
+            <span class="term-name">UPI</span>
+            <span class="term-tag">PAYMENTS</span>
+          </div>
+          <div class="term-full">Unified Payments Interface</div>
+          <div class="term-desc">India's instant real-time bank payment system (Google Pay, PhonePe, Paytm) that moves money directly between bank accounts within seconds.</div>
+        </div>
+
+        <div class="glossary-card" data-term="noc no objection certificate zero debt">
+          <div class="glossary-term">
+            <span class="term-name">NOC</span>
+            <span class="term-tag">LEGAL</span>
+          </div>
+          <div class="term-full">No Objection Certificate</div>
+          <div class="term-desc">A tamper-proof legal document generated at the end of the loan confirming that all dues are 100% paid and the borrower owes zero money.</div>
+        </div>
+
+        <div class="glossary-card" data-term="ltv loan to value ratio gold asset">
+          <div class="glossary-term">
+            <span class="term-name">LTV</span>
+            <span class="term-tag">COLLATERAL</span>
+          </div>
+          <div class="term-full">Loan-to-Value Ratio</div>
+          <div class="term-desc">The percentage of money you can borrow relative to the value of the asset you pledge. E.g., for ₹1,00,000 gold with 75% LTV, you can borrow ₹75,000.</div>
+        </div>
+
+        <div class="glossary-card" data-term="promissory note sec 4 ni act iou legal">
+          <div class="glossary-term">
+            <span class="term-name">Promissory Note</span>
+            <span class="term-tag">LEGAL (SEC 4)</span>
+          </div>
+          <div class="term-full">Section 4, Negotiable Instruments Act 1881</div>
+          <div class="term-desc">A legally binding digital IOU signed by the borrower stating: "I promise to pay back this exact amount on these dates." It is valid in a court of law.</div>
+        </div>
+
+        <div class="glossary-card" data-term="co-borrower guarantor secondary signer">
+          <div class="glossary-term">
+            <span class="term-name">Co-Borrower</span>
+            <span class="term-tag">TRUST</span>
+          </div>
+          <div class="term-full">Secondary Guarantor Signer</div>
+          <div class="term-desc">A trusted relative or guarantor who co-signs the loan and agrees to take legal responsibility if the primary borrower is unable to pay.</div>
+        </div>
+
+        <div class="glossary-card" data-term="fork join parallel synchronization bar uml">
+          <div class="glossary-term">
+            <span class="term-name">Fork & Join (━━━)</span>
+            <span class="term-tag">UML NOTATION</span>
+          </div>
+          <div class="term-full">Parallel Synchronization Bars</div>
+          <div class="term-desc">A <strong>Fork</strong> splits one path into multiple tasks running at the same time (e.g. doorstep inspection AND guarantor check). A <strong>Join</strong> waits until all finish.</div>
+        </div>
+
+        <div class="glossary-card" data-term="initial final flow bullseye start end">
+          <div class="glossary-term">
+            <span class="term-name">Start (●) & Final (◉)</span>
+            <span class="term-tag">UML NOTATION</span>
+          </div>
+          <div class="term-full">Initial State & Completion Bullseye</div>
+          <div class="term-desc">A solid black circle marks the start of the loan request. A double-ring bullseye marks the successful completion with full repayment and asset release.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+
+    let currentZoom = 1;
+    const diagramImg = document.getElementById('diagramImg');
+    const mermaidContainer = document.getElementById('mermaidContainer');
+    const zoomToolbar = document.getElementById('zoomToolbar');
+
+    function adjustZoom(delta) {
+      currentZoom = Math.max(0.4, Math.min(3.0, currentZoom + delta));
+      diagramImg.style.transform = `scale(${currentZoom})`;
+    }
+
+    function resetZoom() {
+      currentZoom = 1;
+      diagramImg.style.transform = 'scale(1)';
+    }
+
+    function switchView(mode) {
+      const tabHiRes = document.getElementById('tabHiRes');
+      const tabMermaid = document.getElementById('tabMermaid');
+
+      if (mode === 'hires') {
+        diagramImg.style.display = 'block';
+        mermaidContainer.style.display = 'none';
+        zoomToolbar.style.display = 'flex';
+        tabHiRes.classList.add('active');
+        tabMermaid.classList.remove('active');
+      } else {
+        diagramImg.style.display = 'none';
+        mermaidContainer.style.display = 'flex';
+        zoomToolbar.style.display = 'none';
+        tabMermaid.classList.add('active');
+        tabHiRes.classList.remove('active');
+      }
+    }
+
+    function filterGlossary() {
+      const q = document.getElementById('glossarySearch').value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.glossary-card');
+      cards.forEach(card => {
+        const text = card.getAttribute('data-term') + ' ' + card.innerText.toLowerCase();
+        card.style.display = text.includes(q) ? 'block' : 'none';
+      });
+    }
+  </script>
+</body>
+</html>

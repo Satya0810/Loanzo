@@ -9,6 +9,9 @@ interface GuarantorDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGuarantor(guarantor: GuarantorEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGuarantors(guarantors: List<GuarantorEntity>)
+
     @Update
     suspend fun updateGuarantor(guarantor: GuarantorEntity)
 

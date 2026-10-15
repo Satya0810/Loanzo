@@ -38,6 +38,10 @@ val LocalNotificationRepository = compositionLocalOf<com.loanzo.app.data.reposit
     error("No NotificationRepository provided")
 }
 
+val LocalMarketplaceRepository = compositionLocalOf<com.loanzo.app.data.repository.MarketplaceRepository> {
+    error("No MarketplaceRepository provided")
+}
+
 val LocalTranslationHelper = compositionLocalOf<TranslationHelper?> {
     null
 }

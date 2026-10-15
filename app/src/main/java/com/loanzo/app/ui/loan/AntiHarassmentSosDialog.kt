@@ -230,22 +230,15 @@ fun AntiHarassmentSosDialog(
                     onClick = {
                         isSending = true
                         coroutineScope.launch {
-                            val alertHtml = """
-                                <b>🚨 STATUTORY HARASSMENT & COERCION SOS ALERT</b>
-                                <b>Loan ID:</b> <code>${TelegramManager.escapeHtml(loan.loanId)}</code>
-                                <b>Borrower:</b> ${TelegramManager.escapeHtml(borrower.name)} (${TelegramManager.escapeHtml(borrower.phone)})
-                                <b>Lender:</b> ${TelegramManager.escapeHtml(lender.name)} (${TelegramManager.escapeHtml(lender.phone)})
-                                <b>Violation Type:</b> ${TelegramManager.escapeHtml(selectedViolation)}
-                                <b>Details:</b> ${TelegramManager.escapeHtml(incidentNotes.ifBlank { "Immediate emergency triggered by borrower." })}
-                                <b>Timestamp:</b> ${dateFormat.format(Date())}
-                                
-                                <i>STATUTORY CITATION:</i>
-                                This alert records potential criminal intimidation under <b>Bharatiya Nyaya Sanhita 2023 (§351/352)</b> and breaches <b>RBI Digital Lending Guidelines (2022)</b>.
-                                Late fees are administratively frozen pending inquiry.
-                            """.trimIndent()
-
                             val manager = telegramManager ?: TelegramManager.instance
-                            manager.sendAdminAlert(alertHtml)
+                            manager.notifyEmergencySos(
+                                loanId = loan.loanId,
+                                borrowerName = borrower.name,
+                                borrowerPhone = borrower.phone,
+                                lenderName = lender.name,
+                                violationType = selectedViolation,
+                                details = incidentNotes
+                            )
                             isSending = false
                             isDispatched = true
                         }

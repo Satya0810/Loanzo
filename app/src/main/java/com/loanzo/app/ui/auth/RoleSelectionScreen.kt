@@ -42,6 +42,7 @@ fun RoleSelectionScreen(
     userPhone: String = "",
     userEmail: String = "",
     userRole: String = "MEMBER",
+    agentStatus: String? = null,
     onSelectNormalMember: () -> Unit,
     onSelectAgent: () -> Unit
 ) {
@@ -160,19 +161,38 @@ fun RoleSelectionScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             // Option 2: Loanzo Certified Field Agent (Signature Obsidian Black VIP Card)
+            val isAgentApproved = agentStatus.equals("APPROVED", ignoreCase = true) || userRole.equals("AGENT", ignoreCase = true)
+            val isAgentPending = agentStatus.equals("PENDING", ignoreCase = true)
+            val isAgentRejected = agentStatus.equals("REJECTED", ignoreCase = true)
+
             ObsidianAgentRoleCard(
                 title = "Loanzo Certified Agent",
-                badgeText = "EARN ₹500 - ₹1,500 / VISIT",
-                badgeColor = GoldCoinBright,
+                badgeText = when {
+                    isAgentApproved -> "ACTIVE ON-DUTY OFFICER ✓"
+                    isAgentPending -> "APPLICATION PENDING REVIEW"
+                    isAgentRejected -> "UPDATE REQUIRED"
+                    else -> "EARN ₹500 - ₹1,500 / VISIT"
+                },
+                badgeColor = when {
+                    isAgentApproved -> Emerald400
+                    isAgentPending -> GoldCoinBright
+                    isAgentRejected -> Red400
+                    else -> GoldCoinBright
+                },
                 icon = Icons.Default.Security,
                 iconGradient = listOf(GoldCoinAmber, GoldCoinBright),
-                description = "Empanel as an official on-ground field inspection officer & physical collateral appraiser.",
+                description = when {
+                    isAgentApproved -> "Your credentials are certified. Access active field inspection assignments and payouts."
+                    isAgentPending -> "Your empanelment dossier is currently under compliance review by Admin."
+                    isAgentRejected -> "Your empanelment dossier requires correction to police clearance or jurisdiction."
+                    else -> "Empanel as an official on-ground field inspection officer & physical collateral appraiser."
+                },
                 benefits = listOf(
                     "Inspect Gold, Vehicles & Real Estate collateral",
                     "Physical Borrower & Lender in-person verification",
                     "Turn-by-turn navigation & instant camera proof",
                     "Daily payouts credited per completed inspection",
-                    "Requires Police Clearance Certificate (PCC)"
+                    if (isAgentApproved) "PCC Verified ✓" else "Requires Police Clearance Certificate (PCC)"
                 ),
                 isSelected = selectedRole == "AGENT",
                 onClick = { selectedRole = "AGENT" }
@@ -193,10 +213,10 @@ fun RoleSelectionScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (selectedRole == "AGENT") GoldCoinRich else BrandRoyalBlue,
-                    contentColor = if (selectedRole == "AGENT") Navy900 else Color.White,
+                    containerColor = if (selectedRole == "AGENT") BrandRoyalBlue else BrandCobalt,
+                    contentColor = Color.White,
                     disabledContainerColor = Color(0xFFE2E8F0)
                 )
             ) {
@@ -206,7 +226,12 @@ fun RoleSelectionScreen(
                 ) {
                     Text(
                         text = when (selectedRole) {
-                            "AGENT" -> "Proceed to Certified Officer Empanelment"
+                            "AGENT" -> when {
+                                isAgentApproved -> "Launch Field Officer Cockpit ➔"
+                                isAgentPending -> "Track Empanelment Status (Pending Review) ➔"
+                                isAgentRejected -> "Modify & Resubmit Empanelment ➔"
+                                else -> "Proceed to Certified Officer Empanelment"
+                            }
                             "USER" -> "Continue to Member Dashboard"
                             else -> "Select a Role to Continue"
                         },
@@ -229,32 +254,73 @@ fun RoleSelectionScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            // Staff & Operations Access Box (Holographic Card Style)
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, Gold500.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(18.dp),
+                color = BrandRoyalBlue,
+                border = BorderStroke(1.dp, GoldCoinAmber.copy(alpha = 0.5f)),
+                shadowElevation = 6.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { showAdminRequestDialog = true }
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Brush.linearGradient(HolographicCardGradient))
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.AdminPanelSettings,
-                        contentDescription = null,
-                        tint = Gold500,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Are you platform staff? Request Admin Access",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Gold500
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.15f))
+                                    .border(0.5.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AdminPanelSettings,
+                                    contentDescription = null,
+                                    tint = GoldCoinBright,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Platform Staff & Operations",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Request Admin clearance & vault oversight",
+                                    fontSize = 11.sp,
+                                    color = BrandIceBlue,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = GoldCoinBright,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -459,7 +525,7 @@ private fun MemberRoleCard(
 }
 
 /**
- * Signature Obsidian Black VIP Card (Field Agent Opportunity Card)
+ * Loanzo Certified Field Agent Card (Twilight Blue Weather Widget Style)
  */
 @Composable
 private fun ObsidianAgentRoleCard(
@@ -477,37 +543,38 @@ private fun ObsidianAgentRoleCard(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 6.dp,
+                elevation = if (isSelected) 8.dp else 4.dp,
                 shape = RoundedCornerShape(18.dp),
-                ambientColor = Color(0x33000000),
-                spotColor = Color(0x400B0F19)
+                ambientColor = Color(0x181D4ED8),
+                spotColor = Color(0x381D4ED8)
             )
             .clickable { onClick() },
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        colors = CardDefaults.cardColors(containerColor = BrandRoyalBlue),
         border = BorderStroke(
             if (isSelected) 2.dp else 1.dp,
-            if (isSelected) GoldCoinBright else Color(0xFF334155)
+            if (isSelected) GoldCoinBright else GoldCoinAmber.copy(alpha = 0.5f)
         )
     ) {
         Column(
             modifier = Modifier
-                .background(Brush.linearGradient(listOf(Navy700, Navy900)))
+                .background(Brush.linearGradient(HolographicCardGradient))
                 .padding(20.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Brush.linearGradient(iconGradient)),
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White.copy(alpha = 0.15f))
+                        .border(0.5.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = Navy900,
-                        modifier = Modifier.size(24.dp)
+                        tint = GoldCoinBright,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
 
@@ -516,15 +583,14 @@ private fun ObsidianAgentRoleCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = GoldCoinRich.copy(alpha = 0.22f),
-                        border = BorderStroke(1.dp, GoldCoinBright.copy(alpha = 0.5f))
+                        color = GoldCoinAmber
                     ) {
                         Text(
                             text = badgeText,
-                            color = GoldCoinBright,
+                            color = Color.White,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.5.dp),
                             maxLines = 1,
                             softWrap = false
                         )
@@ -546,7 +612,7 @@ private fun ObsidianAgentRoleCard(
                     onClick = onClick,
                     colors = RadioButtonDefaults.colors(
                         selectedColor = GoldCoinBright,
-                        unselectedColor = Color(0xFF64748B)
+                        unselectedColor = BrandIceBlue.copy(alpha = 0.5f)
                     )
                 )
             }
@@ -556,11 +622,11 @@ private fun ObsidianAgentRoleCard(
             Text(
                 text = description,
                 fontSize = 12.sp,
-                color = Gray300,
-                lineHeight = 16.sp
+                color = BrandIceBlue,
+                lineHeight = 17.sp
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             benefits.forEach { benefit ->
                 Row(
@@ -577,7 +643,7 @@ private fun ObsidianAgentRoleCard(
                     Text(
                         text = benefit,
                         fontSize = 12.sp,
-                        color = Color(0xFFE2E8F0)
+                        color = Color.White
                     )
                 }
             }

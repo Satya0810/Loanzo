@@ -9,9 +9,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.text.input.KeyboardType
 import com.loanzo.app.ui.components.LoanzoText as Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -220,16 +222,49 @@ fun PrepaymentSimulatorSheet(
                         )
                     }
 
-                    Slider(
-                        value = lumpSumPrepayment.toFloat(),
-                        onValueChange = { lumpSumPrepayment = it.toDouble() },
-                        valueRange = 0f..outstandingPrincipal.toFloat(),
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { lumpSumPrepayment = (lumpSumPrepayment - 5000.0).coerceAtLeast(0.0) },
+                            modifier = Modifier.size(44.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Icon(Icons.Default.Remove, contentDescription = "Decrease Prepayment", tint = MaterialTheme.colorScheme.primary)
+                        }
+
+                        OutlinedTextField(
+                            value = if (lumpSumPrepayment == 0.0) "" else lumpSumPrepayment.toInt().toString(),
+                            onValueChange = { str ->
+                                val num = str.filter { it.isDigit() }.toDoubleOrNull() ?: 0.0
+                                lumpSumPrepayment = num.coerceIn(0.0, outstandingPrincipal)
+                            },
+                            prefix = { Text("₹ ", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            shape = RoundedCornerShape(10.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
-                    )
+
+                        OutlinedButton(
+                            onClick = { lumpSumPrepayment = (lumpSumPrepayment + 5000.0).coerceAtMost(outstandingPrincipal) },
+                            modifier = Modifier.size(44.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Increase Prepayment", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -288,16 +323,50 @@ fun PrepaymentSimulatorSheet(
                         )
                     }
 
-                    Slider(
-                        value = extraMonthlyContribution.toFloat(),
-                        onValueChange = { extraMonthlyContribution = it.toDouble() },
-                        valueRange = 0f..(currentMonthlyEmi * 2).toFloat().coerceAtLeast(10000f),
-                        colors = SliderDefaults.colors(
-                            thumbColor = Emerald500,
-                            activeTrackColor = Emerald500,
-                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { extraMonthlyContribution = (extraMonthlyContribution - 1000.0).coerceAtLeast(0.0) },
+                            modifier = Modifier.size(44.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Icon(Icons.Default.Remove, contentDescription = "Decrease Monthly Top-up", tint = Emerald500)
+                        }
+
+                        OutlinedTextField(
+                            value = if (extraMonthlyContribution == 0.0) "" else extraMonthlyContribution.toInt().toString(),
+                            onValueChange = { str ->
+                                val num = str.filter { it.isDigit() }.toDoubleOrNull() ?: 0.0
+                                extraMonthlyContribution = num.coerceIn(0.0, (currentMonthlyEmi * 5).coerceAtLeast(50000.0))
+                            },
+                            prefix = { Text("+ ₹ ", fontWeight = FontWeight.Bold, color = Emerald500) },
+                            suffix = { Text("/mo", fontWeight = FontWeight.Bold, color = Emerald500) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            shape = RoundedCornerShape(10.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
-                    )
+
+                        OutlinedButton(
+                            onClick = { extraMonthlyContribution = (extraMonthlyContribution + 1000.0).coerceAtMost((currentMonthlyEmi * 5).coerceAtLeast(50000.0)) },
+                            modifier = Modifier.size(44.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Increase Monthly Top-up", tint = Emerald500)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),

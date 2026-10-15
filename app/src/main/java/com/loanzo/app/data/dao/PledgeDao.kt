@@ -9,6 +9,9 @@ interface PledgeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPledge(pledge: PledgeEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPledges(pledges: List<PledgeEntity>)
+
     @Update
     suspend fun updatePledge(pledge: PledgeEntity)
 

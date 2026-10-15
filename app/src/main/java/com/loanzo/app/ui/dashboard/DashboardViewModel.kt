@@ -23,7 +23,8 @@ data class DashboardUiState(
     val pendingApprovals: List<DisbursementEntity> = emptyList(),
     val overdueRepaymentsAsBorrower: List<RepaymentEntity> = emptyList(),
     val overdueRepaymentsAsLender: List<RepaymentEntity> = emptyList(),
-    val recentEvents: List<AuditEventEntity> = emptyList()
+    val recentEvents: List<AuditEventEntity> = emptyList(),
+    val allPlatformLoans: List<LoanEntity> = emptyList()
 )
 
 @HiltViewModel
@@ -123,6 +124,13 @@ class DashboardViewModel @Inject constructor(
                 launch {
                     loanRepository.getRecentEvents(20).collect { events ->
                         _uiState.update { it.copy(recentEvents = events) }
+                    }
+                }
+
+                // Load all platform loans for admin view
+                launch {
+                    loanRepository.getAllPlatformLoans().collect { platformLoans ->
+                        _uiState.update { it.copy(allPlatformLoans = platformLoans) }
                     }
                 }
             }

@@ -407,7 +407,7 @@ fun DispatchAgentSheet(
                     focusedTextColor = TextNavyDark,
                     unfocusedTextColor = TextNavyDark
                 ),
-                modifier = Modifier.fillMaxWidth().height(46.dp)
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))

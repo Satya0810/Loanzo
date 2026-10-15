@@ -20,6 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
 import com.loanzo.app.ui.theme.*
 
 data class VouchReasonOption(
@@ -62,6 +65,7 @@ fun VouchReasonDialog(
 ) {
     var selectedReason by remember { mutableStateOf(VOUCH_REASONS[0].code) }
     var note by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -70,7 +74,11 @@ fun VouchReasonDialog(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -203,27 +211,34 @@ fun VouchReasonDialog(
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f).height(46.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Cancel")
+                        Text("Cancel", textAlign = TextAlign.Center)
                     }
 
-                    Button(
+                    com.loanzo.app.ui.components.LoanzoActionButton(
+                        text = "Confirm Vouch",
                         onClick = {
-                            onConfirmVouch(selectedReason, note.trim())
+                            if (!isSubmitting) {
+                                isSubmitting = true
+                                onConfirmVouch(selectedReason, note.trim())
+                            }
                         },
-                        modifier = Modifier.weight(1.3f).height(46.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Gold500,
-                            contentColor = Navy900
-                        )
-                    ) {
-                        Icon(Icons.Default.Favorite, null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Confirm Vouch", fontWeight = FontWeight.Bold)
-                    }
+                        isLoading = isSubmitting,
+                        loadingText = "Recording...",
+                        enabled = !isSubmitting,
+                        icon = Icons.Default.Favorite,
+                        containerColor = Gold500,
+                        contentColor = Navy900,
+                        modifier = Modifier
+                            .weight(1.4f)
+                            .heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    )
                 }
             }
         }

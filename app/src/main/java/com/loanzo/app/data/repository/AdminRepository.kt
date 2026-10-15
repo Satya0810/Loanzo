@@ -35,8 +35,11 @@ class AdminRepository @Inject constructor(
     private val loanDao: LoanDao,
     private val notificationDao: NotificationDao,
     private val adminRequestDao: AdminRequestDao,
+    private val auditEventDao: AuditEventDao,
     private val telegramManager: TelegramManager,
-    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager,
+    private val bannedCredentialDao: BannedCredentialDao,
+    private val marketplaceDao: MarketplaceDao
 ) {
 
     private val firestore: FirebaseFirestore
@@ -53,6 +56,310 @@ class AdminRepository @Inject constructor(
     val allAdminRequests: Flow<List<AdminRequestEntity>> = adminRequestDao.getAllRequests()
     val pendingAdminRequests: Flow<List<AdminRequestEntity>> = adminRequestDao.getPendingRequests()
     val allCrossVerificationVisits: Flow<List<AgentVisitEntity>> = agentDao.getAllCrossVerificationVisits()
+    val allUsers: Flow<List<UserEntity>> = userDao.getAllUsers()
+
+    fun getUserFlow(userId: String): Flow<UserEntity?> = userDao.observeUser(userId)
+    suspend fun getUser(userId: String): UserEntity? = userDao.getUserById(userId)
+    fun getUserLoansFlow(userId: String): Flow<List<LoanEntity>> = loanDao.getAllLoansForUser(userId)
+    fun getUserPostsFlow(userId: String): Flow<List<MarketplacePostEntity>> = marketplaceDao.getPostsByAuthorFlow(userId)
+    fun getUserComplaintsFlow(userId: String): Flow<List<ComplaintEntity>> = complaintDao.getComplaintsAgainstUser(userId)
+
+    suspend fun banUserTemporarily(userId: String, days: Int, reason: String) {
+        val user = userDao.getUserById(userId) ?: return
+        val expiry = System.currentTimeMillis() + days.toLong() * 24L * 60L * 60L * 1000L
+        val updated = user.copy(
+            isBanned = true,
+            banType = "TEMPORARY",
+            banExpiresAt = expiry,
+            banReason = reason,
+            hasPendingBanAppeal = false,
+            banAppealStatus = "NONE"
+        )
+        userDao.updateUser(updated)
+        try {
+            firestore.collection("users").document(userId).set(
+                mapOf(
+                    "isBanned" to true,
+                    "banType" to "TEMPORARY",
+                    "banExpiresAt" to expiry,
+                    "banReason" to reason,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+        } catch (_: Exception) {}
+        logAdminAudit(
+            actor = "ADMIN",
+            entityType = "USER_ACCOUNT",
+            entityId = userId,
+            event = "USER_TEMP_BANNED",
+            oldState = "ACTIVE",
+            newState = "TEMP_BANNED_${days}D",
+            description = "Temporary suspension ($days days): $reason"
+        )
+        sendUserNotification(
+            userId = userId,
+            title = "Account Suspended",
+            message = "Your account has been suspended for $days days. Reason: $reason",
+            actionRoute = "login"
+        )
+    }
+
+    suspend fun banUserPermanently(userId: String, reason: String) {
+        val user = userDao.getUserById(userId) ?: return
+        val updated = user.copy(
+            isBanned = true,
+            banType = "PERMANENT",
+            banExpiresAt = 0L,
+            banReason = reason,
+            hasPendingBanAppeal = false,
+            banAppealStatus = "NONE"
+        )
+        userDao.updateUser(updated)
+
+        val credentials = mutableListOf<BannedCredentialEntity>()
+        if (user.phone.isNotBlank()) {
+            credentials.add(BannedCredentialEntity(
+                credentialType = "PHONE",
+                credentialValue = user.phone.trim().lowercase(),
+                userId = userId,
+                reason = reason
+            ))
+        }
+        if (user.email.isNotBlank()) {
+            credentials.add(BannedCredentialEntity(
+                credentialType = "EMAIL",
+                credentialValue = user.email.trim().lowercase(),
+                userId = userId,
+                reason = reason
+            ))
+        }
+        if (user.panNumber.isNotBlank()) {
+            credentials.add(BannedCredentialEntity(
+                credentialType = "PAN",
+                credentialValue = user.panNumber.trim().uppercase(),
+                userId = userId,
+                reason = reason
+            ))
+        }
+        if (user.aadhaarNumber.isNotBlank()) {
+            credentials.add(BannedCredentialEntity(
+                credentialType = "AADHAAR",
+                credentialValue = user.aadhaarNumber.trim(),
+                userId = userId,
+                reason = reason
+            ))
+        }
+        if (credentials.isNotEmpty()) {
+            bannedCredentialDao.insertAll(credentials)
+        }
+
+        try {
+            firestore.collection("users").document(userId).set(
+                mapOf(
+                    "isBanned" to true,
+                    "banType" to "PERMANENT",
+                    "banExpiresAt" to 0L,
+                    "banReason" to reason,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+            for (cred in credentials) {
+                firestore.collection("banned_credentials").document(cred.credentialValue).set(
+                    mapOf(
+                        "credentialType" to cred.credentialType,
+                        "credentialValue" to cred.credentialValue,
+                        "userId" to cred.userId,
+                        "reason" to cred.reason,
+                        "bannedAt" to cred.bannedAt
+                    )
+                )
+            }
+        } catch (_: Exception) {}
+
+        logAdminAudit(
+            actor = "ADMIN",
+            entityType = "USER_ACCOUNT",
+            entityId = userId,
+            event = "USER_PERM_BANNED",
+            oldState = "ACTIVE",
+            newState = "PERMANENTLY_BANNED",
+            description = "Permanent ban & credential blacklisting: $reason"
+        )
+        sendUserNotification(
+            userId = userId,
+            title = "Account Terminated",
+            message = "Your account has been permanently terminated. Reason: $reason",
+            actionRoute = "login"
+        )
+    }
+
+    suspend fun liftBan(userId: String) {
+        val user = userDao.getUserById(userId) ?: return
+        val updated = user.copy(
+            isBanned = false,
+            banType = "NONE",
+            banExpiresAt = 0L,
+            banReason = "",
+            hasPendingBanAppeal = false,
+            banAppealStatus = "NONE"
+        )
+        userDao.updateUser(updated)
+        bannedCredentialDao.deleteByUserId(userId)
+        try {
+            firestore.collection("users").document(userId).set(
+                mapOf(
+                    "isBanned" to false,
+                    "banType" to "NONE",
+                    "banExpiresAt" to 0L,
+                    "banReason" to "",
+                    "hasPendingBanAppeal" to false,
+                    "banAppealStatus" to "NONE",
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+        } catch (_: Exception) {}
+        logAdminAudit(
+            actor = "ADMIN",
+            entityType = "USER_ACCOUNT",
+            entityId = userId,
+            event = "BAN_LIFTED",
+            oldState = "BANNED",
+            newState = "ACTIVE",
+            description = "Account ban lifted by administrator"
+        )
+        sendUserNotification(
+            userId = userId,
+            title = "Account Restored",
+            message = "Your account restriction has been lifted. You can now access all services.",
+            actionRoute = "home"
+        )
+    }
+
+    suspend fun submitBanAppeal(userId: String, appealText: String) {
+        val user = userDao.getUserById(userId) ?: return
+        val updated = user.copy(
+            hasPendingBanAppeal = true,
+            banAppealText = appealText,
+            banAppealSubmittedAt = System.currentTimeMillis(),
+            banAppealStatus = "PENDING"
+        )
+        userDao.updateUser(updated)
+        try {
+            firestore.collection("users").document(userId).set(
+                mapOf(
+                    "hasPendingBanAppeal" to true,
+                    "banAppealText" to appealText,
+                    "banAppealSubmittedAt" to System.currentTimeMillis(),
+                    "banAppealStatus" to "PENDING",
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+        } catch (_: Exception) {}
+    }
+
+    suspend fun resolveBanAppeal(userId: String, approve: Boolean, adminNotes: String) {
+        val user = userDao.getUserById(userId) ?: return
+        if (approve) {
+            val updated = user.copy(
+                isBanned = false,
+                banType = "NONE",
+                banExpiresAt = 0L,
+                banReason = "",
+                hasPendingBanAppeal = false,
+                banAppealStatus = "APPROVED",
+                banAppealAdminNotes = adminNotes
+            )
+            userDao.updateUser(updated)
+            bannedCredentialDao.deleteByUserId(userId)
+            try {
+                firestore.collection("users").document(userId).set(
+                    mapOf(
+                        "isBanned" to false,
+                        "banType" to "NONE",
+                        "banExpiresAt" to 0L,
+                        "banReason" to "",
+                        "hasPendingBanAppeal" to false,
+                        "banAppealStatus" to "APPROVED",
+                        "banAppealAdminNotes" to adminNotes,
+                        "updatedAt" to System.currentTimeMillis()
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                )
+            } catch (_: Exception) {}
+            logAdminAudit(
+                actor = "ADMIN",
+                entityType = "BAN_APPEAL",
+                entityId = userId,
+                event = "APPEAL_APPROVED",
+                oldState = "PENDING",
+                newState = "APPROVED",
+                description = "Appeal approved: $adminNotes"
+            )
+            sendUserNotification(
+                userId = userId,
+                title = "Ban Appeal Approved",
+                message = "Your ban appeal was approved and account restored. Notes: $adminNotes",
+                actionRoute = "home"
+            )
+        } else {
+            val updated = user.copy(
+                hasPendingBanAppeal = false,
+                banAppealStatus = "REJECTED",
+                banAppealAdminNotes = adminNotes
+            )
+            userDao.updateUser(updated)
+            try {
+                firestore.collection("users").document(userId).set(
+                    mapOf(
+                        "hasPendingBanAppeal" to false,
+                        "banAppealStatus" to "REJECTED",
+                        "banAppealAdminNotes" to adminNotes,
+                        "updatedAt" to System.currentTimeMillis()
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                )
+            } catch (_: Exception) {}
+            logAdminAudit(
+                actor = "ADMIN",
+                entityType = "BAN_APPEAL",
+                entityId = userId,
+                event = "APPEAL_REJECTED",
+                oldState = "PENDING",
+                newState = "REJECTED",
+                description = "Appeal rejected: $adminNotes"
+            )
+            sendUserNotification(
+                userId = userId,
+                title = "Ban Appeal Rejected",
+                message = "Your ban appeal has been reviewed and rejected: $adminNotes",
+                actionRoute = "login"
+            )
+        }
+    }
+
+    suspend fun checkIsCredentialBanned(values: List<String>): BannedCredentialEntity? {
+        val nonBlank = values.map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        if (nonBlank.isEmpty()) return null
+        return bannedCredentialDao.findFirstBanned(nonBlank)
+    }
+
+    suspend fun assignVaultLocker(vaultItemId: String, lockerNumber: String, barcodeTag: String, sealNumber: String) {
+        collateralVaultDao.assignLockerAndSeal(vaultItemId, lockerNumber, barcodeTag, sealNumber, "SECURED_IN_VAULT")
+        try {
+            firestore.collection("collateral_vault").document(vaultItemId).update(
+                mapOf(
+                    "lockerNumber" to lockerNumber,
+                    "barcodeTag" to barcodeTag,
+                    "tamperSealNumber" to sealNumber,
+                    "custodyStatus" to "SECURED_IN_VAULT"
+                )
+            ).await()
+        } catch (_: Exception) {}
+    }
 
     // --- Dispatch Engine: Loan-to-Agent Mapping ---
 
@@ -176,6 +483,23 @@ class AdminRepository @Inject constructor(
             status = "DISMISSED",
             notes = dismissalNotes,
             resolvedAt = System.currentTimeMillis()
+        )
+        try {
+            val comp = complaintDao.getComplaintById(complaintId)
+            if (comp != null) {
+                firestore.collection("complaints")
+                    .document(complaintId)
+                    .set(complaintToMap(comp), com.google.firebase.firestore.SetOptions.merge())
+            }
+        } catch (_: Exception) {}
+    }
+
+    suspend fun updateComplaintStatus(complaintId: String, status: String, notes: String? = null) {
+        complaintDao.updateComplaintStatus(
+            complaintId = complaintId,
+            status = status,
+            notes = notes,
+            resolvedAt = if (status == "RESOLVED" || status == "DISMISSED") System.currentTimeMillis() else null
         )
         try {
             val comp = complaintDao.getComplaintById(complaintId)
@@ -351,40 +675,334 @@ class AdminRepository @Inject constructor(
         return noc
     }
 
-    // --- Agent Roster Actions ---
+    // --- Maker-Checker Compliance & Tamper-Evident Audit Trail ---
 
-    suspend fun suspendAgent(userId: String, reason: String) {
-        val user = userDao.getUserById(userId) ?: return
-        val updated = user.copy(agentStatus = "SUSPENDED", isOnDuty = false)
-        userDao.updateUser(updated)
+    suspend fun logAdminAudit(
+        actor: String,
+        entityType: String,
+        entityId: String,
+        event: String,
+        oldState: String = "",
+        newState: String = "",
+        description: String = "",
+        reference: String = ""
+    ) {
         try {
-            firestore.collection("users")
-                .document(userId)
-                .set(mapOf("agentStatus" to "SUSPENDED", "isOnDuty" to false), com.google.firebase.firestore.SetOptions.merge())
+            val eventId = "audit_" + UUID.randomUUID().toString().take(12)
+            val auditEvent = AuditEventEntity(
+                eventId = eventId,
+                entityType = entityType,
+                entityId = entityId,
+                actor = actor,
+                event = event,
+                oldState = oldState,
+                newState = newState,
+                description = description,
+                timestamp = System.currentTimeMillis(),
+                reference = reference
+            )
+            auditEventDao.insertEvent(auditEvent)
+            try {
+                firestore.collection("audit_events").document(eventId).set(
+                    mapOf(
+                        "eventId" to eventId,
+                        "entityType" to entityType,
+                        "entityId" to entityId,
+                        "actor" to actor,
+                        "event" to event,
+                        "oldState" to oldState,
+                        "newState" to newState,
+                        "description" to description,
+                        "timestamp" to System.currentTimeMillis(),
+                        "reference" to reference
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                )
+            } catch (_: Exception) {}
         } catch (_: Exception) {}
+    }
 
+    // --- Agent Roster Actions (Dual-Sync: Users + Applications + Cloud) ---
+
+    suspend fun suspendAgent(userOrAppId: String, reason: String) {
+        // Resolve both UserEntity and AgentApplicationEntity regardless of which ID was supplied
+        var user = userDao.getUserById(userOrAppId)
+        var app = if (user != null) {
+            agentDao.getApplicationByUserIdSync(user.userId)
+        } else {
+            agentDao.getApplicationById(userOrAppId)
+        }
+        if (user == null && app != null) {
+            user = userDao.getUserById(app.userId)
+        }
+
+        val targetUserId = user?.userId ?: app?.userId ?: userOrAppId
+        val targetAppId = app?.applicationId ?: ""
+
+        // 1. Update User Entity
+        if (user != null) {
+            val updatedUser = user.copy(agentStatus = "SUSPENDED", isOnDuty = false)
+            userDao.updateUser(updatedUser)
+            try {
+                firestore.collection("users")
+                    .document(user.userId)
+                    .set(mapOf("agentStatus" to "SUSPENDED", "isOnDuty" to false), com.google.firebase.firestore.SetOptions.merge())
+            } catch (_: Exception) {}
+        }
+
+        // 2. Update Application Entity
+        if (app != null) {
+            val updatedApp = app.copy(status = "SUSPENDED", adminRemarks = reason, reviewedAt = System.currentTimeMillis())
+            agentDao.updateApplication(updatedApp)
+            try {
+                firestore.collection("agent_applications")
+                    .document(app.applicationId)
+                    .set(mapOf("status" to "SUSPENDED", "adminRemarks" to reason, "reviewedAt" to System.currentTimeMillis()), com.google.firebase.firestore.SetOptions.merge())
+            } catch (_: Exception) {}
+        }
+
+        // 3. Log Audit Trail
+        logAdminAudit(
+            actor = "MASTER_ADMIN",
+            entityType = "AGENT",
+            entityId = targetUserId,
+            event = "AGENT_SUSPENDED",
+            oldState = "APPROVED",
+            newState = "SUSPENDED",
+            description = reason,
+            reference = targetAppId
+        )
+
+        // 4. Send Targeted Notification to Agent
         sendUserNotification(
-            userId = userId,
-            title = "Agent Account Suspended",
+            userId = targetUserId,
+            title = "Agent Account Suspended ⚠️",
             message = "Your field officer privileges have been temporarily suspended: $reason",
             actionRoute = "profile"
         )
     }
 
-    suspend fun reactivateAgent(userId: String) {
+    suspend fun reactivateAgent(userOrAppId: String) {
+        var user = userDao.getUserById(userOrAppId)
+        var app = if (user != null) {
+            agentDao.getApplicationByUserIdSync(user.userId)
+        } else {
+            agentDao.getApplicationById(userOrAppId)
+        }
+        if (user == null && app != null) {
+            user = userDao.getUserById(app.userId)
+        }
+
+        val targetUserId = user?.userId ?: app?.userId ?: userOrAppId
+        val targetAppId = app?.applicationId ?: ""
+
+        // 1. Update User Entity
+        if (user != null) {
+            val updatedUser = user.copy(agentStatus = "APPROVED", isOnDuty = true)
+            userDao.updateUser(updatedUser)
+            try {
+                firestore.collection("users")
+                    .document(user.userId)
+                    .set(mapOf("agentStatus" to "APPROVED", "isOnDuty" to true), com.google.firebase.firestore.SetOptions.merge())
+            } catch (_: Exception) {}
+        }
+
+        // 2. Update Application Entity
+        if (app != null) {
+            val updatedApp = app.copy(status = "APPROVED", adminRemarks = "Re-activated by Master Admin", reviewedAt = System.currentTimeMillis())
+            agentDao.updateApplication(updatedApp)
+            try {
+                firestore.collection("agent_applications")
+                    .document(app.applicationId)
+                    .set(mapOf("status" to "APPROVED", "adminRemarks" to "Re-activated by Master Admin", "reviewedAt" to System.currentTimeMillis()), com.google.firebase.firestore.SetOptions.merge())
+            } catch (_: Exception) {}
+        }
+
+        // 3. Log Audit Trail
+        logAdminAudit(
+            actor = "MASTER_ADMIN",
+            entityType = "AGENT",
+            entityId = targetUserId,
+            event = "AGENT_REACTIVATED",
+            oldState = "SUSPENDED",
+            newState = "APPROVED",
+            description = "Field officer credentials restored and reactivated",
+            reference = targetAppId
+        )
+
+        // 4. Send Targeted Notification to Agent
+        sendUserNotification(
+            userId = targetUserId,
+            title = "Agent Account Re-activated! 🛡️",
+            message = "Your field officer credentials are now active. You may resume field inspections.",
+            actionRoute = "agent_main"
+        )
+    }
+
+    // --- Granular KYC Verification & Attestation Desk ---
+
+    suspend fun verifyUserDocument(userId: String, docType: String, approve: Boolean, notes: String) {
         val user = userDao.getUserById(userId) ?: return
-        val updated = user.copy(agentStatus = "APPROVED", isOnDuty = true)
-        userDao.updateUser(updated)
+        val updatedUser = when (docType.uppercase()) {
+            "AADHAAR" -> user.copy(aadhaarVerified = approve)
+            "PAN" -> user.copy(panVerified = approve)
+            "BANK" -> user.copy(bankVerified = approve)
+            "SELFIE" -> user.copy(selfieVerified = approve)
+            else -> user
+        }
+
+        val isAllVerified = updatedUser.aadhaarVerified && updatedUser.panVerified && updatedUser.bankVerified && updatedUser.selfieVerified
+        val finalStatus = when {
+            !approve -> "RE_KYC_REQUESTED"
+            isAllVerified -> "VERIFIED"
+            else -> "IN_PROGRESS"
+        }
+        val finalizedUser = updatedUser.copy(kycStatus = finalStatus)
+        userDao.updateUser(finalizedUser)
+
         try {
-            firestore.collection("users")
-                .document(userId)
-                .set(mapOf("agentStatus" to "APPROVED", "isOnDuty" to true), com.google.firebase.firestore.SetOptions.merge())
+            val updateMap = mapOf(
+                "kycStatus" to finalStatus,
+                "aadhaarVerified" to finalizedUser.aadhaarVerified,
+                "panVerified" to finalizedUser.panVerified,
+                "bankVerified" to finalizedUser.bankVerified,
+                "selfieVerified" to finalizedUser.selfieVerified,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            firestore.collection("users").document(userId).set(updateMap, com.google.firebase.firestore.SetOptions.merge())
         } catch (_: Exception) {}
 
+        logAdminAudit(
+            actor = "ADMIN",
+            entityType = "USER_KYC",
+            entityId = userId,
+            event = if (approve) "DOC_ATTESTED" else "DOC_DEFICIENCY",
+            oldState = user.kycStatus,
+            newState = finalStatus,
+            description = "$docType ${if (approve) "verified" else "deficiency"}: $notes"
+        )
+
+        val notifTitle = if (approve) {
+            if (isAllVerified) "Full KYC Certification Complete! 🎉" else "$docType Verified ✓"
+        } else {
+            "KYC Re-submission Required: $docType ⚠️"
+        }
+        val notifMsg = if (approve) {
+            if (isAllVerified) "All statutory KYC documents verified by Master Admin. You now have full lending & borrowing privileges." else "$docType has been attested: $notes"
+        } else {
+            "Deficiency in $docType: $notes. Please tap to re-submit your document."
+        }
+        sendUserNotification(userId = userId, title = notifTitle, message = notifMsg, actionRoute = "kyc_screen")
+    }
+
+    suspend fun verifyFullUserKyc(userId: String, approve: Boolean, notes: String) {
+        val user = userDao.getUserById(userId) ?: return
+        val finalStatus = if (approve) "VERIFIED" else "REJECTED"
+        val updated = if (approve) {
+            user.copy(
+                kycStatus = "VERIFIED",
+                aadhaarVerified = true,
+                panVerified = true,
+                bankVerified = true,
+                selfieVerified = true
+            )
+        } else {
+            user.copy(kycStatus = "REJECTED")
+        }
+        userDao.updateUser(updated)
+
+        try {
+            val updateMap = mapOf(
+                "kycStatus" to updated.kycStatus,
+                "aadhaarVerified" to updated.aadhaarVerified,
+                "panVerified" to updated.panVerified,
+                "bankVerified" to updated.bankVerified,
+                "selfieVerified" to updated.selfieVerified,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            firestore.collection("users").document(userId).set(updateMap, com.google.firebase.firestore.SetOptions.merge())
+        } catch (_: Exception) {}
+
+        logAdminAudit(
+            actor = "MASTER_ADMIN",
+            entityType = "USER_KYC",
+            entityId = userId,
+            event = if (approve) "FULL_KYC_VERIFIED" else "FULL_KYC_REJECTED",
+            oldState = user.kycStatus,
+            newState = finalStatus,
+            description = notes
+        )
+
+        val notifTitle = if (approve) "KYC Verification Approved! 🎉" else "KYC Action Required"
+        val notifMsg = if (approve) "Your identity, Aadhaar, PAN, and Bank details have been fully verified by Master Admin." else "Your KYC requires re-submission: $notes"
+        sendUserNotification(userId = userId, title = notifTitle, message = notifMsg, actionRoute = "kyc_screen")
+    }
+
+    suspend fun updateUserRole(userId: String, newRole: String) {
+        val user = userDao.getUserById(userId) ?: return
+        val updated = user.copy(role = newRole)
+        userDao.updateUser(updated)
+        try {
+            firestore.collection("users").document(userId).set(
+                mapOf("role" to newRole, "updatedAt" to System.currentTimeMillis()),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+        } catch (_: Exception) {}
+        logAdminAudit(
+            actor = "MASTER_ADMIN",
+            entityType = "USER_ROLE",
+            entityId = userId,
+            event = "ROLE_CHANGED",
+            oldState = user.role,
+            newState = newRole,
+            description = "Role updated to $newRole by Master Admin"
+        )
         sendUserNotification(
             userId = userId,
-            title = "Agent Account Re-activated",
-            message = "Your field officer credentials are now active. You may resume field inspections.",
+            title = "Account Role Updated",
+            message = "Your platform role has been updated to $newRole by Master Admin.",
+            actionRoute = "profile"
+        )
+    }
+
+    suspend fun setAgentDutyStatus(userId: String, isOnDuty: Boolean) {
+        val user = userDao.getUserById(userId) ?: return
+        val updated = user.copy(isOnDuty = isOnDuty)
+        userDao.updateUser(updated)
+        try {
+            firestore.collection("users").document(userId).set(
+                mapOf("isOnDuty" to isOnDuty, "updatedAt" to System.currentTimeMillis()),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+        } catch (_: Exception) {}
+    }
+
+    suspend fun setAgentStatus(userId: String, status: String) {
+        val user = userDao.getUserById(userId) ?: return
+        val updated = user.copy(
+            agentStatus = status,
+            role = if (status == "APPROVED") "AGENT" else if (user.role == "AGENT") "BORROWER" else user.role
+        )
+        userDao.updateUser(updated)
+        try {
+            firestore.collection("users").document(userId).set(
+                mapOf("agentStatus" to status, "role" to updated.role, "updatedAt" to System.currentTimeMillis()),
+                com.google.firebase.firestore.SetOptions.merge()
+            )
+        } catch (_: Exception) {}
+        logAdminAudit(
+            actor = "MASTER_ADMIN",
+            entityType = "AGENT_STATUS",
+            entityId = userId,
+            event = "AGENT_STATUS_CHANGED",
+            oldState = user.agentStatus,
+            newState = status,
+            description = "Agent status updated to $status by Master Admin"
+        )
+        sendUserNotification(
+            userId = userId,
+            title = "Agent Status Update",
+            message = "Your field agent operational status is now $status.",
             actionRoute = "agent_main"
         )
     }
@@ -504,6 +1122,18 @@ class AdminRepository @Inject constructor(
             userDao.updateUser(updatedUser)
         }
 
+        // Log Audit Trail
+        logAdminAudit(
+            actor = "MASTER_ADMIN",
+            entityType = "ADMIN_ROLE",
+            entityId = req.userId,
+            event = "ROLE_ELEVATED",
+            oldState = req.currentRole,
+            newState = req.requestedRole,
+            description = "Approved access to ${req.requestedRole}: $adminNotes",
+            reference = requestId
+        )
+
         // Notify user via local Room and Firestore
         sendUserNotification(
             userId = req.userId,
@@ -531,6 +1161,18 @@ class AdminRepository @Inject constructor(
                     .set(adminRequestToMap(updatedReq), com.google.firebase.firestore.SetOptions.merge())
             }
         } catch (_: Exception) {}
+
+        // Log Audit Trail
+        logAdminAudit(
+            actor = "MASTER_ADMIN",
+            entityType = "ADMIN_ROLE",
+            entityId = req.userId,
+            event = "ROLE_REJECTED",
+            oldState = req.currentRole,
+            newState = "REJECTED",
+            description = "Rejected access to ${req.requestedRole}: $reason",
+            reference = requestId
+        )
 
         sendUserNotification(
             userId = req.userId,
@@ -736,9 +1378,20 @@ class AdminRepository @Inject constructor(
      */
     fun postAdminSystemNotification(title: String, body: String, actionRoute: String? = null) {
         try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    android.util.Log.w("AdminRepo", "Cannot post admin notification: POST_NOTIFICATIONS permission not granted")
+                    return
+                }
+            }
+
             com.loanzo.app.util.NotificationChannelHelper.setupNotificationChannels(context)
             val channelId = com.loanzo.app.util.NotificationChannelHelper.CHANNEL_ADMIN
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
             val intent = Intent(context, com.loanzo.app.MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -754,7 +1407,7 @@ class AdminRepository @Inject constructor(
             )
 
             val notification = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(com.loanzo.app.R.mipmap.ic_launcher)
+                .setSmallIcon(com.loanzo.app.R.drawable.ic_notification_logo)
                 .setContentTitle(title.replace(Regex("[⏰⚡🔔⚠️📜🚨👑⚖️]"), "").trim())
                 .setContentText(body)
                 .setAutoCancel(true)

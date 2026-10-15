@@ -1,5 +1,6 @@
 package com.loanzo.app.ui.marketplace
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,12 +14,13 @@ import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import com.loanzo.app.ui.components.LoanzoText as Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
@@ -28,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import coil.compose.SubcomposeAsyncImage
 import com.loanzo.app.data.entity.MarketplaceBidEntity
 import com.loanzo.app.data.entity.MarketplacePostEntity
+import com.loanzo.app.ui.components.LoanzoAvatar
 import com.loanzo.app.ui.theme.*
 import com.loanzo.app.util.CartoonAvatarHelper
 import com.loanzo.app.util.toFormattedString
@@ -99,7 +102,8 @@ fun PostDetailAndBidsSheet(
                     modifier = Modifier.weight(1f, fill = false)
                 ) {
                     items(bids, key = { it.bidId }) { bid ->
-                        BidCard(bid = bid, onAccept = { onAcceptBid(bid) })
+                        val isClosed = post.status.equals("FUNDED", ignoreCase = true) || post.status.equals("CLOSED", ignoreCase = true)
+                        BidCard(bid = bid, isPostClosed = isClosed, onAccept = { onAcceptBid(bid) })
                     }
                 }
             }
@@ -110,6 +114,7 @@ fun PostDetailAndBidsSheet(
 @Composable
 fun BidCard(
     bid: MarketplaceBidEntity,
+    isPostClosed: Boolean = false,
     onAccept: () -> Unit
 ) {
     Card(
@@ -123,40 +128,13 @@ fun BidCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val bidderAvatar = bid.bidderAvatarUrl.ifBlank {
-                    CartoonAvatarHelper.getCartoonAvatarUrl(bid.bidderName.ifBlank { bid.bidderId })
-                }
-                val bidderCartoonRes = CartoonAvatarHelper.getCartoonAvatarDrawableRes(bid.bidderName.ifBlank { bid.bidderId })
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    SubcomposeAsyncImage(
-                        model = bidderAvatar,
-                        contentDescription = bid.bidderName,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                        loading = {
-                            Image(
-                                painter = painterResource(id = bidderCartoonRes),
-                                contentDescription = "2D Cartoon Avatar",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        },
-                        error = {
-                            Image(
-                                painter = painterResource(id = bidderCartoonRes),
-                                contentDescription = "2D Cartoon Avatar",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    )
-                }
+                LoanzoAvatar(
+                    avatarModel = bid.bidderAvatarUrl.takeIf { it.isNotBlank() } ?: bid.bidderId,
+                    size = 36.dp,
+                    showVerifiedBadge = bid.bidderKycVerified,
+                    borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                    borderWidth = 1.dp
+                )
 
                 Spacer(modifier = Modifier.width(10.dp))
 
@@ -230,15 +208,64 @@ fun BidCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Button(
-                onClick = onAccept,
-                colors = ButtonDefaults.buttonColors(containerColor = Emerald500, contentColor = Color.White),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Handshake, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Accept Bid & Finalize Legal Agreement ➔", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            var isAccepting by remember { mutableStateOf(false) }
+            val isBidAccepted = bid.status.equals("ACCEPTED", ignoreCase = true) || bid.status.equals("CONVERTED_TO_LOAN", ignoreCase = true)
+
+            if (isBidAccepted) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Emerald500.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Emerald500, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Bid Accepted & Legal Agreement Finalized ✓",
+                            color = Emerald500,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            } else if (isPostClosed) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Deal Finalized / Post Closed",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 10.dp)
+                    )
+                }
+            } else {
+                com.loanzo.app.ui.components.LoanzoActionButton(
+                    text = "Accept Bid & Finalize Legal Agreement ➔",
+                    onClick = {
+                        if (!isAccepting) {
+                            isAccepting = true
+                            onAccept()
+                        }
+                    },
+                    isLoading = isAccepting,
+                    loadingText = "Finalizing Legal Contract...",
+                    enabled = !isAccepting,
+                    icon = Icons.Default.Handshake,
+                    containerColor = Emerald500,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

@@ -566,7 +566,8 @@ fun UserProfileDetailBottomSheet(
                     onClick = onDismiss,
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.weight(1f).height(48.dp)
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                 ) {
                     Text(
                         text = "Close",
@@ -585,7 +586,8 @@ fun UserProfileDetailBottomSheet(
                         containerColor = BrandRoyalBlue,
                         contentColor = Color.White
                     ),
-                    modifier = Modifier.weight(1.4f).height(48.dp)
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                    modifier = Modifier.weight(1.4f).heightIn(min = 48.dp)
                 ) {
                     Icon(
                         Icons.Default.Chat,

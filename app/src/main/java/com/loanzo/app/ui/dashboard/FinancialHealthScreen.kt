@@ -337,8 +337,8 @@ fun FinancialHealthScreen(
                 return@Column
             }
 
-            // Health Score Gauge (Executive Obsidian Dark Hero Box)
-            GradientCard(gradientColors = listOf(Navy700, Navy900), modifier = Modifier.fillMaxWidth()) {
+            // Health Score Gauge (Holographic Royal Cobalt Hero Box)
+            GradientCard(gradientColors = HolographicCardGradient, modifier = Modifier.fillMaxWidth()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Financial Health Score", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
                     Spacer(modifier = Modifier.height(16.dp))

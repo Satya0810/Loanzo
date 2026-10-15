@@ -42,6 +42,9 @@ class MarketplaceRepository @Inject constructor(
     fun getPostsByAuthor(authorId: String): Flow<List<MarketplacePostEntity>> =
         marketplaceDao.getPostsByAuthorFlow(authorId)
 
+    fun getUnverifiedPosts(): Flow<List<MarketplacePostEntity>> =
+        marketplaceDao.getUnverifiedPostsFlow()
+
     fun getPostByIdFlow(postId: String): Flow<MarketplacePostEntity?> =
         marketplaceDao.getPostByIdFlow(postId)
 
@@ -83,14 +86,16 @@ class MarketplaceRepository @Inject constructor(
             "coBorrowerRelationship" to post.coBorrowerRelationship,
             "coBorrowerAvatarUrl" to post.coBorrowerAvatarUrl,
             "coBorrowerKycVerified" to post.coBorrowerKycVerified,
-            "coBorrowerTrustScore" to post.coBorrowerTrustScore
+            "coBorrowerTrustScore" to post.coBorrowerTrustScore,
+            "isAdminVerified" to post.isAdminVerified
         )
     }
 
-    fun bidToFirestoreMap(bid: MarketplaceBidEntity): Map<String, Any?> {
+    fun bidToFirestoreMap(bid: MarketplaceBidEntity, postAuthorId: String = ""): Map<String, Any?> {
         return hashMapOf(
             "bidId" to bid.bidId,
             "postId" to bid.postId,
+            "postAuthorId" to postAuthorId,
             "bidderId" to bid.bidderId,
             "bidderName" to bid.bidderName,
             "bidderAvatarUrl" to bid.bidderAvatarUrl,
@@ -99,6 +104,7 @@ class MarketplaceRepository @Inject constructor(
             "proposedAmount" to bid.proposedAmount,
             "proposedInterestRate" to bid.proposedInterestRate,
             "proposedTenureMonths" to bid.proposedTenureMonths,
+            "proposedRepaymentFrequency" to bid.proposedRepaymentFrequency,
             "message" to bid.message,
             "status" to bid.status,
             "createdAt" to bid.createdAt
@@ -168,7 +174,8 @@ class MarketplaceRepository @Inject constructor(
             marketplaceDao.incrementBidsCount(bid.postId)
             try {
                 firebaseManager.ensureFirebaseAuthSession()
-                val bidPayload = bidToFirestoreMap(bid)
+                val currentPost = marketplaceDao.getPostById(bid.postId)
+                val bidPayload = bidToFirestoreMap(bid, postAuthorId = currentPost?.authorId ?: "")
                 firestore.collection(COLLECTION_BIDS)
                     .document(bid.bidId)
                     .set(bidPayload, SetOptions.merge())
@@ -178,7 +185,6 @@ class MarketplaceRepository @Inject constructor(
                     .document(bid.postId)
                     .update("bidsCount", com.google.firebase.firestore.FieldValue.increment(1))
 
-                val currentPost = marketplaceDao.getPostById(bid.postId)
                 if (currentPost != null && currentPost.authorId.isNotBlank() && currentPost.authorId != bid.bidderId) {
                     val notifMap = hashMapOf(
                         "notificationId" to ("bid_notif_" + UUID.randomUUID().toString().take(8)),
@@ -186,7 +192,7 @@ class MarketplaceRepository @Inject constructor(
                         "title" to "New Proposal: ₹${bid.proposedAmount.toInt()}",
                         "message" to "${bid.bidderName} proposed ₹${bid.proposedAmount.toInt()} at ${bid.proposedInterestRate}% on '${currentPost.title}'.",
                         "type" to "BID_OFFER",
-                        "actionRoute" to "marketplace",
+                        "actionRoute" to "marketplace?targetPostId=${bid.postId}",
                         "timestamp" to System.currentTimeMillis()
                     )
                     firestore.collection("notifications").document(notifMap["notificationId"] as String).set(notifMap, SetOptions.merge())
@@ -295,6 +301,7 @@ class MarketplaceRepository @Inject constructor(
     }
 
     private var realtimeFeedRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+    private var realtimeBidsRegistration: com.google.firebase.firestore.ListenerRegistration? = null
 
     /**
      * Safely parses a Firestore document into a MarketplacePostEntity,
@@ -331,7 +338,8 @@ class MarketplaceRepository @Inject constructor(
                 coBorrowerRelationship = doc.getString("coBorrowerRelationship") ?: "",
                 coBorrowerAvatarUrl = doc.getString("coBorrowerAvatarUrl") ?: "",
                 coBorrowerKycVerified = doc.getBoolean("coBorrowerKycVerified") ?: false,
-                coBorrowerTrustScore = (doc.getLong("coBorrowerTrustScore") ?: doc.getDouble("coBorrowerTrustScore")?.toLong() ?: 88L).toInt()
+                coBorrowerTrustScore = (doc.getLong("coBorrowerTrustScore") ?: doc.getDouble("coBorrowerTrustScore")?.toLong() ?: 88L).toInt(),
+                isAdminVerified = doc.getBoolean("isAdminVerified") ?: false
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse post document ${doc.id}: ${e.message}", e)
@@ -339,9 +347,150 @@ class MarketplaceRepository @Inject constructor(
         }
     }
 
+    suspend fun setAdminVerification(postId: String, isVerified: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            marketplaceDao.updateAdminVerification(postId, isVerified)
+            try {
+                firestore.collection(COLLECTION_POSTS).document(postId).update("isAdminVerified", isVerified)
+            } catch (e: Exception) {
+                Log.w(TAG, "Firestore update failed for setAdminVerification: ${e.message}")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun removePostByAdmin(postId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            marketplaceDao.updatePostStatus(postId, "CLOSED")
+            try {
+                firestore.collection(COLLECTION_POSTS).document(postId).update("status", "CLOSED")
+            } catch (e: Exception) {
+                Log.w(TAG, "Firestore update failed for removePostByAdmin: ${e.message}")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /**
-     * Attaches a real-time Firestore snapshot listener for active community wall posts.
-     * Whenever any other user publishes or updates a post, it is immediately synchronized
+     * Safely parses a Firestore document into a MarketplaceBidEntity,
+     * converting Longs to Doubles and handling null values to avoid reflection crashes.
+     */
+    fun parseDocumentToBid(doc: com.google.firebase.firestore.DocumentSnapshot): MarketplaceBidEntity? {
+        return try {
+            val data = doc.data ?: return null
+            MarketplaceBidEntity(
+                bidId = doc.getString("bidId") ?: doc.id,
+                postId = doc.getString("postId") ?: "",
+                bidderId = doc.getString("bidderId") ?: "",
+                bidderName = doc.getString("bidderName") ?: "Community Member",
+                bidderAvatarUrl = doc.getString("bidderAvatarUrl") ?: "",
+                bidderKycVerified = doc.getBoolean("bidderKycVerified") ?: false,
+                bidderTrustScore = (doc.getLong("bidderTrustScore") ?: doc.getDouble("bidderTrustScore")?.toLong() ?: 85L).toInt(),
+                proposedAmount = doc.getDouble("proposedAmount") ?: doc.getLong("proposedAmount")?.toDouble() ?: 0.0,
+                proposedInterestRate = doc.getDouble("proposedInterestRate") ?: doc.getLong("proposedInterestRate")?.toDouble() ?: 0.0,
+                proposedTenureMonths = (doc.getLong("proposedTenureMonths") ?: doc.getDouble("proposedTenureMonths")?.toLong() ?: 6L).toInt(),
+                proposedRepaymentFrequency = doc.getString("proposedRepaymentFrequency") ?: "MONTHLY",
+                message = doc.getString("message") ?: "",
+                status = doc.getString("status") ?: "PENDING",
+                createdAt = doc.getLong("createdAt") ?: doc.getDouble("createdAt")?.toLong() ?: System.currentTimeMillis()
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse bid document ${doc.id}: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * On-demand retrieval of bids for a specific post from Cloud Firestore into local Room.
+     */
+    suspend fun syncBidsForPost(postId: String): Result<List<MarketplaceBidEntity>> = withContext(Dispatchers.IO) {
+        if (postId.isBlank()) return@withContext Result.success(emptyList())
+        try {
+            firebaseManager.ensureFirebaseAuthSession()
+            val snapshot = withTimeoutOrNull(8000L) {
+                firestore.collection(COLLECTION_BIDS)
+                    .whereEqualTo("postId", postId)
+                    .get()
+                    .await()
+            }
+            if (snapshot != null && !snapshot.isEmpty) {
+                val bids = snapshot.documents.mapNotNull { parseDocumentToBid(it) }
+                if (bids.isNotEmpty()) {
+                    marketplaceDao.insertBids(bids)
+                    Log.d(TAG, "syncBidsForPost: Synced ${bids.size} bids for post $postId")
+                }
+                Result.success(bids)
+            } else {
+                Result.success(emptyList())
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to sync bids for post $postId: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Safely parses a Firestore document into a MarketplaceVouchEntity.
+     */
+    fun parseDocumentToVouch(doc: com.google.firebase.firestore.DocumentSnapshot): MarketplaceVouchEntity? {
+        return try {
+            val d = doc.data ?: return null
+            MarketplaceVouchEntity(
+                vouchId = doc.getString("vouchId") ?: doc.id,
+                postId = doc.getString("postId") ?: "",
+                voucherUserId = doc.getString("voucherUserId") ?: "",
+                voucherName = doc.getString("voucherName") ?: "Verified Peer",
+                vouchReason = doc.getString("vouchReason") ?: "COMMERCIAL_PEER",
+                comment = doc.getString("comment") ?: "",
+                createdAt = doc.getLong("createdAt") ?: doc.getDouble("createdAt")?.toLong() ?: System.currentTimeMillis(),
+                voucherAvatarUrl = doc.getString("voucherAvatarUrl") ?: "",
+                voucherKycVerified = doc.getBoolean("voucherKycVerified") ?: true,
+                voucherTrustScore = (doc.getLong("voucherTrustScore") ?: 90L).toInt(),
+                voucherRole = doc.getString("voucherRole") ?: "Verified Community Member"
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse vouch document ${doc.id}: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * On-demand retrieval of vouches/endorsements for a specific post from Cloud Firestore into local Room.
+     */
+    suspend fun syncVouchesForPost(postId: String): Result<List<MarketplaceVouchEntity>> = withContext(Dispatchers.IO) {
+        if (postId.isBlank()) return@withContext Result.success(emptyList())
+        try {
+            firebaseManager.ensureFirebaseAuthSession()
+            val snapshot = withTimeoutOrNull(8000L) {
+                firestore.collection(COLLECTION_POSTS)
+                    .document(postId)
+                    .collection("vouches")
+                    .get()
+                    .await()
+            }
+            if (snapshot != null && !snapshot.isEmpty) {
+                val vouches = snapshot.documents.mapNotNull { parseDocumentToVouch(it) }
+                if (vouches.isNotEmpty()) {
+                    marketplaceDao.insertVouches(vouches)
+                    Log.d(TAG, "syncVouchesForPost: Synced ${vouches.size} vouches for post $postId into Room")
+                }
+                Result.success(vouches)
+            } else {
+                Result.success(emptyList())
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to sync vouches for post $postId: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Attaches real-time Firestore snapshot listeners for active community wall posts and proposals/bids.
+     * Whenever any other user publishes a post or submits a bid, it is immediately synchronized
      * into the local Room database and emitted to the UI via Room Flow.
      */
     fun startRealtimeFeedListener(scope: CoroutineScope = CoroutineScope(Dispatchers.IO)) {
@@ -367,6 +516,24 @@ class MarketplaceRepository @Inject constructor(
                             }
                         }
                     }
+
+                // Attach real-time listener for incoming marketplace proposals & competitive bids
+                realtimeBidsRegistration = firestore.collection(COLLECTION_BIDS)
+                    .addSnapshotListener { snapshot, error ->
+                        if (error != null) {
+                            Log.w(TAG, "Realtime bids listener notice: ${error.message}")
+                            return@addSnapshotListener
+                        }
+                        if (snapshot != null && !snapshot.isEmpty) {
+                            val bids = snapshot.documents.mapNotNull { parseDocumentToBid(it) }
+                            if (bids.isNotEmpty()) {
+                                scope.launch {
+                                    marketplaceDao.insertBids(bids)
+                                    Log.d(TAG, "Realtime bids: synchronized ${bids.size} bids into local Room")
+                                }
+                            }
+                        }
+                    }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to register realtime feed listener: ${e.message}")
             }
@@ -376,10 +543,12 @@ class MarketplaceRepository @Inject constructor(
     fun stopRealtimeFeedListener() {
         realtimeFeedRegistration?.remove()
         realtimeFeedRegistration = null
+        realtimeBidsRegistration?.remove()
+        realtimeBidsRegistration = null
     }
 
     /**
-     * Pulls latest active posts from Cloud Firestore into Room, and pushes any pending local posts to cloud.
+     * Pulls latest active posts and bids from Cloud Firestore into Room, and pushes any pending local posts to cloud.
      */
     suspend fun syncFeed(): Unit = withContext(Dispatchers.IO) {
         try {
@@ -400,6 +569,25 @@ class MarketplaceRepository @Inject constructor(
                 }
             }
 
+            // Also synchronize recent proposals & bids from Cloud Firestore
+            try {
+                val bidsSnapshot = withTimeoutOrNull(8000L) {
+                    firestore.collection(COLLECTION_BIDS)
+                        .limit(100)
+                        .get()
+                        .await()
+                }
+                if (bidsSnapshot != null && !bidsSnapshot.isEmpty) {
+                    val remoteBids = bidsSnapshot.documents.mapNotNull { parseDocumentToBid(it) }
+                    if (remoteBids.isNotEmpty()) {
+                        marketplaceDao.insertBids(remoteBids)
+                        Log.d(TAG, "syncFeed: Loaded ${remoteBids.size} bids from Cloud Firestore")
+                    }
+                }
+            } catch (bidsEx: Exception) {
+                Log.w(TAG, "Could not fetch remote bids: ${bidsEx.message}")
+            }
+
             // Bidirectional sync: Push any local user posts to Cloud Firestore if missing
             val localPosts = marketplaceDao.getAllPostsFlow().firstOrNull() ?: emptyList()
             for (local in localPosts) {
@@ -417,6 +605,40 @@ class MarketplaceRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.w(TAG, "Could not fetch remote posts: ${e.message}")
+        }
+    }
+
+    suspend fun verifyPost(postId: String, isVerified: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            marketplaceDao.updateAdminVerification(postId, isVerified)
+            try {
+                firestore.collection(COLLECTION_POSTS)
+                    .document(postId)
+                    .update("isAdminVerified", isVerified)
+                    .await()
+            } catch (e: Exception) {
+                Log.w(TAG, "Cloud update failed for verifyPost: ${e.message}")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deletePostByAdmin(postId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            marketplaceDao.deletePost(postId)
+            try {
+                firestore.collection(COLLECTION_POSTS)
+                    .document(postId)
+                    .delete()
+                    .await()
+            } catch (e: Exception) {
+                Log.w(TAG, "Cloud delete failed for deletePostByAdmin: ${e.message}")
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

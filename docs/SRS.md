@@ -1,5 +1,7 @@
 # Software Requirements Specification (SRS) for Loanzo
 
+> **Official IEEE Specification:** For the formal, publication-grade IEEE Std 830-1998 / ISO/IEC/IEEE 29148:2018 specification and verification matrix, see [SRS_IEEE_830.md](file:///c:/AndroidProjects/loanzo/docs/SRS_IEEE_830.md) and the compiled document [Loanzo_SRS_IEEE_830.pdf](file:///c:/AndroidProjects/loanzo/Loanzo_SRS_IEEE_830.pdf).
+
 ## 1. Introduction
 ### 1.1 Purpose
 The purpose of this document is to outline the software requirements for **Loanzo**, a peer-to-peer (P2P) lending and borrowing application. It details the functional and non-functional requirements to guide the development and maintenance of the application.
@@ -70,8 +72,8 @@ Loanzo is a unified Android application where any registered user can act as a L
    - Real-time in-app chat between Lender and Borrower backed by Firestore.
    - **High-Speed Translation Engine**: Built-in Google GTX translation engine with in-memory LRU caching, delivering <150ms translations without API quotas or storage bloat.
    - **Global App Language Selection**: Searchable Language Picker modal in Profile supporting 21+ Indian (Hindi, Marathi, Bengali, Tamil, Telugu, Gujarati, etc.) and global languages with instant runtime locale switching across the entire UI.
-   - **Telegram Bot Assistant (@Loanzo_bot)**:
-     - Real-time Admin alerts with inline buttons for instant notification of new KYC document uploads, loan requests, and executed agreements.
+   - **Telegram Bot Assistant (@Loanzo_bot) & Two-Way Interactive Action Hub**:
+     - Real-time Admin alerts with interactive inline buttons (`callback_data`) allowing instant execution of platform decisions directly inside Telegram: Approve/Reject KYC (`[✅ Approve KYC]`), Approve/Reject Loans (`[✅ Approve Loan]`), Authorize Disbursals (`[💸 Authorize Disbursal]`), Freeze Emergency Recovery (`[🛑 Freeze Recovery Calls]`), Dispatch Field Verification Agents (`[👮 Dispatch Field Agent]`), and Moderate Bad Actors (`[🚨 Restrict Bad Actor]`).
      - Zero-cost automated EMI reminders and overdue alerts sent directly to borrowers.
      - **Working Telegram Bot Commands**:
        - `/start` — Welcomes user, initializes assistant, and displays a comprehensive menu of all working commands:
@@ -255,17 +257,20 @@ flowchart TD
       - *Operating Territory & Mobility*: Permanent residence, operating city, postal code, adjustable service radius (5 km to 50 km), vehicle type (Bike, Car, Transit), and Driving License Number.
     - **Master Admin Approval Console**: Integrated into the App Owner Hub (`AppOwnerVerificationScreen`), enabling Master Admin `@satyam_081` to review applications, inspect police clearance certificates, and execute 1-tap empanelment approvals or rejections with custom remarks. Approving an agent promotes their role, marks `agentStatus = APPROVED`, and automatically seeds active doorstep visits.
     - **Strict Role Isolation Gate**: Field agents are permanently isolated from consumer borrowing, lending, P2P biddings, and community wall cards. On login or app launch, approved agents are dispatched directly to `Routes.AGENT_MAIN`. Any attempt to access consumer routes automatically redirects to the agent console.
-    - **Dedicated Agent Control Center (`AgentDashboardScreen`)**:
-      - *On-Duty / Off-Duty Status*: Interactive switch toggling between `🟢 On Duty` and `☕ On Break / Off Duty`, with an active break timer tracking rest periods.
-      - *Daily Earnings & Performance Meters*: Live counters tracking today's completed visits, scheduled visits, and total earned revenue.
-      - *Categorized Scheduled Visits Feed*: Distinct badges and workflows for 🏷️ Collateral Assaying, 🟢 Borrower Residence & Identity Checks, and 🔵 Lender Physical Verification.
-      - *1-Tap Counterparty Communications & GPS*: Every visit card features direct phone call (`tel:`), direct WhatsApp message (`whatsapp://`), and Google Maps navigation (`geo:`) intents.
-    - **In-App Inspection Engine (`AgentInspectionSheet`)**:
-      - Geotag arrival check-in.
-      - Interactive collateral appraisal calculator with condition grades (Mint, Good, Fair, Poor).
-      - Multi-factor verification checklist (identity, physical documents, address matching).
-      - Live camera photo capture for photographic proof and tamper-evident audit logging.
-      - Automated instant payout crediting upon inspection submission.
+    - **Dedicated Agent Operations Cockpit (`AgentDashboardScreen` & `AgentViewModel`)**:
+      - *Unidirectional Architecture*: Orchestrated via dedicated `AgentViewModel` emitting an immutable `AgentUiState` StateFlow, fully decoupled from navigation logic.
+      - *Shift Control & Telemetry Bar*: Shift toggle ("Field Shift Active" vs "Shift Paused") with real-time GPS accuracy lock and network connectivity status.
+      - *Daily Earnings & Performance Progress*: Live tracking for today's completed stops, remaining stops, daily fuel/travel incentive milestone bar (INR 300 allowance upon quota completion), and total accumulated bounty revenue.
+      - *Categorized Scheduled Itinerary*: Filterable feed with pills for All Stops, Collateral Valuation, Borrower KYC, Lender Audit, and Attested Stops.
+      - *Turn-by-Turn Waypoint Routing*: Multi-stop Google Maps route launcher calculating optimal driving directions across pending waypoints.
+      - *Counterparty Communications & Safety*: Direct dialer, encrypted chat hub, WhatsApp contact, and high-priority Emergency SOS safety beacon.
+    - **In-Person Physical Attestation Suite (`AgentInspectionSheet`)**:
+      - *5-Step Deterministic Stepper Workflow* (Rupeek Valuer & Bajaj Finserv FI benchmark):
+        1. **Proof of Presence**: Real-time GPS geofence radar (<200m) with mutual 4-digit Handshake PIN verification (prevents bypass).
+        2. **Statutory Identity Verification**: Physical Aadhaar/PAN inspection with last 4-digits masking check, residence confirmation, and utility meter sighting.
+        3. **Universal 5-Class Collateral Valuation Engine**: Class-specific appraisal calculators for Gold 916 (with Karat assayer and RBI 75% LTV cap), Motor Vehicles (RC number, Parivahan chassis check, IDV with 65% LTV), Commercial Invoices (Factoring Act 80% LTV), Real Estate (circle rate with 60% LTV), and Demat Securities (50% LTV).
+        4. **Evidentiary Camera & Security Pouch Sealing**: Dual photographic proof capture with automated Section 65B Indian Evidence Act cryptographic watermark `[LAT, LNG | Timestamp | AGT ID | SHA-256 Digest]` and serialized tamper-evident vault bag barcode scanner.
+        5. **Legal Promissory Note Attestation**: Section 4 Negotiable Instruments Act legal promissory note attestation with Order XXXVII CPC summary recovery protections, officer recommendation selector, and digital signature sign-off.
 
 23. **Master Admin Command Center (Institutional Operational Console)**
 

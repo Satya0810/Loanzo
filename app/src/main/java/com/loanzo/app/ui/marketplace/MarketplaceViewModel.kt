@@ -32,6 +32,8 @@ data class MarketplaceUiState(
     val currentUserName: String = "",
     val vouchedPostIds: Set<String> = emptySet(),
     val vouchesByPost: Map<String, List<MarketplaceVouchEntity>> = emptyMap(),
+    val userSubmittedPostIds: Set<String> = emptySet(),
+    val userBidsByPost: Map<String, MarketplaceBidEntity> = emptyMap(),
     val isKycVerified: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -43,6 +45,7 @@ class MarketplaceViewModel @Inject constructor(
     private val marketplaceRepository: MarketplaceRepository,
     private val userRepository: UserRepository,
     private val loanRepository: com.loanzo.app.data.repository.LoanRepository,
+    private val agentRepository: com.loanzo.app.data.repository.AgentRepository,
     private val agentDao: com.loanzo.app.data.dao.AgentDao,
     private val multiAiRaceEngine: com.loanzo.app.data.ai.MultiAiRaceEngine? = null
 ) : ViewModel() {
@@ -63,8 +66,26 @@ class MarketplaceViewModel @Inject constructor(
             )
     }
 
-    fun getBidsForPostFlow(postId: String): Flow<List<MarketplaceBidEntity>> =
-        marketplaceRepository.getBidsForPost(postId)
+    fun getBidsForPostFlow(postId: String): Flow<List<MarketplaceBidEntity>> {
+        refreshBidsForPost(postId)
+        return marketplaceRepository.getBidsForPost(postId)
+    }
+
+    fun refreshBidsForPost(postId: String) {
+        viewModelScope.launch {
+            try {
+                marketplaceRepository.syncBidsForPost(postId)
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun refreshVouchesForPost(postId: String) {
+        viewModelScope.launch {
+            try {
+                marketplaceRepository.syncVouchesForPost(postId)
+            } catch (_: Exception) {}
+        }
+    }
 
     fun acceptBidAndCreateLoan(
         post: MarketplacePostEntity,
@@ -121,27 +142,23 @@ class MarketplaceViewModel @Inject constructor(
 
             loanRepository.createLoan(newLoan, currentUserId)
 
-            // If collateral offered, schedule valuer inspection
+            // If collateral offered, schedule valuer inspection and push to cloud
             if (hasCollateral) {
                 try {
-                    val visit = com.loanzo.app.data.entity.AgentVisitEntity(
-                        visitId = "visit_" + UUID.randomUUID().toString().take(8),
-                        agentId = "UNASSIGNED",
+                    agentRepository.requestFieldVerification(
                         loanId = newLoanId,
-                        visitType = "COLLATERAL_VERIFICATION",
                         title = "Collateral Valuation: ${post.collateralOffered}",
                         borrowerName = borrowerUser.name,
                         borrowerPhone = borrowerUser.phone,
-                        borrowerAddress = post.locationCity,
+                        borrowerAddress = post.locationCity.ifBlank { "Registered Address" },
                         lenderName = lenderUser.name,
                         lenderPhone = lenderUser.phone,
-                        targetAddress = post.locationCity,
+                        lenderAddress = "Lender Registered Office",
+                        targetAddress = post.locationCity.ifBlank { "Borrower Location" },
                         collateralItemName = post.collateralOffered,
                         collateralEstimatedValue = bid.proposedAmount * 1.5,
-                        status = "SCHEDULED",
-                        handshakePin = (1000..9999).random().toString()
+                        loanType = "SECURED"
                     )
-                    agentDao.insertVisit(visit)
                 } catch (_: Exception) {}
             }
 
@@ -182,6 +199,20 @@ class MarketplaceViewModel @Inject constructor(
                         )
                     }
                     observeUserVouches(uid)
+                    observeUserBids(uid)
+                }
+            }
+        }
+    }
+
+    private fun observeUserBids(userId: String) {
+        viewModelScope.launch {
+            marketplaceRepository.getBidsByBidder(userId).collectLatest { bidsList ->
+                _uiState.update { current ->
+                    current.copy(
+                        userSubmittedPostIds = bidsList.map { it.postId }.toSet(),
+                        userBidsByPost = bidsList.associateBy { it.postId }
+                    )
                 }
             }
         }
@@ -219,6 +250,9 @@ class MarketplaceViewModel @Inject constructor(
     private fun observeVouchesForPosts(posts: List<MarketplacePostEntity>) {
         posts.forEach { post ->
             viewModelScope.launch {
+                try {
+                    marketplaceRepository.syncVouchesForPost(post.postId)
+                } catch (_: Exception) {}
                 marketplaceRepository.getVouchesForPostFlow(post.postId).collectLatest { vouches ->
                     _uiState.update { state ->
                         state.copy(
@@ -412,23 +446,27 @@ class MarketplaceViewModel @Inject constructor(
         onSuccess: () -> Unit
     ) {
         val user = _uiState.value
-        val newBid = MarketplaceBidEntity(
-            bidId = UUID.randomUUID().toString(),
-            postId = postId,
-            bidderId = user.currentUserId.ifBlank { "anonymous_bidder" },
-            bidderName = user.currentUserName.ifBlank { "Community Member" },
-            bidderAvatarUrl = com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl(user.currentUserName.ifBlank { user.currentUserId }),
-            bidderKycVerified = user.isKycVerified,
-            bidderTrustScore = if (user.isKycVerified) 92 else 80,
-            proposedAmount = proposedAmount,
-            proposedInterestRate = proposedInterestRate,
-            proposedTenureMonths = proposedTenureMonths,
-            message = message,
-            status = "PENDING",
-            createdAt = System.currentTimeMillis()
-        )
-
         viewModelScope.launch {
+            val localUser = if (user.currentUserId.isNotBlank()) userRepository.getUserById(user.currentUserId) else null
+            val actualAvatar = localUser?.profilePhotoUri?.takeIf { it.isNotBlank() }
+                ?: com.loanzo.app.util.CartoonAvatarHelper.getCartoonAvatarUrl(user.currentUserName.ifBlank { user.currentUserId })
+
+            val newBid = MarketplaceBidEntity(
+                bidId = UUID.randomUUID().toString(),
+                postId = postId,
+                bidderId = user.currentUserId.ifBlank { "anonymous_bidder" },
+                bidderName = user.currentUserName.ifBlank { "Community Member" },
+                bidderAvatarUrl = actualAvatar,
+                bidderKycVerified = user.isKycVerified,
+                bidderTrustScore = if (user.isKycVerified) 92 else 80,
+                proposedAmount = proposedAmount,
+                proposedInterestRate = proposedInterestRate,
+                proposedTenureMonths = proposedTenureMonths,
+                message = message,
+                status = "PENDING",
+                createdAt = System.currentTimeMillis()
+            )
+
             val result = marketplaceRepository.submitBid(newBid)
             if (result.isSuccess) {
                 _uiState.update { it.copy(actionSuccessMessage = "Proposal submitted successfully!") }
@@ -601,7 +639,10 @@ class MarketplaceViewModel @Inject constructor(
                 MarketplaceTabFilter.ALL -> true
                 MarketplaceTabFilter.LENDERS -> post.postType == "OFFER_TO_LEND"
                 MarketplaceTabFilter.BORROWERS -> post.postType == "SEEKING_LOAN"
-                MarketplaceTabFilter.MY_POSTS -> post.authorId == currentUserId
+                MarketplaceTabFilter.MY_POSTS -> {
+                    (post.authorId.isNotBlank() && post.authorId == currentUserId) ||
+                    (_uiState.value.currentUserName.isNotBlank() && post.authorName.equals(_uiState.value.currentUserName, ignoreCase = true))
+                }
             }
 
             val matchesCategory = if (category.equals("ALL", ignoreCase = true)) true
@@ -636,6 +677,20 @@ class MarketplaceViewModel @Inject constructor(
         if (!category.equals("ALL", ignoreCase = true)) count++
         if (maxRate < 36.0) count++
         return count
+    }
+
+    fun setAdminVerification(postId: String, isVerified: Boolean) {
+        viewModelScope.launch {
+            marketplaceRepository.setAdminVerification(postId, isVerified)
+            refreshFeed()
+        }
+    }
+
+    fun removePostByAdmin(postId: String) {
+        viewModelScope.launch {
+            marketplaceRepository.removePostByAdmin(postId)
+            refreshFeed()
+        }
     }
 
     override fun onCleared() {

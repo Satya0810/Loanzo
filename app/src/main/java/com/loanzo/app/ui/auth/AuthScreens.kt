@@ -205,15 +205,15 @@ fun LoginScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             val roleChips = listOf(
-                                Triple("Member", "👤 Member", "USER"),
-                                Triple("Field Agent", "🕵️ Agent", "AGENT"),
-                                Triple("Master Admin", "👑 Admin", "ADMIN")
+                                Triple("Member", "Member", "USER"),
+                                Triple("Field Agent", "Field Agent", "AGENT"),
+                                Triple("Admin", "Admin", "ADMIN")
                             )
                             roleChips.forEach { (roleName, label, _) ->
                                 val isSelected = userRole.trim().equals(roleName, ignoreCase = true) ||
                                         (roleName == "Member" && (userRole.trim().equals("USER", ignoreCase = true) || userRole.trim().equals("Borrower", ignoreCase = true) || userRole.trim().equals("Lender", ignoreCase = true))) ||
                                         (roleName == "Field Agent" && userRole.trim().equals("AGENT", ignoreCase = true)) ||
-                                        (roleName == "Master Admin" && userRole.trim().equals("ADMIN", ignoreCase = true))
+                                        (roleName == "Admin" && (userRole.trim().equals("ADMIN", ignoreCase = true) || userRole.trim().equals("Master Admin", ignoreCase = true)))
 
                                 FilterChip(
                                     selected = isSelected,
@@ -251,7 +251,7 @@ fun LoginScreen(
                                     onClearError()
                                 },
                                 label = { Text(stringResource(R.string.user_role)) },
-                                placeholder = { Text("e.g. Member, Field Agent, Master Admin") },
+                                placeholder = { Text("e.g. Member, Field Agent, Admin") },
                                 leadingIcon = {
                                     Icon(
                                         when {
@@ -287,18 +287,18 @@ fun LoginScreen(
                                 expanded = roleDropdownExpanded,
                                 onDismissRequest = { roleDropdownExpanded = false }
                             ) {
-                                val dropdownRoles = listOf("Member", "Field Agent", "Master Admin")
+                                val dropdownRoles = listOf("Member", "Field Agent", "Admin")
                                 dropdownRoles.forEach { roleOption ->
                                     DropdownMenuItem(
                                         text = {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(
                                                     when (roleOption) {
-                                                        "Master Admin" -> "👑 Master Admin (Full Control)"
-                                                        "Field Agent" -> "🕵️ Field Agent (Inspections & Duty)"
-                                                        else -> "👤 Member (Borrower & Lender)"
+                                                        "Admin" -> "Admin (Full Control)"
+                                                        "Field Agent" -> "Field Agent (Inspections & Duty)"
+                                                        else -> "Member (Borrower & Lender)"
                                                     },
-                                                    fontWeight = if (userRole.equals(roleOption, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal
+                                                    fontWeight = if (userRole.equals(roleOption, ignoreCase = true) || (roleOption == "Admin" && userRole.equals("Master Admin", ignoreCase = true))) FontWeight.Bold else FontWeight.Normal
                                                 )
                                             }
                                         },
@@ -356,42 +356,6 @@ fun LoginScreen(
                                 Text(stringResource(R.string.next), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(Icons.Default.ArrowForward, contentDescription = stringResource(R.string.next), modifier = Modifier.size(18.dp))
-                            }
-                        }
-
-                        if (isBiometricAvailable) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedButton(
-                                onClick = { onBiometricLogin(userId.trim(), userRole.trim()) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 50.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                enabled = !isLoading
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Fingerprint,
-                                        contentDescription = "Biometric Login",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.biometric_sign_in),
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 13.5.sp,
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
                             }
                         }
                     } else {
@@ -565,35 +529,6 @@ fun LoginScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Secondary Language Option at the Bottom
-            Surface(
-                onClick = { showLanguageSheet = true },
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = null,
-                        tint = Gold500,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.app_language) + ": " + getLanguageNameByCode(currentLanguageCode),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
         }
 
         // Floating Top-Right Language Selector Pill
@@ -960,7 +895,8 @@ fun RegisterScreen(
 
                         Button(
                             onClick = { step = 2 },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             enabled = name.isNotBlank() && effectivelyEmailVerified && effectivelyPhoneVerified && !isLoading
@@ -1121,7 +1057,8 @@ fun RegisterScreen(
                                     onRegister(name.trim(), email.trim(), countryCode + phone.trim(), password.trim(), "USER", enableBiometrics, username.trim())
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                             enabled = password.length >= 8 && password == confirmPassword && !isLoading
@@ -1137,7 +1074,8 @@ fun RegisterScreen(
 
                         OutlinedButton(
                             onClick = { step = 1 },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
@@ -1284,7 +1222,8 @@ fun ForgotPasswordScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
                             onClick = { onInitiate(loginId.trim()) },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Gold500, contentColor = Navy900),
                             enabled = loginId.isNotBlank() && !isLoading
@@ -1541,7 +1480,7 @@ fun ForgotPasswordScreen(
                                 }
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
-                                    text = "Your identity verification request has been forwarded to the Master Admin Security Desk. Once your KYC identity is verified, your new device ($currentDeviceModel) will be authorized within 2-4 hours.",
+                                    text = "Your identity verification request has been forwarded to the Admin Security Desk. Once your KYC identity is verified, your new device ($currentDeviceModel) will be authorized within 2-4 hours.",
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp,
                                     textAlign = TextAlign.Center,
@@ -1550,7 +1489,8 @@ fun ForgotPasswordScreen(
                                 Spacer(modifier = Modifier.height(20.dp))
                                 Button(
                                     onClick = onNavigateToLogin,
-                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = BrandRoyalBlue)
                                 ) {
@@ -1667,7 +1607,8 @@ fun ForgotPasswordScreen(
                                     )
                                 },
                                 enabled = grievanceFullName.isNotBlank() && grievancePhone.isNotBlank() && grievanceIdLast4.length == 4,
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = GoldCoinRich, contentColor = com.loanzo.app.ui.theme.Navy900)
                             ) {

@@ -9,6 +9,9 @@ interface RepaymentDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRepayment(repayment: RepaymentEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRepayments(repayments: List<RepaymentEntity>)
+
     @Update
     suspend fun updateRepayment(repayment: RepaymentEntity)
 

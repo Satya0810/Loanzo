@@ -1163,7 +1163,8 @@ fun TicketDetailScreen(
                                     }
                                 },
                                 enabled = feedbackRating > 0,
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = GoldCoinRich,
@@ -1792,7 +1793,7 @@ private fun AdminTicketCard(
 private fun AdminActionButton(label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = modifier.height(36.dp),
+        modifier = modifier.heightIn(min = 38.dp),
         shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(containerColor = color),
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)

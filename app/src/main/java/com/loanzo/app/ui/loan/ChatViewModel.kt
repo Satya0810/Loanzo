@@ -46,6 +46,7 @@ data class ChatConversationSummary(
     val targetUserRole: String,
     val targetUserPhone: String,
     val targetUserKycStatus: String,
+    val targetUserProfilePhotoUri: String = "",
     val loanId: String? = null,
     val loanTitle: String? = null,
     val loanPrincipal: Double? = null,
@@ -79,7 +80,208 @@ data class ChatUiState(
 
 object DemoChatMessages {
     fun getDemoMessagesForChannel(channelId: String, currentUserId: String, counterpartyName: String): List<FirestoreChatMessage> {
-        return emptyList()
+        val now = System.currentTimeMillis()
+        val oneHour = 3_600_000L
+        val list = mutableListOf<FirestoreChatMessage>()
+
+        when {
+            channelId.contains("shivam") || channelId.contains("surya111") -> {
+                val isDevesh = currentUserId == "devesh123"
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_shivam_1",
+                        channelId = channelId,
+                        senderId = "surya111",
+                        senderName = "Shivam Yadav",
+                        senderRole = "BORROWER",
+                        text = "Namaste Devesh ji, Milestone 1 raw fabric materials have been successfully delivered by Bharat Tex directly to our Varanasi loom unit.",
+                        timestamp = now - (20 * oneHour),
+                        isMe = !isDevesh,
+                        status = "READ"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_shivam_2",
+                        channelId = channelId,
+                        senderId = "devesh123",
+                        senderName = "Devesh Singh",
+                        senderRole = "LENDER",
+                        text = "Hello Shivam. Yes, the GST e-invoice OCR was verified by the escrow engine and ₹50,000 was disbursed directly to Bharat Tex via UPI. How is the saree production volume?",
+                        timestamp = now - (18 * oneHour),
+                        isMe = isDevesh,
+                        status = "READ"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_shivam_3",
+                        channelId = channelId,
+                        senderId = "surya111",
+                        senderName = "Shivam Yadav",
+                        senderRole = "BORROWER",
+                        text = "Production is exceeding targets! The Jacquard setup is producing 80 sarees per day. I also paid EMI #3 (₹9,200) yesterday on schedule.",
+                        timestamp = now - (10 * oneHour),
+                        isMe = !isDevesh,
+                        status = "READ"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_shivam_4",
+                        channelId = channelId,
+                        senderId = "devesh123",
+                        senderName = "Devesh Singh",
+                        senderRole = "LENDER",
+                        text = "Received the ₹9,200 credit. Great punctuality. Romesh also completed the field assay report and our 22K gold collateral is safely lodged in Central Locker #42.",
+                        timestamp = now - (2 * oneHour),
+                        isMe = isDevesh,
+                        status = "DELIVERED"
+                    )
+                )
+            }
+            channelId.contains("suman") || channelId.contains("suman321") -> {
+                val isDevesh = currentUserId == "devesh123"
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_suman_1",
+                        channelId = channelId,
+                        senderId = "suman321",
+                        senderName = "Suman Yadav",
+                        senderRole = "BORROWER",
+                        text = "Namaste Devesh ji, thank you for placing a ₹75,000 syndication bid on my Dairy Bulk Milk Chiller marketplace post.",
+                        timestamp = now - (15 * oneHour),
+                        isMe = !isDevesh,
+                        status = "READ"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_suman_2",
+                        channelId = channelId,
+                        senderId = "devesh123",
+                        senderName = "Devesh Singh",
+                        senderRole = "LENDER",
+                        text = "Hello Suman ji! You completed your ₹50,000 solar irrigation loan with zero defaults and earned your Golden NOC Certificate. I am very glad to back your dairy chilling unit.",
+                        timestamp = now - (12 * oneHour),
+                        isMe = isDevesh,
+                        status = "READ"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_suman_3",
+                        channelId = channelId,
+                        senderId = "suman321",
+                        senderName = "Suman Yadav",
+                        senderRole = "BORROWER",
+                        text = "Thank you! Romesh has endorsed as co-borrower as well. We are ready to accept the bid with direct vendor payment to the chiller manufacturer.",
+                        timestamp = now - (1 * oneHour),
+                        isMe = !isDevesh,
+                        status = "DELIVERED"
+                    )
+                )
+            }
+            channelId.contains("romesh") || channelId.contains("romesh321") -> {
+                val isRomesh = currentUserId == "romesh321"
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_romesh_1",
+                        channelId = channelId,
+                        senderId = "romesh321",
+                        senderName = "Romesh Singh",
+                        senderRole = "OFFICER",
+                        text = "Field inspection report for Shivam's textile loom unit and 22K gold hallmarking assay has been cryptographically uploaded to Loanzo Vault.",
+                        timestamp = now - (16 * oneHour),
+                        isMe = isRomesh,
+                        status = "READ"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_romesh_2",
+                        channelId = channelId,
+                        senderId = "devesh123",
+                        senderName = "Devesh Singh",
+                        senderRole = "LENDER",
+                        text = "Thanks Romesh. Your joint obligor guarantee under Section 128 ICA is also verified on the contract. Equipment toolkit tranche was disbursed to Precision Instruments.",
+                        timestamp = now - (8 * oneHour),
+                        isMe = !isRomesh,
+                        status = "READ"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_romesh_3",
+                        channelId = channelId,
+                        senderId = "romesh321",
+                        senderName = "Romesh Singh",
+                        senderRole = "OFFICER",
+                        text = "Confirmed! The digital optical sensor toolkit arrived and has been tagged with Barcode LZ-EQP-5512. Field operations are fully active.",
+                        timestamp = now - (30 * 60_000L),
+                        isMe = isRomesh,
+                        status = "DELIVERED"
+                    )
+                )
+            }
+            channelId.contains("support") || channelId.contains("bot") -> {
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_bot_1",
+                        channelId = channelId,
+                        senderId = "LOANZO_BOT",
+                        senderName = "Loanzo AI Assistant",
+                        senderRole = "OFFICIAL_BOT",
+                        text = "Welcome to Loanzo Smart Legal Escrow & Contract Support. Every transaction on Loanzo is backed by Section 4 Promissory Notes, DigiLocker verified identity, and purpose-bound escrow tranches with 0% fund diversion. How can I assist you?",
+                        timestamp = now - (2 * oneHour),
+                        isMe = false,
+                        status = "DELIVERED"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_bot_2",
+                        channelId = channelId,
+                        senderId = currentUserId,
+                        senderName = "You",
+                        senderRole = "MEMBER",
+                        text = "Can you confirm the legal validity of the Golden NOC Certificate and collateral release?",
+                        timestamp = now - (oneHour),
+                        isMe = true,
+                        status = "READ"
+                    )
+                )
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_bot_3",
+                        channelId = channelId,
+                        senderId = "LOANZO_BOT",
+                        senderName = "Loanzo AI Assistant",
+                        senderRole = "OFFICIAL_BOT",
+                        text = "Upon 100% repayment clearance, Loanzo's automated settlement engine discharges all registered liens under Section 171 of the Indian Contract Act. The Golden NOC is cryptographically signed with SHA-256 hash and legally admissible under Section 65B of the Indian Evidence Act.",
+                        timestamp = now - (15 * 60_000L),
+                        isMe = false,
+                        status = "DELIVERED"
+                    )
+                )
+            }
+            else -> {
+                list.add(
+                    FirestoreChatMessage(
+                        messageId = "msg_generic_1",
+                        channelId = channelId,
+                        senderId = "counterparty",
+                        senderName = counterpartyName.ifBlank { "Loan Counterparty" },
+                        senderRole = "MEMBER",
+                        text = "Hello! Looking forward to reviewing the loan terms and purpose-bound escrow disbursement on Loanzo.",
+                        timestamp = now - (5 * oneHour),
+                        isMe = false,
+                        status = "DELIVERED"
+                    )
+                )
+            }
+        }
+        return list
     }
 }
 
@@ -91,8 +293,11 @@ class ChatViewModel @Inject constructor(
     private val translationHelper: com.loanzo.app.util.TranslationHelper,
     val multiAiRaceEngine: com.loanzo.app.data.ai.MultiAiRaceEngine,
     val aiConfigManager: com.loanzo.app.data.ai.AiConfigManager,
-    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager
+    private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager,
+    val voiceAssistantManager: com.loanzo.app.data.voice.VoiceAssistantManager
 ) : ViewModel() {
+
+    val voiceState = voiceAssistantManager.voiceState
 
     companion object {
         private const val TAG = "ChatViewModel"
@@ -192,6 +397,7 @@ class ChatViewModel @Inject constructor(
                         targetUserRole = counterpartyRole,
                         targetUserPhone = counterparty?.phone ?: "",
                         targetUserKycStatus = counterparty?.kycStatus ?: "PENDING",
+                        targetUserProfilePhotoUri = counterparty?.profilePhotoUri ?: "",
                         loanId = loan.loanId,
                         loanTitle = "${if (isLender) "Lent" else "Borrowed"} INR ${loan.sanctionedAmount.toInt()} (${loan.status})",
                         loanPrincipal = loan.sanctionedAmount,
@@ -233,7 +439,12 @@ class ChatViewModel @Inject constructor(
                         val currentList = _uiState.value.conversations.toMutableList()
 
                         for (doc in snapshot.documents) {
-                            val chId = doc.id
+                            val rawChId = doc.id
+                            val chId = if (!rawChId.startsWith("loan_") && !rawChId.startsWith("direct_") && !rawChId.startsWith("support_") && (rawChId.startsWith("LZ-") || doc.getString("channelType") == "LOAN")) {
+                                getLoanChannelId(rawChId)
+                            } else {
+                                rawChId
+                            }
                             val lastMsg = doc.getString("lastMessage") ?: continue
                             val lastTs = doc.getLong("lastTimestamp") ?: System.currentTimeMillis()
                             val unread = (doc.getLong("unread_$userId") ?: 0L).toInt()
@@ -265,6 +476,7 @@ class ChatViewModel @Inject constructor(
                                         targetUserRole = otherUser?.role ?: "MEMBER",
                                         targetUserPhone = otherUser?.phone ?: "",
                                         targetUserKycStatus = otherUser?.kycStatus ?: "VERIFIED",
+                                        targetUserProfilePhotoUri = otherUser?.profilePhotoUri ?: "",
                                         lastMessage = lastMsg,
                                         lastTimestamp = lastTs,
                                         unreadCount = unread,
@@ -275,7 +487,7 @@ class ChatViewModel @Inject constructor(
                         }
 
                         _uiState.update { state ->
-                            val sorted = currentList.sortedByDescending { it.lastTimestamp }
+                            val sorted = currentList.distinctBy { it.channelId }.sortedByDescending { it.lastTimestamp }
                             state.copy(
                                 conversations = sorted,
                                 filteredConversations = applyFilterAndSearch(sorted, state.selectedFilter, state.searchQuery)
@@ -361,13 +573,20 @@ class ChatViewModel @Inject constructor(
      * Starts or opens a real-time chat channel
      */
     fun loadChat(channelId: String, loanId: String? = null, targetUserId: String? = null) {
+        val canonicalChannelId = if (!channelId.startsWith("loan_") && !channelId.startsWith("direct_") && !channelId.startsWith("support_")) {
+            if (loanId != null || channelId.startsWith("LZ-")) getLoanChannelId(channelId) else channelId
+        } else {
+            channelId
+        }
+        val effectiveLoanId = loanId ?: if (canonicalChannelId.startsWith("loan_")) canonicalChannelId.removePrefix("loan_") else null
+
         val initialUserId = _uiState.value.currentUserId
         val initialUserName = _uiState.value.currentUserName.ifBlank { "You" }
 
         _uiState.update {
             it.copy(
-                isLoading = it.messages.isEmpty() && it.activeChannelId != channelId,
-                activeChannelId = channelId,
+                isLoading = it.messages.isEmpty() && it.activeChannelId != canonicalChannelId,
+                activeChannelId = canonicalChannelId,
                 currentUserId = initialUserId,
                 currentUserName = initialUserName
             )
@@ -387,21 +606,46 @@ class ChatViewModel @Inject constructor(
             val resolvedUserName = initialUserName.takeIf { it != "You" } ?: localUser?.name?.ifBlank { localUser.username } ?: localUser?.username ?: "You"
             val resolvedUserRole = localUser?.role ?: "MEMBER"
 
-            val loan = if (!loanId.isNullOrBlank()) {
-                loanDao.getLoanById(loanId)
-            } else if (channelId.startsWith("loan_")) {
-                loanDao.getLoanById(channelId.removePrefix("loan_"))
+            val loan = if (!effectiveLoanId.isNullOrBlank()) {
+                loanDao.getLoanById(effectiveLoanId)
+            } else if (canonicalChannelId.startsWith("loan_")) {
+                loanDao.getLoanById(canonicalChannelId.removePrefix("loan_"))
+            } else {
+                loanDao.getLoanById(canonicalChannelId)
+            }
+
+            val candidateCounterpartyId = if (!targetUserId.isNullOrBlank()) {
+                targetUserId
+            } else if (loan != null) {
+                if (loan.lenderId == resolvedUserId) loan.borrowerId else loan.lenderId
+            } else if (canonicalChannelId.startsWith("direct_")) {
+                val parts = canonicalChannelId.removePrefix("direct_").split("_")
+                parts.firstOrNull { it != resolvedUserId } ?: parts.lastOrNull() ?: ""
             } else null
 
-            val counterparty = if (!targetUserId.isNullOrBlank()) {
-                userDao.getUserById(targetUserId) ?: userRepository.syncUserById(targetUserId)
-            } else if (loan != null) {
-                val cId = if (loan.lenderId == resolvedUserId) loan.borrowerId else loan.lenderId
-                userDao.getUserById(cId) ?: userRepository.syncUserById(cId)
-            } else if (channelId.startsWith("direct_")) {
-                val parts = channelId.removePrefix("direct_").split("_")
-                val otherId = parts.firstOrNull { it != resolvedUserId } ?: parts.lastOrNull() ?: ""
-                if (otherId.isNotBlank()) userDao.getUserById(otherId) ?: userRepository.syncUserById(otherId) else null
+            val counterparty = if (!candidateCounterpartyId.isNullOrBlank()) {
+                userDao.getUserById(candidateCounterpartyId)
+                    ?: userRepository.syncUserById(candidateCounterpartyId)
+                    ?: when (candidateCounterpartyId.lowercase().trim()) {
+                        "suman321", "user_suman", "suman" -> com.loanzo.app.data.entity.UserEntity(userId = "suman321", name = "Suman Yadav", username = "suman321", role = "BORROWER")
+                        "devesh123", "user_devesh", "devesh" -> com.loanzo.app.data.entity.UserEntity(userId = "devesh123", name = "Devesh Singh", username = "devesh123", role = "LENDER")
+                        "romesh321", "user_romesh", "romesh" -> com.loanzo.app.data.entity.UserEntity(userId = "romesh321", name = "Romesh Singh", username = "romesh321", role = "OFFICER")
+                        "shivam123", "user_shivam", "shivam" -> com.loanzo.app.data.entity.UserEntity(userId = "shivam123", name = "Shivam Yadav", username = "shivam123", role = "BORROWER")
+                        else -> {
+                            val formattedName = candidateCounterpartyId.replace('_', ' ').replace('-', ' ')
+                                .split(' ')
+                                .filter { it.isNotBlank() }
+                                .joinToString(" ") { word -> word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() } }
+                            if (formattedName.isNotBlank() && !formattedName.equals("counterparty", ignoreCase = true)) {
+                                com.loanzo.app.data.entity.UserEntity(
+                                    userId = candidateCounterpartyId,
+                                    name = formattedName,
+                                    username = candidateCounterpartyId,
+                                    role = if (loan?.borrowerId == candidateCounterpartyId) "BORROWER" else "MEMBER"
+                                )
+                            } else null
+                        }
+                    }
             } else null
 
             _uiState.update {
@@ -415,15 +659,24 @@ class ChatViewModel @Inject constructor(
             }
         }
 
-        // Connect real-time Firestore listener to canonical channels/{channelId}/messages
-        val collectionRef = firestore.collection("channels").document(channelId).collection("messages")
+        // Connect real-time Firestore listener to canonical channels/{canonicalChannelId}/messages
+        val collectionRef = firestore.collection("channels").document(canonicalChannelId).collection("messages")
 
         activeChatListener = collectionRef
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "Chat listener error (channel: $channelId)", error)
-                    _uiState.update { it.copy(isLoading = false) }
+                    val fallback = DemoChatMessages.getDemoMessagesForChannel(
+                        channelId,
+                        _uiState.value.currentUserId,
+                        _uiState.value.activeCounterparty?.name ?: ""
+                    )
+                    _uiState.update { curr ->
+                        val pendingLocal = curr.messages.filter { it.messageId.startsWith("local_") || it.messageId.startsWith("ai_") }
+                        val combined = (fallback + pendingLocal).distinctBy { it.messageId }.sortedBy { it.timestamp }
+                        curr.copy(messages = combined, isLoading = false)
+                    }
                     return@addSnapshotListener
                 }
 
@@ -432,7 +685,7 @@ class ChatViewModel @Inject constructor(
 
                 val isSupportChannel = channelId == "support_loanzo_assistant" || channelId.contains("support") || targetUserId == "LOANZO_BOT"
 
-                val remoteMessages = snapshot?.documents?.mapNotNull { doc ->
+                val parsedMessages = snapshot?.documents?.mapNotNull { doc ->
                     val senderId = doc.getString("senderId") ?: return@mapNotNull null
                     val text = doc.getString("text") ?: ""
                     val senderName = doc.getString("senderName") ?: "User"
@@ -465,6 +718,16 @@ class ChatViewModel @Inject constructor(
                     )
                 } ?: emptyList()
 
+                val remoteMessages = if (parsedMessages.isEmpty()) {
+                    DemoChatMessages.getDemoMessagesForChannel(
+                        channelId,
+                        currentUid,
+                        _uiState.value.activeCounterparty?.name ?: ""
+                    )
+                } else {
+                    parsedMessages
+                }
+
                 _uiState.update { currState ->
                     // Preserve in-flight local messages (such as thinking indicators or pending AI responses)
                     val pendingLocal = currState.messages.filter { localMsg ->
@@ -488,7 +751,8 @@ class ChatViewModel @Inject constructor(
         channelId: String,
         text: String,
         messageType: String = "TEXT",
-        metaPayload: String? = null
+        metaPayload: String? = null,
+        isVoiceQuery: Boolean = false
     ) {
         if (text.isBlank() && metaPayload.isNullOrBlank()) return
         val state = _uiState.value
@@ -551,7 +815,7 @@ class ChatViewModel @Inject constructor(
 
             // If messaging LOANZO_BOT or support channel, dispatch 3-way Multi-AI race immediately
             if (channelId == "support_loanzo_assistant" || otherId == "LOANZO_BOT" || channelId.contains("support")) {
-                dispatchAiAssistantResponse(channelId, userId, text.trim())
+                dispatchAiAssistantResponse(channelId, userId, text.trim(), isVoiceQuery = isVoiceQuery)
             }
 
             try {
@@ -652,6 +916,7 @@ class ChatViewModel @Inject constructor(
                                 targetUserRole = cParty?.role ?: "MEMBER",
                                 targetUserPhone = cParty?.phone ?: "",
                                 targetUserKycStatus = cParty?.kycStatus ?: "VERIFIED",
+                                targetUserProfilePhotoUri = cParty?.profilePhotoUri ?: "",
                                 loanId = currState.activeLoan?.loanId,
                                 loanTitle = currState.activeLoan?.let { "Loan INR ${it.sanctionedAmount.toInt()} (${it.status})" },
                                 loanPrincipal = currState.activeLoan?.sanctionedAmount ?: 0.0,
@@ -691,7 +956,18 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun dispatchAiAssistantResponse(channelId: String, userId: String, prompt: String) {
+    fun sendAudioMessage(channelId: String, durationSec: Int, audioFilePath: String? = null) {
+        val display = "Voice message (${durationSec}s)"
+        val payload = audioFilePath ?: durationSec.toString()
+        sendMessage(channelId, display, "AUDIO", payload)
+    }
+
+    private fun dispatchAiAssistantResponse(
+        channelId: String,
+        userId: String,
+        prompt: String,
+        isVoiceQuery: Boolean = false
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             val thinkingMsgId = "ai_thinking_" + System.currentTimeMillis()
             val thinkingMsg = FirestoreChatMessage(
@@ -709,127 +985,150 @@ class ChatViewModel @Inject constructor(
             )
             _uiState.update { it.copy(messages = (it.messages + thinkingMsg).distinctBy { m -> m.messageId }) }
 
-            // 1. Gather User Account Grounding Context
-            val user = if (userId.isNotBlank()) userDao.getUserById(userId) else null
-            val loans = if (userId.isNotBlank()) {
-                withTimeoutOrNull(1500) { loanDao.getAllLoansForUser(userId).firstOrNull() } ?: emptyList()
-            } else {
-                emptyList()
-            }
-
-            val userName = user?.name?.ifBlank { user.username } ?: "Member"
-            val userRole = user?.role ?: "MEMBER"
-            val kycStatus = user?.kycStatus ?: "PENDING"
-            val activeLoans = loans.filter {
-                it.status == "ACTIVE" || it.status == "ACTIVE_SERVICING" || it.status == "TRANCHE_DISBURSEMENT" || it.status == "RESTRUCTURED"
-            }
-
-            val contextBuilder = StringBuilder()
-            contextBuilder.append("User Name: $userName | Role: $userRole\n")
-            contextBuilder.append("KYC Status: $kycStatus\n")
-            contextBuilder.append("Total Loans on File: ${loans.size} (${activeLoans.size} currently active)\n")
-            if (activeLoans.isNotEmpty()) {
-                contextBuilder.append("Active Loans Summary:\n")
-                activeLoans.take(3).forEach { loan ->
-                    val userSide = if (loan.borrowerId == userId) "Borrower" else "Lender"
-                    contextBuilder.append("• Loan #${loan.loanId.takeLast(6)} as $userSide: Principal ₹${loan.sanctionedAmount.toInt()}, Outstanding ₹${loan.outstandingAmount.toInt()}, Rate: ${loan.interestRate}% p.a., Tenure: ${loan.tenureMonths} mos, Status: ${loan.status}, Purpose: ${loan.purpose}\n")
-                }
-            } else {
-                contextBuilder.append("Active Loans: None currently active. User has 0 outstanding debt.\n")
-            }
-            val userContext = contextBuilder.toString()
-
-            // 2. Extract Recent Conversation History (up to 6 messages)
-            val history = _uiState.value.messages
-                .filter { !it.messageId.startsWith("ai_thinking_") && it.text.isNotBlank() }
-                .takeLast(6)
-                .map { msg ->
-                    val role = if (msg.senderId == "LOANZO_BOT" || msg.senderRole == "OFFICIAL_BOT") "assistant" else "user"
-                    com.loanzo.app.data.ai.AiMessage(role = role, content = msg.text)
+            try {
+                // 1. Gather User Account Grounding Context
+                val user = if (userId.isNotBlank()) userDao.getUserById(userId) else null
+                val loans = if (userId.isNotBlank()) {
+                    withTimeoutOrNull(1500) { loanDao.getAllLoansForUser(userId).firstOrNull() } ?: emptyList()
+                } else {
+                    emptyList()
                 }
 
-            // 3. Dispatch to Multi-AI Engine with user context & history
-            val raceResult = multiAiRaceEngine.generateChatResponse(
-                userPrompt = prompt,
-                userContext = userContext,
-                conversationHistory = history
-            )
-            val answer = when (raceResult) {
-                is com.loanzo.app.data.ai.AiRaceResult.Success -> raceResult.content
-                is com.loanzo.app.data.ai.AiRaceResult.Failure -> raceResult.fallbackContent
-            }
+                val userName = user?.name?.ifBlank { user.username } ?: "Member"
+                val userRole = user?.role ?: "MEMBER"
+                val kycStatus = user?.kycStatus ?: "PENDING"
+                val activeLoans = loans.filter {
+                    it.status == "ACTIVE" || it.status == "ACTIVE_SERVICING" || it.status == "TRANCHE_DISBURSEMENT" || it.status == "RESTRUCTURED"
+                }
 
-            // Allocate a deterministic Firestore document reference ID so doc.id matches finalAiMsg.messageId
-            val botDocRef = firestore.collection("channels").document(channelId).collection("messages").document()
-            val finalAiMsgId = botDocRef.id
-            val finalTimestamp = System.currentTimeMillis()
+                val contextBuilder = StringBuilder()
+                contextBuilder.append("User Name: $userName | Role: $userRole\n")
+                contextBuilder.append("KYC Status: $kycStatus\n")
+                contextBuilder.append("Total Loans on File: ${loans.size} (${activeLoans.size} currently active)\n")
+                if (activeLoans.isNotEmpty()) {
+                    contextBuilder.append("Active Loans Summary:\n")
+                    activeLoans.take(3).forEach { loan ->
+                        val userSide = if (loan.borrowerId == userId) "Borrower" else "Lender"
+                        contextBuilder.append("• Loan #${loan.loanId.takeLast(6)} as $userSide: Principal ₹${loan.sanctionedAmount.toInt()}, Outstanding ₹${loan.outstandingAmount.toInt()}, Rate: ${loan.interestRate}% p.a., Tenure: ${loan.tenureMonths} mos, Status: ${loan.status}, Purpose: ${loan.purpose}\n")
+                    }
+                } else {
+                    contextBuilder.append("Active Loans: None currently active. User has 0 outstanding debt.\n")
+                }
+                val userContext = contextBuilder.toString()
 
-            val finalAiMsg = FirestoreChatMessage(
-                messageId = finalAiMsgId,
-                channelId = channelId,
-                senderId = "LOANZO_BOT",
-                senderName = "Loanzo AI Assistant",
-                senderRole = "OFFICIAL_BOT",
-                recipientId = userId,
-                text = answer,
-                timestamp = finalTimestamp,
-                isMe = false,
-                status = "DELIVERED",
-                messageType = "TEXT",
-                metaPayload = null
-            )
+                // 2. Extract Recent Conversation History (up to 6 messages)
+                val history = _uiState.value.messages
+                    .filter { !it.messageId.startsWith("ai_thinking_") && it.text.isNotBlank() }
+                    .takeLast(6)
+                    .map { msg ->
+                        val role = if (msg.senderId == "LOANZO_BOT" || msg.senderRole == "OFFICIAL_BOT") "assistant" else "user"
+                        com.loanzo.app.data.ai.AiMessage(role = role, content = msg.text)
+                    }
 
-            // Immediately update UI with zero network latency
-            _uiState.update { state ->
-                val newMessages = state.messages.filter { !it.messageId.startsWith("ai_thinking_") } + finalAiMsg
-                val currentList = state.conversations.toMutableList()
-                val idx = currentList.indexOfFirst { it.channelId == channelId }
-                if (idx != -1) {
-                    val existing = currentList[idx]
-                    currentList[idx] = existing.copy(
-                        lastMessage = answer,
-                        lastTimestamp = finalTimestamp,
-                        unreadCount = 0
+                // 3. Dispatch to Multi-AI Engine with user context & history
+                val effectivePrompt = if (isVoiceQuery) {
+                    "$prompt\n[Voice Assistant Mode: User is listening via audio. Respond conversationally in 1-2 crisp spoken sentences, followed by appropriate action tags.]"
+                } else {
+                    prompt
+                }
+
+                val raceResult = multiAiRaceEngine.generateChatResponse(
+                    userPrompt = effectivePrompt,
+                    userContext = userContext,
+                    conversationHistory = history
+                )
+                val answer = when (raceResult) {
+                    is com.loanzo.app.data.ai.AiRaceResult.Success -> raceResult.content
+                    is com.loanzo.app.data.ai.AiRaceResult.Failure -> raceResult.fallbackContent
+                }
+
+                // If query came from voice assistant, synthesize and speak response out loud
+                if (isVoiceQuery) {
+                    voiceAssistantManager.speak(answer, answer)
+                }
+
+                // Allocate a deterministic Firestore document reference ID so doc.id matches finalAiMsg.messageId
+                val botDocRef = firestore.collection("channels").document(channelId).collection("messages").document()
+                val finalAiMsgId = botDocRef.id
+                val finalTimestamp = System.currentTimeMillis()
+
+                val finalAiMsg = FirestoreChatMessage(
+                    messageId = finalAiMsgId,
+                    channelId = channelId,
+                    senderId = "LOANZO_BOT",
+                    senderName = "Loanzo AI Assistant",
+                    senderRole = "OFFICIAL_BOT",
+                    recipientId = userId,
+                    text = answer,
+                    timestamp = finalTimestamp,
+                    isMe = false,
+                    status = "DELIVERED",
+                    messageType = "TEXT",
+                    metaPayload = null
+                )
+
+                // Immediately update UI with zero network latency
+                _uiState.update { state ->
+                    val newMessages = state.messages.filter { !it.messageId.startsWith("ai_thinking_") } + finalAiMsg
+                    val currentList = state.conversations.toMutableList()
+                    val idx = currentList.indexOfFirst { it.channelId == channelId }
+                    if (idx != -1) {
+                        val existing = currentList[idx]
+                        currentList[idx] = existing.copy(
+                            lastMessage = answer,
+                            lastTimestamp = finalTimestamp,
+                            unreadCount = 0
+                        )
+                    }
+                    val sorted = currentList.sortedByDescending { it.lastTimestamp }
+                    state.copy(
+                        messages = newMessages.distinctBy { it.messageId },
+                        conversations = sorted,
+                        filteredConversations = applyFilterAndSearch(sorted, state.selectedFilter, state.searchQuery)
                     )
                 }
-                val sorted = currentList.sortedByDescending { it.lastTimestamp }
-                state.copy(
-                    messages = newMessages.distinctBy { it.messageId },
-                    conversations = sorted,
-                    filteredConversations = applyFilterAndSearch(sorted, state.selectedFilter, state.searchQuery)
+
+                // Persist bot response into Cloud Firestore asynchronously without blocking local delivery
+                val botMessageData = hashMapOf(
+                    "channelId" to channelId,
+                    "senderId" to "LOANZO_BOT",
+                    "senderName" to "Loanzo AI Assistant",
+                    "senderRole" to "OFFICIAL_BOT",
+                    "recipientId" to userId,
+                    "text" to answer,
+                    "timestamp" to finalTimestamp,
+                    "status" to "DELIVERED",
+                    "messageType" to "TEXT",
+                    "metaPayload" to null
                 )
-            }
 
-            // Persist bot response into Cloud Firestore asynchronously without blocking local delivery
-            val botMessageData = hashMapOf(
-                "channelId" to channelId,
-                "senderId" to "LOANZO_BOT",
-                "senderName" to "Loanzo AI Assistant",
-                "senderRole" to "OFFICIAL_BOT",
-                "recipientId" to userId,
-                "text" to answer,
-                "timestamp" to finalTimestamp,
-                "status" to "DELIVERED",
-                "messageType" to "TEXT",
-                "metaPayload" to null
-            )
-
-            try {
-                botDocRef.set(botMessageData).await()
-                firestore.collection("channels").document(channelId).set(
-                    mapOf(
-                        "channelId" to channelId,
-                        "channelType" to "SUPPORT",
-                        "lastMessage" to answer,
-                        "lastTimestamp" to finalTimestamp,
-                        "lastSenderId" to "LOANZO_BOT",
-                        "participants" to listOf(userId, "LOANZO_BOT").filter { it.isNotBlank() }.distinct()
-                    ),
-                    SetOptions.merge()
-                ).await()
-                Log.d(TAG, "Successfully persisted AI assistant response to Cloud Firestore for channel $channelId (doc: $finalAiMsgId)")
-            } catch (fbErr: Exception) {
-                Log.w(TAG, "Notice saving bot response to Cloud Firestore: ${fbErr.message}")
+                try {
+                    botDocRef.set(botMessageData).await()
+                    firestore.collection("channels").document(channelId).set(
+                        mapOf(
+                            "channelId" to channelId,
+                            "channelType" to "SUPPORT",
+                            "lastMessage" to answer,
+                            "lastTimestamp" to finalTimestamp,
+                            "lastSenderId" to "LOANZO_BOT",
+                            "participants" to listOf(userId, "LOANZO_BOT").filter { it.isNotBlank() }.distinct()
+                        ),
+                        SetOptions.merge()
+                    ).await()
+                    Log.d(TAG, "Successfully persisted AI assistant response to Cloud Firestore for channel $channelId (doc: $finalAiMsgId)")
+                } catch (fbErr: Exception) {
+                    Log.w(TAG, "Notice saving bot response to Cloud Firestore: ${fbErr.message}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in dispatchAiAssistantResponse", e)
+                val fallback = "I encountered an issue processing your request. Please check your connection or tap mic to try again."
+                if (isVoiceQuery) {
+                    voiceAssistantManager.speak(fallback, fallback)
+                }
+                _uiState.update { state ->
+                    val filtered = state.messages.filter { !it.messageId.startsWith("ai_thinking_") }
+                    state.copy(messages = filtered)
+                }
             }
         }
     }
@@ -882,9 +1181,194 @@ class ChatViewModel @Inject constructor(
         // No-op: Demo chat seeding disabled completely.
     }
 
+    /**
+     * Starts listening for user's voice query.
+     * If invoked in support/bot channel, posts query and response into chat.
+     * If invoked in peer deal/direct chat, routes query directly to AI copilot without leaking to counterparty.
+     */
+    fun startVoiceAssistant(channelId: String, userId: String) {
+        val isSupportChannel = channelId == "support_loanzo_assistant" || channelId.contains("support")
+        voiceAssistantManager.startListening { transcribedText ->
+            if (transcribedText.isNotBlank()) {
+                if (isSupportChannel) {
+                    sendMessage(
+                        channelId = channelId,
+                        text = transcribedText,
+                        messageType = "TEXT",
+                        metaPayload = null,
+                        isVoiceQuery = true
+                    )
+                } else {
+                    dispatchDirectVoiceQuery(userId = userId, prompt = transcribedText)
+                }
+            }
+        }
+    }
+
+    private val voiceSessionHistory = mutableListOf<com.loanzo.app.data.ai.AiMessage>()
+
+    private fun dispatchDirectVoiceQuery(userId: String, prompt: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // 1. Gather User Account Grounding Context + Active Loan Context
+                val user = if (userId.isNotBlank()) userDao.getUserById(userId) else null
+                val loans = if (userId.isNotBlank()) {
+                    withTimeoutOrNull(1500) { loanDao.getAllLoansForUser(userId).firstOrNull() } ?: emptyList()
+                } else {
+                    emptyList()
+                }
+                val activeLoan = _uiState.value.activeLoan
+
+                val userName = user?.name?.ifBlank { user.username } ?: "Member"
+                val userRole = user?.role ?: "MEMBER"
+                val kycStatus = user?.kycStatus ?: "PENDING"
+                val kycBadges = buildList {
+                    if (user?.panVerified == true) add("PAN Verified")
+                    if (user?.aadhaarVerified == true) add("Aadhaar Verified")
+                    if (user?.selfieVerified == true) add("Biometric Selfie Verified")
+                    if (user?.upiVerified == true) add("UPI Linked (${user.upiId})")
+                }
+                val kycDetails = if (kycBadges.isNotEmpty()) "$kycStatus (${kycBadges.joinToString(", ")})" else kycStatus
+
+                val activeBorrowerLoans = loans.filter {
+                    it.borrowerId == userId && (it.status in listOf("ACTIVE", "ACTIVE_SERVICING", "TRANCHE_DISBURSEMENT", "RESTRUCTURED"))
+                }
+                val activeLenderLoans = loans.filter {
+                    it.lenderId == userId && (it.status in listOf("ACTIVE", "ACTIVE_SERVICING", "TRANCHE_DISBURSEMENT", "RESTRUCTURED"))
+                }
+
+                val contextBuilder = StringBuilder()
+                contextBuilder.append("User Name: $userName | Role: $userRole\n")
+                contextBuilder.append("KYC Standing: $kycDetails\n")
+
+                if (activeLoan != null) {
+                    val userSide = if (activeLoan.borrowerId == userId) "Borrower" else "Lender"
+                    val approxEmi = if (activeLoan.tenureMonths > 0) {
+                        ((activeLoan.outstandingAmount * (1.0 + (activeLoan.interestRate / 100.0) * (activeLoan.tenureMonths / 12.0))) / activeLoan.tenureMonths).toInt()
+                    } else 0
+                    contextBuilder.append("Currently Viewed Loan #${activeLoan.loanId.takeLast(6)} ($userSide): Principal ₹${activeLoan.sanctionedAmount.toInt()}, Outstanding ₹${activeLoan.outstandingAmount.toInt()}, Approx EMI ₹$approxEmi/mo, Rate: ${activeLoan.interestRate}% p.a., Tenure: ${activeLoan.tenureMonths} mos, Status: ${activeLoan.status}, Purpose: ${activeLoan.purpose}\n")
+                }
+
+                if (activeBorrowerLoans.isNotEmpty()) {
+                    val totalDebt = activeBorrowerLoans.sumOf { it.outstandingAmount }.toInt()
+                    contextBuilder.append("Active Borrower Debt: ₹$totalDebt across ${activeBorrowerLoans.size} active loan(s):\n")
+                    activeBorrowerLoans.take(3).forEach { l ->
+                        val emi = if (l.tenureMonths > 0) {
+                            ((l.outstandingAmount * (1.0 + (l.interestRate / 100.0) * (l.tenureMonths / 12.0))) / l.tenureMonths).toInt()
+                        } else 0
+                        contextBuilder.append("• Loan #${l.loanId.takeLast(6)} (${l.purpose}): Balance ₹${l.outstandingAmount.toInt()}, Monthly EMI ₹$emi, Rate: ${l.interestRate}%, Status: ${l.status}\n")
+                    }
+                } else if (userRole == "BORROWER" || userRole == "MEMBER") {
+                    contextBuilder.append("Active Borrower Debt: None. User has ₹0 outstanding obligations.\n")
+                }
+
+                if (activeLenderLoans.isNotEmpty()) {
+                    val totalDeployed = activeLenderLoans.sumOf { it.outstandingAmount }.toInt()
+                    contextBuilder.append("Active Lending Capital: ₹$totalDeployed across ${activeLenderLoans.size} peer borrower(s).\n")
+                }
+
+                val userContext = contextBuilder.toString()
+
+                val effectivePrompt = """
+                    $prompt
+                    [Voice Assistant Direct Query:
+                    - You are Loanzo's in-app personal voice concierge.
+                    - Respond conversationally in 1-2 crisp, human spoken sentences.
+                    - Use user account context (loans, EMIs, KYC, role) to provide exact personalized answers.
+                    - Append relevant action tags at the very end when applicable:
+                      [ACTION:CALCULATOR] for EMI/interest calculation,
+                      [ACTION:KYC] for identity/KYC check,
+                      [ACTION:PORTFOLIO] for viewing portfolio/loans/EMIs,
+                      [ACTION:MARKETPLACE] for browsing community offers,
+                      [ACTION:CREATE_POST] for creating loan requests or lender capital offers,
+                      [ACTION:SUPPORT] for support tickets or mediation desk,
+                      [ACTION:NOTIFICATIONS] for alerts.
+                    ]
+                """.trimIndent()
+
+                // Multi-turn conversation memory window (remembers prior session turns)
+                val currentHistory = synchronized(voiceSessionHistory) { voiceSessionHistory.takeLast(6).toList() }
+
+                val raceResult = multiAiRaceEngine.generateChatResponse(
+                    userPrompt = effectivePrompt,
+                    userContext = userContext,
+                    conversationHistory = currentHistory
+                )
+                val answer = when (raceResult) {
+                    is com.loanzo.app.data.ai.AiRaceResult.Success -> raceResult.content
+                    is com.loanzo.app.data.ai.AiRaceResult.Failure -> raceResult.fallbackContent
+                }
+
+                // Update session memory with this turn
+                synchronized(voiceSessionHistory) {
+                    voiceSessionHistory.add(com.loanzo.app.data.ai.AiMessage("user", prompt))
+                    voiceSessionHistory.add(com.loanzo.app.data.ai.AiMessage("assistant", answer))
+                    while (voiceSessionHistory.size > 8) {
+                        voiceSessionHistory.removeAt(0)
+                    }
+                }
+
+                voiceAssistantManager.speak(answer, answer)
+
+                // Archive Q&A in user's support channel for persistent record
+                try {
+                    val supportChannelId = "support_loanzo_assistant"
+                    val now = System.currentTimeMillis()
+                    val userMsgData = hashMapOf(
+                        "channelId" to supportChannelId,
+                        "senderId" to userId,
+                        "senderName" to userName,
+                        "senderRole" to userRole,
+                        "recipientId" to "LOANZO_BOT",
+                        "text" to prompt,
+                        "timestamp" to now - 1,
+                        "status" to "DELIVERED",
+                        "messageType" to "TEXT"
+                    )
+                    val botMsgData = hashMapOf(
+                        "channelId" to supportChannelId,
+                        "senderId" to "LOANZO_BOT",
+                        "senderName" to "Loanzo AI Assistant",
+                        "senderRole" to "OFFICIAL_BOT",
+                        "recipientId" to userId,
+                        "text" to answer,
+                        "timestamp" to now,
+                        "status" to "DELIVERED",
+                        "messageType" to "TEXT"
+                    )
+                    firestore.collection("channels").document(supportChannelId).collection("messages").add(userMsgData)
+                    firestore.collection("channels").document(supportChannelId).collection("messages").add(botMsgData)
+                } catch (e: Exception) {
+                    Log.d(TAG, "Notice saving direct voice query to support log: ${e.message}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in dispatchDirectVoiceQuery", e)
+                val fallback = "I encountered an issue processing your voice request. Please check your connection or tap mic to try again."
+                voiceAssistantManager.speak(fallback, fallback)
+            }
+        }
+    }
+
+    fun stopVoiceListening() {
+        voiceAssistantManager.stopListening()
+    }
+
+    fun stopVoiceSpeaking() {
+        voiceAssistantManager.stopSpeaking()
+    }
+
+    fun readAloudMessage(rawText: String) {
+        voiceAssistantManager.speak(rawText)
+    }
+
+    fun resetVoiceState() {
+        voiceAssistantManager.resetState()
+    }
+
     override fun onCleared() {
         super.onCleared()
         activeChatListener?.remove()
         conversationsListener?.remove()
+        voiceAssistantManager.resetState()
     }
 }

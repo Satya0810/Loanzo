@@ -22,6 +22,9 @@ interface NotificationDao {
     @Query("UPDATE notifications SET isRead = 1 WHERE notificationId = :notificationId")
     suspend fun markAsRead(notificationId: String)
 
+    @Query("UPDATE notifications SET isRead = :isRead WHERE notificationId = :notificationId")
+    suspend fun setReadStatus(notificationId: String, isRead: Boolean)
+
     @Query("UPDATE notifications SET isRead = 1 WHERE userId = :userId OR (:isAdmin = 1 AND (userId = 'ADMIN' OR userId = 'ALL_ADMINS'))")
     suspend fun markAllAsRead(userId: String, isAdmin: Boolean = false)
 

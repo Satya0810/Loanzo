@@ -15,6 +15,8 @@ import com.loanzo.app.data.drive.GoogleDriveManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.random.Random
@@ -60,7 +62,16 @@ data class AuthUiState(
     // Specific Upload States
     val isUploadingPan: Boolean = false,
     val isUploadingAadhaar: Boolean = false,
-    val isUploadingSelfie: Boolean = false
+    val isUploadingSelfie: Boolean = false,
+    // Ban & Appeal States
+    val isAccountBanned: Boolean = false,
+    val bannedUserId: String? = null,
+    val banType: String = "NONE",
+    val banExpiresAt: Long = 0L,
+    val banReason: String = "",
+    val banAppealSubmitted: Boolean = false,
+    val isSubmittingAppeal: Boolean = false,
+    val banAppealMessage: String? = null
 )
 
 @HiltViewModel
@@ -165,6 +176,51 @@ class AuthViewModel @Inject constructor(
 
     fun setSelectedLoginRole(role: String) {
         _uiState.update { it.copy(selectedRole = role) }
+    }
+
+    fun switchRole(newRole: String, onComplete: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val userId = _uiState.value.currentUserId ?: userRepository.getCurrentUserIdSync() ?: ""
+            if (userId.isBlank()) return@launch
+            val user = userRepository.getUserById(userId) ?: return@launch
+
+            val isEligible = com.loanzo.app.util.VerificationManager.isEligibleAppOwner(user)
+            if (!isEligible) {
+                _uiState.update { it.copy(error = "Access Denied: Only platform owner @satyam0810 can switch operational roles.") }
+                return@launch
+            }
+
+            val targetRole = when (newRole.trim().uppercase()) {
+                "AGENT", "FIELD AGENT", "OFFICER" -> "AGENT"
+                "ADMIN", "MASTER ADMIN", "OWNER" -> "ADMIN"
+                else -> "USER"
+            }
+
+            val updatedUser = when (targetRole) {
+                "AGENT" -> user.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
+                "ADMIN" -> user.copy(role = "ADMIN", isOnDuty = false)
+                else -> user.copy(role = "USER", isOnDuty = false)
+            }
+
+            userRepository.updateUser(updatedUser)
+            userRepository.saveSession(updatedUser.userId, targetRole)
+            try {
+                firebaseManager.saveUserToFirestore(updatedUser)
+            } catch (e: Exception) {
+                android.util.Log.w("AuthViewModel", "Failed to sync switched role to Firestore: ${e.message}")
+            }
+
+            _uiState.update {
+                it.copy(
+                    currentRole = targetRole,
+                    selectedRole = targetRole
+                )
+            }
+
+            withContext(Dispatchers.Main) {
+                onComplete()
+            }
+        }
     }
 
     fun verifyUserIdExists(loginId: String, role: String? = null) {
@@ -577,7 +633,7 @@ class AuthViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         recoveryGrievanceTicket = ticketId,
-                        error = "Grievance submitted successfully (Ticket #$ticketId). Our Master Admin desk will review your identity and authorize your new device."
+                        error = "Grievance submitted successfully (Ticket #$ticketId). Our Admin desk will review your identity and authorize your new device."
                     )
                 }
             } catch (e: Exception) {
@@ -737,6 +793,45 @@ class AuthViewModel @Inject constructor(
 
                 if (isPasswordValid) {
                     var finalUser = user
+
+                    // Check for account ban or blacklisted credentials
+                    val bannedCred = adminRepository.checkIsCredentialBanned(listOf(finalUser.phone, finalUser.email, finalUser.panNumber, finalUser.aadhaarNumber, finalUser.username))
+                    if (finalUser.isBanned || bannedCred != null) {
+                        if (finalUser.banType == "TEMPORARY" && finalUser.banExpiresAt > 0L) {
+                            if (System.currentTimeMillis() >= finalUser.banExpiresAt) {
+                                // Ban period expired, automatically lift ban
+                                finalUser = finalUser.copy(isBanned = false, banType = "NONE", banExpiresAt = 0L, banReason = "")
+                                userRepository.updateUser(finalUser)
+                            } else {
+                                val remainingDays = ((finalUser.banExpiresAt - System.currentTimeMillis()) / (24L * 3600L * 1000L)).coerceAtLeast(1)
+                                _uiState.update {
+                                    it.copy(
+                                        isLoading = false,
+                                        isAccountBanned = true,
+                                        bannedUserId = finalUser.userId,
+                                        banType = "TEMPORARY",
+                                        banExpiresAt = finalUser.banExpiresAt,
+                                        banReason = finalUser.banReason,
+                                        error = "Account Suspended: Temporarily banned for $remainingDays more day(s). Reason: ${finalUser.banReason.ifBlank { "Policy violation" }}"
+                                    )
+                                }
+                                return@launch
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isAccountBanned = true,
+                                    bannedUserId = finalUser.userId,
+                                    banType = "PERMANENT",
+                                    banReason = finalUser.banReason.ifBlank { bannedCred?.reason ?: "Permanent policy violation" },
+                                    error = "Account Terminated: This account and its credentials have been permanently barred from Loanzo. Reason: ${finalUser.banReason.ifBlank { bannedCred?.reason ?: "Platform safety violation" }}"
+                                )
+                            }
+                            return@launch
+                        }
+                    }
+
                     // Auto-upgrade password to secure SHA-256 hash if it was plaintext or untrimmed
                     if (finalUser.password != hashedPass) {
                         finalUser = finalUser.copy(password = hashedPass)
@@ -814,7 +909,7 @@ class AuthViewModel @Inject constructor(
                                 _uiState.update {
                                     it.copy(
                                         isLoading = false,
-                                        error = "Access Denied: Only satyam0810 is authorized as Master Admin."
+                                        error = "Access Denied: Only satyam0810 is authorized as Admin."
                                     )
                                 }
                                 return@launch
@@ -823,15 +918,21 @@ class AuthViewModel @Inject constructor(
                     }
 
                     val effectiveSessionRole = when {
+                        isAppOwner -> when {
+                            isTargetAdmin -> "ADMIN"
+                            isTargetAgent -> "AGENT"
+                            isTargetMember -> "USER"
+                            else -> if (finalUser.role.equals("AGENT", ignoreCase = true)) "AGENT" else if (finalUser.role.equals("USER", ignoreCase = true) || finalUser.role.equals("BORROWER", ignoreCase = true) || finalUser.role.equals("LENDER", ignoreCase = true)) "USER" else "ADMIN"
+                        }
                         isTargetAgent || isFieldAgent -> "AGENT"
-                        isTargetAdmin || isAppOwner -> if (isAppOwner) "ADMIN" else "USER"
+                        isTargetAdmin -> "USER"
                         isTargetMember -> "USER"
-                        else -> if (finalUser.role.uppercase() == "ADMIN" && !isAppOwner) "USER" else finalUser.role
+                        else -> if (finalUser.role.uppercase() == "ADMIN") "USER" else finalUser.role
                     }
-                    finalUser = when {
-                        isTargetAgent || isFieldAgent -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
-                        isTargetAdmin -> finalUser.copy(role = if (isAppOwner) "ADMIN" else "USER")
-                        isAppOwner -> finalUser.copy(role = "ADMIN")
+                    finalUser = when (effectiveSessionRole) {
+                        "AGENT" -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
+                        "ADMIN" -> finalUser.copy(role = "ADMIN", isOnDuty = false)
+                        "USER" -> finalUser.copy(role = "USER", isOnDuty = false)
                         else -> finalUser.copy(role = effectiveSessionRole)
                     }
 
@@ -903,6 +1004,18 @@ class AuthViewModel @Inject constructor(
                 }
                 if (!cleanUsername.matches(Regex("^[a-z0-9._]+$"))) {
                     _uiState.update { it.copy(isLoading = false, error = "Username can only contain letters, numbers, dots and underscores") }
+                    return@launch
+                }
+
+                // Check for blacklisted credentials
+                val bannedCred = adminRepository.checkIsCredentialBanned(listOf(cleanPhone, cleanEmail, cleanUsername))
+                if (bannedCred != null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Registration Blocked: The provided ${bannedCred.credentialType.lowercase()} has been permanently barred from creating accounts on Loanzo due to a prior violation."
+                        )
+                    }
                     return@launch
                 }
 
@@ -1079,13 +1192,20 @@ class AuthViewModel @Inject constructor(
                                            com.loanzo.app.util.VerificationManager.isFieldAgent(username = targetUser.username, userId = targetUser.userId)
 
                         val effectiveRole = when {
-                            defaultRole.contains("admin", ignoreCase = true) -> if (isAppOwner) "ADMIN" else "USER"
+                            isAppOwner -> when {
+                                defaultRole.contains("admin", ignoreCase = true) -> "ADMIN"
+                                defaultRole.contains("agent", ignoreCase = true) -> "AGENT"
+                                defaultRole.contains("member", ignoreCase = true) || defaultRole.contains("user", ignoreCase = true) -> "USER"
+                                else -> if (targetUser.role.isNotBlank()) targetUser.role else "ADMIN"
+                            }
+                            defaultRole.contains("admin", ignoreCase = true) -> "USER"
                             defaultRole.contains("agent", ignoreCase = true) -> if (isFieldAgent || targetUser.role == "AGENT") "AGENT" else targetUser.role
                             defaultRole.contains("member", ignoreCase = true) || defaultRole.contains("user", ignoreCase = true) -> "USER"
                             else -> targetUser.role
                         }
 
                         val updatedTargetUser = targetUser.copy(
+                            role = effectiveRole,
                             email = if (targetUser.email.isBlank()) email else targetUser.email,
                             emailVerified = true,
                             profilePhotoUri = photoUrl.ifBlank { targetUser.profilePhotoUri }
@@ -1334,7 +1454,7 @@ class AuthViewModel @Inject constructor(
                                 _uiState.update {
                                     it.copy(
                                         isLoading = false,
-                                        error = "Access Denied: Only satyam0810 is authorized as Master Admin."
+                                        error = "Access Denied: Only satyam0810 is authorized as Admin."
                                     )
                                 }
                                 return@launch
@@ -1361,15 +1481,21 @@ class AuthViewModel @Inject constructor(
                     }
 
                     val effectiveBioRole = when {
+                        isAppOwner -> when {
+                            isBioAdmin -> "ADMIN"
+                            isBioAgent -> "AGENT"
+                            isBioMember -> "USER"
+                            else -> if (finalUser.role.equals("AGENT", ignoreCase = true)) "AGENT" else if (finalUser.role.equals("USER", ignoreCase = true) || finalUser.role.equals("BORROWER", ignoreCase = true) || finalUser.role.equals("LENDER", ignoreCase = true)) "USER" else "ADMIN"
+                        }
                         isBioAgent || isBioFieldAgent -> "AGENT"
-                        isBioAdmin || isAppOwner -> if (isAppOwner) "ADMIN" else "USER"
+                        isBioAdmin -> "USER"
                         isBioMember -> "USER"
-                        else -> if (finalUser.role.uppercase() == "ADMIN" && !isAppOwner) "USER" else finalUser.role
+                        else -> if (finalUser.role.uppercase() == "ADMIN") "USER" else finalUser.role
                     }
-                    finalUser = when {
-                        isBioAgent || isBioFieldAgent -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
-                        isBioAdmin -> finalUser.copy(role = if (isAppOwner) "ADMIN" else "USER")
-                        isAppOwner -> finalUser.copy(role = "ADMIN")
+                    finalUser = when (effectiveBioRole) {
+                        "AGENT" -> finalUser.copy(role = "AGENT", agentStatus = "APPROVED", isOnDuty = true)
+                        "ADMIN" -> finalUser.copy(role = "ADMIN", isOnDuty = false)
+                        "USER" -> finalUser.copy(role = "USER", isOnDuty = false)
                         else -> finalUser.copy(role = effectiveBioRole)
                     }
                     userRepository.updateUser(finalUser)
@@ -2063,6 +2189,44 @@ class AuthViewModel @Inject constructor(
                     error = "KYC credentials reset. Please submit fresh documents."
                 )
             }
+        }
+    }
+
+    fun submitBanAppeal(userId: String, appealText: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmittingAppeal = true, banAppealMessage = null) }
+            try {
+                adminRepository.submitBanAppeal(userId, appealText.trim())
+                _uiState.update {
+                    it.copy(
+                        isSubmittingAppeal = false,
+                        banAppealSubmitted = true,
+                        banAppealMessage = "Your ban appeal has been submitted to the admin team for review."
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSubmittingAppeal = false,
+                        error = "Failed to submit appeal: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearBanState() {
+        _uiState.update {
+            it.copy(
+                isAccountBanned = false,
+                bannedUserId = null,
+                banType = "NONE",
+                banExpiresAt = 0L,
+                banReason = "",
+                banAppealSubmitted = false,
+                isSubmittingAppeal = false,
+                banAppealMessage = null
+            )
         }
     }
 }

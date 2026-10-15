@@ -9,9 +9,11 @@ import com.loanzo.app.data.repository.UserRepository
 import com.loanzo.app.data.session.BankingSessionManager
 import com.loanzo.app.ui.navigation.Routes
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,23 +44,47 @@ class SplashWarmupCoordinator @Inject constructor(
     private val loanDao: LoanDao,
     private val notificationDao: NotificationDao,
     private val firebaseManager: com.loanzo.app.data.firebase.FirebaseManager,
+    private val presentationAccountSeeder: com.loanzo.app.data.PresentationAccountSeeder,
     @ApplicationContext private val context: Context
 ) {
     suspend fun executeParallelWarmup(): WarmupResult = withContext(Dispatchers.IO) {
         try {
-            // Stage 0: Ensure active Firebase Auth session for cloud sync & security rules
-            try {
-                firebaseManager.ensureFirebaseAuthSession()
-            } catch (_: Exception) {}
+            // Stage 0: Non-blocking asynchronous Firebase Auth priming (prevents offline/slow network splash hanging)
+            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    firebaseManager.ensureFirebaseAuthSession()
+                } catch (e: Exception) {
+                    android.util.Log.w("SplashWarmupCoordinator", "Background Firebase session warmup note: ${e.message}")
+                }
+            }
 
             // Automatic startup purge of all residual demo entities & stale demo biometrics
             try {
                 userRepository.purgeDemoDataAndBiometrics()
             } catch (_: Exception) {}
 
+            // Prime presentation accounts & multi-role ecosystem (Devesh, Romesh, Shivam, Suman)
+            try {
+                presentationAccountSeeder.seedPresentationAccounts()
+            } catch (e: Exception) {
+                android.util.Log.e("SplashWarmupCoordinator", "Error seeding presentation accounts: ${e.message}")
+            }
+
             // Stage 1: Fast Session & Identity Inspection
             val isLoggedIn = userRepository.isLoggedIn().first()
             val userId = userRepository.getCurrentUserIdSync()
+
+            // If app was removed from recents or not in recents, or full login is required:
+            val isFullLoginRequired = sessionManager.isFullLoginRequired() || !sessionManager.isAppInRecents()
+            if (isFullLoginRequired) {
+                userRepository.clearSession()
+                sessionManager.clearSession()
+                return@withContext WarmupResult(
+                    targetRoute = Routes.LOGIN,
+                    user = null,
+                    isSessionLocked = false
+                )
+            }
 
             // If active session belongs to a demo/fake account, kill it immediately and force login
             if (isLoggedIn && (VerificationManager.isDemoAccount(userId) || userId.isNullOrBlank())) {
@@ -116,9 +142,10 @@ class SplashWarmupCoordinator @Inject constructor(
                 )
             }
 
-            // Check if session is locked due to background inactivity (> 3 minutes)
-            val isLocked = sessionManager.isSessionLocked()
+            // Check if session is locked due to background inactivity (> 3 minutes) while in recents
+            val isLocked = sessionManager.isSessionLocked() || (lastActive > 0L && (now - lastActive) >= BankingSessionManager.INACTIVITY_LOCK_TIMEOUT_MS)
             if (isLocked) {
+                sessionManager.lockSession()
                 return@withContext WarmupResult(
                     targetRoute = Routes.SESSION_LOCK,
                     user = user,
