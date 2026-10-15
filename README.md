@@ -36,7 +36,7 @@
 
 ## 📖 Executive Summary
 
-**Loanzo** is an enterprise-grade Android microfinance platform engineered to bridge the gap between credit-worthy borrowers and private retail lenders. By combining **direct peer-to-peer social bidding (Lenme style)**, **purpose-bound merchant disbursements**, **multi-asset collateral vaulting (Gold, Property, Hardware, Vehicles, Invoices)**, **DigiLocker biometric e-Sign**, and an **automated Telegram & FCM alert desk**, Loanzo completely eliminates fraudulent loan scams, predatory interest traps, and unmonitored fund diversion.
+**Loanzo** is an enterprise grade Android microfinance platform engineered to bridge the gap between credit-worthy borrowers and private retail lenders. By combining **direct peer to peer social bidding (Lenme style)**, **purpose-bound merchant disbursements**, **multi-asset collateral vaulting (Gold, Property, Hardware, Vehicles, Invoices)**, **DigiLocker biometric e-Sign**, and an **automated Telegram & FCM alert desk**, Loanzo completely eliminates fraudulent loan scams, predatory interest traps, and unmonitored fund diversion.
 
 Built purely in **Modern Android (Jetpack Compose, Clean Architecture, Room v12, Kotlin Coroutines & Flow)**, Loanzo provides offline-first resiliency, military-grade client-side encryption, and seamless cloud synchronization with both Google Drive and Firebase.
 
@@ -382,6 +382,11 @@ This project is licensed under the **Apache License 2.0** - see the [LICENSE](LI
 Developed with precision and passion by **Satyam Kumar** and the Loanzo Engineering Team.
 
 ---
+## 🤝 Project Governance & License
+
+This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
+
+Security Verification & Backend Development by **Shivnandan Pathak**, as part of the Loanzo Engineering Team.
 
 <div align="center">
 
