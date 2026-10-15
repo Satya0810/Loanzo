@@ -382,6 +382,11 @@ This project is licensed under the **Apache License 2.0** - see the [LICENSE](LI
 Developed with precision and passion by **Satyam Kumar** and the Loanzo Engineering Team.
 
 ---
+## 🤝 Project Governance & License
+
+This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
+
+Security Verification & Backend Development by **Shivnandan Pathak**, as part of the Loanzo Engineering Team.
 
 <div align="center">
 
