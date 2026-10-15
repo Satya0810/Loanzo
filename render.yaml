@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: loanzo-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: WHATSAPP_VERIFY_TOKEN
+        value: loanzo_verify_token_2026
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: CLIENT_ID
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SANDBOX_API_KEY
+        sync: false
+      - key: SANDBOX_API_SECRET
+        sync: false
