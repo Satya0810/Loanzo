@@ -70,7 +70,10 @@ All 4 accounts are pre-seeded in the local Room Database and automatically prime
 
 ### Loan 1: Shivam Yadav — MSME Working Capital (`loan_shivam_msme_100k`)
 - **Borrower**: `@surya111` (Shivam Yadav)
-- **Lender**: `@devesh123` (Devesh Singh)
+- **Lending Syndicate (Co-Lending)**:
+  - **Lead Lender**: `@devesh123` (Devesh Singh) — **70% Equity** (₹70,000.00 principal, ₹6,440/mo pro-rata EMI return)
+  - **Co-Lender**: `@romesh321` (Romesh Singh) — **30% Equity** (₹30,000.00 principal, ₹2,760/mo pro-rata EMI return)
+  - **Distribution**: Pro-Rata Automatic Split directly into respective escrow ledgers.
 - **Co-Borrower**: `@romesh321` (Romesh Singh — Section 128 ICA Joint Obligor)
 - **Guarantor**: `@suman321` (Suman Yadav — Social Guarantor)
 - **Sanctioned Amount**: ₹1,00,000.00 | **Disbursed**: ₹50,000.00 | **Outstanding**: ₹43,400.00

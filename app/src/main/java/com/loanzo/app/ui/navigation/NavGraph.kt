@@ -1255,7 +1255,7 @@ fun LoanzoNavGraph(
                 isGrantMode = isGrantMode,
                 isKycCompleted = isKycCompleted,
                 onNavigateToKyc = { navController.navigate(Routes.KYC) },
-                onCreateLoan = { counterpartyId, amount, purpose, type, rate, model, tenure, freq, notes, pRate, pModel, pGrace ->
+                onCreateLoan = { counterpartyId, amount, purpose, type, rate, model, tenure, freq, notes, pRate, pModel, pGrace, coLenderUserId, coLenderShare ->
                     if (!isKycCompleted && currentUser != null) {
                         val updated = currentUser!!.copy(kycStatus = "VERIFIED", aadhaarVerified = true, panVerified = true)
                         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
@@ -1275,7 +1275,9 @@ fun LoanzoNavGraph(
                         penaltyRate = pRate,
                         penaltyModel = pModel,
                         penaltyGraceDays = pGrace,
-                        isGrantMode = isGrantMode
+                        isGrantMode = isGrantMode,
+                        coLenderUserId = coLenderUserId,
+                        coLenderSharePercent = coLenderShare
                     )
                 },
                 onBack = { navController.popBackStack() },

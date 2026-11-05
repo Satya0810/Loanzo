@@ -38,7 +38,8 @@ class PresentationAccountSeeder @Inject constructor(
             val existingDevesh = database.userDao().getUserById(USER_DEVESH)
             val existingLoan = database.loanDao().getLoanById(LOAN_SHIVAM_MSME)
             val existingSuryaVisit = database.agentDao().getVisitById("visit_surya_01")
-            if (existingDevesh != null && existingLoan != null && existingSuryaVisit != null) {
+            val existingCoLenders = database.coLenderDao().getCoLendersForLoanSync(LOAN_SHIVAM_MSME)
+            if (existingDevesh != null && existingLoan != null && existingSuryaVisit != null && existingCoLenders.isNotEmpty()) {
                 Log.d(TAG, "Presentation dataset already seeded in Room. Skipping duplicate startup seeding.")
                 return@withContext Result.success("Already seeded.")
             }
@@ -273,6 +274,33 @@ class PresentationAccountSeeder @Inject constructor(
                 penaltyCapPercent = 100.0
             )
             database.loanDao().insertLoan(loanShivam)
+
+            // Co-Lending Syndicate for Loan 1 (Devesh Singh 70%, Romesh Singh 30%)
+            val coLenderLead = CoLenderEntity(
+                coLenderId = "colend_${LOAN_SHIVAM_MSME}_lead",
+                loanId = LOAN_SHIVAM_MSME,
+                lenderId = USER_DEVESH,
+                name = "Devesh Singh",
+                phone = "+919876512340",
+                contributedAmount = 70000.0,
+                sharePercentage = 70.0,
+                role = "LEAD_LENDER",
+                status = "ACTIVE",
+                createdAt = now - (45 * oneDayMs)
+            )
+            val coLenderRomesh = CoLenderEntity(
+                coLenderId = "colend_${LOAN_SHIVAM_MSME}_co1",
+                loanId = LOAN_SHIVAM_MSME,
+                lenderId = USER_ROMESH,
+                name = "Romesh Singh",
+                phone = "+919876512342",
+                contributedAmount = 30000.0,
+                sharePercentage = 30.0,
+                role = "CO_LENDER",
+                status = "ACTIVE",
+                createdAt = now - (45 * oneDayMs)
+            )
+            database.coLenderDao().insertCoLenders(listOf(coLenderLead, coLenderRomesh))
 
             // --- LOAN 2: Suman Yadav (Borrower) from Devesh Singh (Lender) ---
             // Guarantor: Romesh Singh

@@ -1,8 +1,9 @@
 # ⚙️ Loanzo Protocol: Backend Architecture & Operational Specification
 **Document ID:** `LZ-DOC-BND-2026-V1`  
 **Classification:** Institutional Architecture Specification & Developer Operating Manual  
-**Production Gateway:** `https://backend-blond-sigma-66.vercel.app`  
-**Runtime:** Node.js v18+ / Express.js on Vercel Serverless Functions (`@vercel/node`)  
+**Primary Production Gateway (Render):** `https://loanzo-backend.onrender.com`  
+**Failover Edge Gateway (Vercel):** `https://backend-blond-sigma-66.vercel.app`  
+**Runtime:** Node.js v20 / Express.js on Render Web Service + Vercel Serverless (`@vercel/node`)  
 **Telegram Bot Service:** `@Loanzo_bot` (Webhook & Long-Polling Engine)  
 
 ---

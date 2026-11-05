@@ -1,5 +1,6 @@
 package com.loanzo.app.ui.loan
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.loanzo.app.data.entity.*

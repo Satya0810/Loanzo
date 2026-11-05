@@ -58,7 +58,8 @@ fun CreateLoanScreen(
     onCreateLoan: (counterpartyId: String, amount: Double, purpose: String, loanType: String,
                    interestRate: Double, interestModel: String, tenureMonths: Int,
                    repaymentFrequency: String, notes: String,
-                   penaltyRate: Double, penaltyModel: String, penaltyGraceDays: Int) -> Unit,
+                   penaltyRate: Double, penaltyModel: String, penaltyGraceDays: Int,
+                   coLenderUserId: String, coLenderSharePercent: Double) -> Unit,
     onBack: () -> Unit,
     loanCreated: Boolean = false,
     registeredUsers: List<com.loanzo.app.data.entity.UserEntity> = emptyList(),
@@ -67,6 +68,8 @@ fun CreateLoanScreen(
     val userRepository = com.loanzo.app.util.LocalUserRepository.current
     var counterpartyUserId by remember { mutableStateOf("") }
     var coBorrowerUserId by remember { mutableStateOf("") }
+    var coLenderUserId by remember { mutableStateOf("") }
+    var coLenderSharePercent by remember { mutableStateOf("30") }
     var amount by remember { mutableStateOf("50000") }
     var purpose by remember { mutableStateOf("") }
     var selectedLoanType by remember { mutableStateOf("PERSONAL") }
@@ -606,6 +609,130 @@ fun CreateLoanScreen(
                     }
                 }
 
+                // 1C. CO-LENDING SYNDICATE PICKER (OPTIONAL)
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Co-Lending Syndicate (Optional)",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Blue400.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                "Multi-Lender",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Blue400
+                            )
+                        }
+                    }
+                    if (coLenderUserId.isNotBlank()) {
+                        Text(
+                            text = "Remove",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Red400,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable { coLenderUserId = "" }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+
+                UserPickerDropdown(
+                    selectedUserId = coLenderUserId,
+                    onUserSelected = { user ->
+                        coLenderUserId = user.userId
+                    },
+                    label = "Select Co-Lender Partner",
+                    placeholder = "Pick peer co-lender (e.g. @romesh321, @devesh123)...",
+                    preferredRole = "LENDER",
+                    candidateUsers = allCandidateUsers,
+                    onSearchOnline = { query -> userRepository.searchUsersOnline(query) }
+                )
+
+                if (coLenderUserId.isNotBlank()) {
+                    val coLender = allCandidateUsers.find { it.userId == coLenderUserId }
+                    val coShareVal = (coLenderSharePercent.toDoubleOrNull() ?: 30.0).coerceIn(1.0, 99.0)
+                    val leadShareVal = (100.0 - coShareVal).coerceAtLeast(1.0)
+                    val leadAmt = principalNum * (leadShareVal / 100.0)
+                    val coAmt = principalNum * (coShareVal / 100.0)
+                    val leadEmi = emi * (leadShareVal / 100.0)
+                    val coEmi = emi * (coShareVal / 100.0)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, Blue400.copy(alpha = 0.35f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Co-Lender Equity Share",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "${coShareVal.toInt()}% Equity",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Blue400
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(20, 30, 40, 50).forEach { pct ->
+                                    val isSelected = coShareVal.toInt() == pct
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = { coLenderSharePercent = pct.toString() },
+                                        label = { Text("$pct%", fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text("Lead Lender (You: ${leadShareVal.toInt()}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(leadAmt.toInrString(), fontWeight = FontWeight.Bold, color = Emerald400, fontSize = 13.sp)
+                                    Text("Returns: ${leadEmi.toInrString()}/mo", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("${coLender?.name ?: "Co-Lender"} (${coShareVal.toInt()}%)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(coAmt.toInrString(), fontWeight = FontWeight.Bold, color = Blue400, fontSize = 13.sp)
+                                    Text("Returns: ${coEmi.toInrString()}/mo", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
@@ -991,7 +1118,9 @@ fun CreateLoanScreen(
                             effectiveNotes,
                             penaltyRate.toDoubleOrNull() ?: 2.0,
                             selectedPenaltyModel,
-                            penaltyGraceDays.toIntOrNull() ?: 3
+                            penaltyGraceDays.toIntOrNull() ?: 3,
+                            coLenderUserId.trim(),
+                            coLenderSharePercent.toDoubleOrNull() ?: 0.0
                         )
                     }
                 },
@@ -1945,6 +2074,124 @@ fun LoanDetailScreen(
                                 tint = Emerald400,
                                 modifier = Modifier.size(18.dp)
                             )
+                        }
+                    }
+                }
+            }
+
+            // 2.2. LENDING SYNDICATE & CO-LENDERS BENTO CARD
+            if (state.coLenders.isNotEmpty()) {
+                item {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Blue400.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(Icons.Default.Groups, null, tint = Blue400, modifier = Modifier.padding(8.dp))
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text("Lending Syndicate & Co-Lenders", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text("${state.coLenders.size} Co-Lenders • Pro-Rata EMI Distribution", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Emerald400.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    "Pro-Rata Auto",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Emerald400,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            "Capital equity and repayments are automatically distributed to each co-lender's escrow ledger proportionally:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        state.coLenders.forEach { coLender ->
+                            val isLead = coLender.role == "LEAD_LENDER"
+                            val totalEmi = calculateEMI(loan.sanctionedAmount, loan.interestRate, loan.tenureMonths)
+                            val memberMonthlyEmi = totalEmi * (coLender.sharePercentage / 100.0)
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                border = BorderStroke(1.dp, if (isLead) GoldCoinRich.copy(alpha = 0.4f) else Blue400.copy(alpha = 0.3f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = if (isLead) GoldCoinRich.copy(alpha = 0.2f) else Blue400.copy(alpha = 0.2f),
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        Icon(
+                                            if (isLead) Icons.Default.AccountBalance else Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = if (isLead) GoldCoinRich else Blue400,
+                                            modifier = Modifier.padding(10.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(coLender.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = if (isLead) GoldCoinRich.copy(alpha = 0.15f) else Blue400.copy(alpha = 0.15f)
+                                            ) {
+                                                Text(
+                                                    if (isLead) "Lead Lender" else "Co-Lender",
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isLead) GoldCoinRich else Blue400
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            "Phone: ${coLender.phone} • Status: ${coLender.status}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            coLender.contributedAmount.toInrString(),
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 14.sp,
+                                            color = Emerald400
+                                        )
+                                        Text(
+                                            "${coLender.sharePercentage.toInt()}% • Return: ${memberMonthlyEmi.toInrString()}/mo",
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
